@@ -1,0 +1,186 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
+import { env } from "@/lib/env";
+import { nanoid } from "nanoid";
+
+export type SettingsActionResult = {
+  success: boolean;
+  error?: string;
+};
+
+export type ApiTokenData = {
+  id: string;
+  token_preview: string;
+  name: string;
+  last_used_at: string | null;
+  created_at: string;
+};
+
+/**
+ * Update the authenticated user's display name.
+ */
+export async function updateDisplayName(
+  displayName: string
+): Promise<SettingsActionResult> {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  const name = displayName.trim();
+  if (!name || name.length > 100) {
+    return { success: false, error: "Name must be between 1-100 characters." };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    data: { display_name: name },
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/settings");
+  return { success: true };
+}
+
+/**
+ * Generate a new API token for extension authentication.
+ * The full token is returned only once on creation.
+ */
+export async function generateApiToken(
+  name: string
+): Promise<SettingsActionResult & { token?: string; id?: string }> {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  const deviceName = name.trim() || "Chrome Extension";
+  const token = `us_${nanoid(48)}`;
+
+  const adminClient = await createSupabaseAdminClient();
+  const { data, error } = await adminClient
+    .from("api_tokens")
+    .insert({
+      user_id: user.id,
+      token,
+      name: deviceName,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/settings");
+  return { success: true, token, id: data.id };
+}
+
+/**
+ * Revoke (delete) an API token.
+ */
+export async function revokeApiToken(
+  tokenId: string
+): Promise<SettingsActionResult> {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  const adminClient = await createSupabaseAdminClient();
+  const { error } = await adminClient
+    .from("api_tokens")
+    .delete()
+    .eq("id", tokenId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath("/settings");
+  return { success: true };
+}
+
+/**
+ * Get all API tokens for the current user.
+ */
+export async function getApiTokens(): Promise<
+  (SettingsActionResult & { tokens?: ApiTokenData[] }) | never
+> {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  const adminClient = await createSupabaseAdminClient();
+  const { data, error } = await adminClient
+    .from("api_tokens")
+    .select("id, token, name, last_used_at, created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return {
+    success: true,
+    tokens: (data || []).map((t) => ({
+      id: t.id,
+      token_preview: `${t.token.slice(0, 12)}...`,
+      name: t.name,
+      last_used_at: t.last_used_at,
+      created_at: t.created_at,
+    })),
+  };
+}
+
+/**
+ * Send a password reset email to the authenticated user.
+ */
+export async function sendPasswordReset(): Promise<SettingsActionResult> {
+  const supabase = await createSupabaseServerClient();
+
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user || !user.email) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+    redirectTo: `${env.APP_URL}/login`,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
