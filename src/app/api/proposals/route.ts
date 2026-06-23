@@ -7,17 +7,19 @@
  * Auth: Bearer token or Supabase session
  */
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createSupabaseAdminClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: proposals, error } = await supabase
+    const admin = createSupabaseAdminClient();
+
+    const { data: proposals, error } = await admin
       .from("proposals")
       .select(`
         id,
@@ -48,18 +50,20 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createSupabaseAdminClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const admin = createSupabaseAdminClient();
 
     const id = request.nextUrl.searchParams.get("id");
     if (!id) {
       return NextResponse.json({ error: "id query param required" }, { status: 400 });
     }
 
-    const { error } = await supabase
+    const { error } = await admin
       .from("proposals")
       .delete()
       .eq("id", id)

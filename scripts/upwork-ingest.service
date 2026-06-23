@@ -1,0 +1,11 @@
+[Unit]
+Description=Upwork Job Ingester — fetch jobs from API and insert into Supabase
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+Environment=SUPABASE_URL=https://kjfqtenfmxdoyjxxnhnm.supabase.co
+Environment=SUPABASE_SERVICE_KEY=sb_secret_dI5gwLE0HaNKXRXWQlgcJg_IRwEZmKU
+ExecStart=/usr/bin/python3 /home/ubuntu/upwork-api/ingest_to_supabase.py
+User=ubuntu

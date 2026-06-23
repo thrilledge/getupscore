@@ -1,630 +1,354 @@
-/**
- * UpScore Extension — Content Script
- *
- * Runs on https://www.upwork.com/* pages.
- *
- * Responsibilities:
- *  1. Inject page-context scripts for Cloudflare-safe GraphQL fetches
- *  2. Capture Upwork session cookies for server-side use
- *  3. Intercept Upwork API calls (fetch/XHR)
- *  4. Extract jobs from __NEXT_DATA__ and DOM
- *  5. Forward all data to background service worker
- *
- * The page-context injection approach is critical because:
- *  - Content scripts run in "isolated world" — Cloudflare blocks them
- *  - Injected <script> tags run in "main world" — Cloudflare is OK
- *  - Only main world has proper cookies + Cloudflare Turnstile clearance
- *
- * NOTE: Content scripts in MV3 cannot use static ES module imports.
- * The GraphQL queries and normalizer functions are inlined below instead of
- * imported from lib/upwork-gql.js (which is still used by background.js as a module).
- */
+let bridgeReady = false;
+const bridgeQueue = [];
 
-console.log("[UpScore] Content script loaded");
-
-// ─── Config ───
-const UPWORK_SEARCH_PATHS = [
-  "/nx/search/jobs",
-  "/nx/find-work",
-  "/ab/feed/jobs",
-];
-
-const UPWORK_API_PATTERNS = [
-  "/api/jobs/search",
-  "/graphql",
-  "/api/v3/jobs",
-];
-
-// ─── State ───
-let capturedJobs = [];
-let apiCallCount = 0;
-let mainWorldBridgeInjected = false;
-
-// ═══════════════════════════════════════════════════
-// MAIN-WORLD BRIDGE (CSP-safe via web_accessible_resources)
-// ═══════════════════════════════════════════════════
-
-/**
- * Inject the main-world bridge script into the page.
- * Uses <script src="chrome-extension://<id>/lib/main-world.js"> which
- * is CSP-compliant because chrome-extension:// URLs are whitelisted.
- * This runs in the page's main world with Cloudflare clearance.
- * Returns a promise that resolves when the bridge is loaded and ready.
- */
 function injectMainWorldBridge() {
-  if (mainWorldBridgeInjected) return Promise.resolve();
-  mainWorldBridgeInjected = true;
-
+  if (bridgeReady) return Promise.resolve();
+  if (bridgeQueue.length > 0) {
+    return new Promise((resolve) => bridgeQueue.push(resolve));
+  }
   return new Promise((resolve) => {
+    bridgeQueue.push(resolve);
     const script = document.createElement("script");
     script.src = chrome.runtime.getURL("lib/main-world.js");
     script.setAttribute("data-upscore", "");
-    script.onload = resolve;
+    script.onload = () => {
+      bridgeReady = true;
+      const q = bridgeQueue.splice(0);
+      q.forEach((r) => r());
+    };
     script.onerror = () => {
-      console.warn("[UpScore] Failed to load main-world bridge");
-      resolve(); // Resolve anyway so postMessage can still try
+      bridgeReady = true;
+      const q = bridgeQueue.splice(0);
+      q.forEach((r) => r());
     };
     document.documentElement.appendChild(script);
     script.remove();
   });
 }
 
-/**
- * Execute an operation in the page's main world via postMessage.
- * The bridge script (injected once) listens for __upscore_exec messages
- * and performs the actual work (GraphQL fetch, cookie capture).
- * Waits for bridge to load on first call before posting.
- */
 async function injectMainWorld(operation, params = {}) {
   try {
     await injectMainWorldBridge();
-    window.postMessage(
-      { type: "__upscore_exec", operation, params },
-      "*"
-    );
+    console.log("[UpScore] posting __upscore_exec", operation);
+    window.postMessage({ type: "__upscore_exec", operation, params }, "*");
   } catch (err) {
-    console.warn(`[UpScore] Main world op failed (${operation}):`, err.message);
+    console.warn("[UpScore] Main world op failed:", err.message);
   }
 }
 
-/**
- * Normalize a GraphQL search result into the standard job format.
- */
-function normalizeGraphQLJob(result) {
-  const jobTile = result.jobTile?.job || {};
-  const skills = (result.ontologySkills || []).map(s => s.prefLabel || s.freeText).filter(Boolean);
+injectMainWorldBridge();
 
-  let budget = null;
-  let hourlyMin = null;
-  let hourlyMax = null;
-  const fpAmount = jobTile.fixedPriceAmount;
-  if (fpAmount && fpAmount.amount) {
-    budget = fpAmount.amount;
-  }
-  if (jobTile.hourlyBudgetMin || jobTile.hourlyBudgetMax) {
-    hourlyMin = jobTile.hourlyBudgetMin;
-    hourlyMax = jobTile.hourlyBudgetMax;
-  }
+let pendingJobResolve = null;
 
-  return {
-    job_id: result.ciphertext || result.cipherText || jobTile.ciphertext || result.id || '',
-    title: (result.title || '').slice(0, 500),
-    description: (result.description || '').slice(0, 10000),
-    url: `https://www.upwork.com/jobs/~${result.ciphertext || result.id || ''}`,
-    skills,
-    budget: budget ? `$${budget}` : '',
-    hourly_min: hourlyMin,
-    hourly_max: hourlyMax,
-    country: '',
-    proposals_count: 0,
-    posted_at: jobTile.createTime || jobTile.publishTime || '',
-    client_info: '',
-    payment_verified: false,
-    captured_at: new Date().toISOString(),
-    source: 'graphql_search',
-    synced: false,
-  };
-}
+window.addEventListener("message", (event) => {
+  if (event.source !== window) return;
+  if (event.data?.type !== "__upscore_result") return;
 
-/**
- * Listen for CustomEvent results from page-context scripts.
- * These events carry GraphQL responses and cookie data.
- */
-window.addEventListener("__upscore_graphql_result", (event) => {
-  const detail = event.detail;
-  if (!detail) return;
+  const { operation } = event.data;
+  console.log("[UpScore] received __upscore_result", operation, event.data.success);
 
-  if (detail.success && detail.operation === "jobSearch") {
-    const results = extractJobsFromGraphQL(detail.data);
-    if (results.length > 0) {
-      chrome.runtime.sendMessage({
-        type: "JOBS_CAPTURED",
-        jobs: results,
-        source: "graphql_search",
-      });
-      addToCaptured(results);
-    }
-  }
-
-  if (detail.success && detail.operation === "jobDetails") {
-    chrome.runtime.sendMessage({
-      type: "JOB_DETAILS_CAPTURED",
-      jobDetail: detail.data,
-      ciphertext: detail.ciphertext,
-    });
-  }
-});
-
-/**
- * Listen for cookie capture from page context.
- */
-window.addEventListener("__upscore_cookies", (event) => {
-  const cookies = event.detail?.cookies;
-  if (cookies) {
-    chrome.runtime.sendMessage({
-      type: "UPWORK_COOKIES",
-      cookies,
-    });
-  }
-});
-
-// ═══════════════════════════════════════════════════
-// GRAPHQL JOB SEARCH (via page-context)
-// ═══════════════════════════════════════════════════
-
-/**
- * Trigger a GraphQL job search from the page context.
- * @param {string} query - Search keywords
- * @param {number} offset - Pagination offset
- * @param {number} count - Results per page
- */
-function searchJobsViaGraphQL(query = "", offset = 0, count = 10) {
-  injectMainWorld("jobSearch", {
-    query: "",
-    variables: {
-      requestVariables: {
-        userQuery: query,
-        sort: "recency+desc",
-        highlight: true,
-        paging: { offset, count },
-      },
-    },
-  });
-}
-
-/**
- * Extract job results from GraphQL search response.
- */
-function extractJobsFromGraphQL(data) {
-  try {
-    const results =
-      data?.data?.search?.universalSearchNuxt?.visitorJobSearchV1?.results ||
-      [];
-    return results.map(normalizeGraphQLJob).filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
-/**
- * Get all search queries from the page or from background worker
- * based on user's saved filters.
- */
-async function searchJobsForFilters() {
-  // Ask background worker for active filters
-  chrome.runtime.sendMessage({ type: "GET_FILTERS_QUERIES" }, (filters) => {
-    if (!filters || filters.length === 0) {
-      // Fallback: extract keywords from page URL
-      const url = new URL(window.location.href);
-      const q = url.searchParams.get("q") || "";
-      if (q) {
-        searchJobsViaGraphQL(q);
-      }
+  if (operation === "profileDetail") {
+    if (!event.data.success) {
+      console.error("[UpScore] Profile error:", event.data.error);
       return;
     }
-
-    // Search for each filter's keywords
-    for (const filter of filters) {
-      const keywords = filter?.keywords || [];
-      if (keywords.length > 0) {
-        searchJobsViaGraphQL(keywords.join(" "));
-      }
+    const profile = normalizeProfile(event.data.data);
+    if (profile.title) {
+      console.log("[UpScore] Profile captured:", profile.title);
+      chrome.runtime.sendMessage({ type: "PROFILE_CAPTURED", profile });
+    } else {
+      console.warn("[UpScore] Profile has no title, raw:", event.data.data);
     }
+  }
+
+  if (operation === "jobDetails") {
+    if (pendingJobResolve) {
+      pendingJobResolve(event.data);
+      pendingJobResolve = null;
+    }
+    if (event.data.success) {
+      chrome.runtime.sendMessage({ type: "JOBS_CAPTURED", jobs: [event.data.data] });
+    }
+  }
+});
+
+function extractJobFromPage() {
+  return new Promise((resolve) => {
+    pendingJobResolve = resolve;
+    injectMainWorld("getJobDetailsFromDom");
+    setTimeout(() => {
+      if (pendingJobResolve) {
+        pendingJobResolve({ success: false, error: "Timeout" });
+        pendingJobResolve = null;
+      }
+    }, 15000);
   });
 }
 
-// ═══════════════════════════════════════════════════
-// COOKIE CAPTURE (for server-side cron)
-// ═══════════════════════════════════════════════════
-
-/**
- * Capture session cookies from the page context.
- * These are sent to the server so the cron job can use
- * them with ScrapingAnt for 24/7 GraphQL access.
- */
-function captureUpworkCookies() {
-  injectMainWorld("getCookies");
+function fetchJobFromApi(jobUrl) {
+  const match = jobUrl.match(/[~/]([a-f0-9]{16,})/);
+  if (!match) {
+    return Promise.resolve({ success: false, error: "Could not extract job ID from URL" });
+  }
+  const ciphertext = "~" + match[1];
+  return new Promise((resolve) => {
+    pendingJobResolve = resolve;
+    // Get the visitor_gql_token from background script (can read HttpOnly cookies)
+    chrome.runtime.sendMessage({ type: "GET_VISITOR_GQL_TOKEN" }, (response) => {
+      const token = response?.token || null;
+      injectMainWorld("fetchJobFromApi", { ciphertext, token });
+      setTimeout(() => {
+        if (pendingJobResolve) {
+          pendingJobResolve({ success: false, error: "Timeout fetching job from API" });
+          pendingJobResolve = null;
+        }
+      }, 15000);
+    });
+  });
 }
 
-// ═══════════════════════════════════════════════════
-// INTERCEPT fetch() API CALLS
-// ═══════════════════════════════════════════════════
+function normalizeProfile(data) {
+  try {
+    const p = data?.data?.talentVPDAuthProfile || data;
+    const profile = p.profile || {};
+    const stats = p.stats || {};
 
-(function interceptFetch() {
-  const originalFetch = window.fetch;
+    const hasSubProfile = Object.keys(profile).length > 0 || Object.keys(stats).length > 0;
+    const src = hasSubProfile ? profile : p;
 
-  window.fetch = async function (...args) {
-    const requestUrl = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
-    const isUpworkApi = UPWORK_API_PATTERNS.some((p) => requestUrl.includes(p));
+    const skills = Array.isArray(src.skills)
+      ? src.skills.map((s) => {
+          if (typeof s === "string") return s;
+          if (s?.prettyName && typeof s.prettyName === "string") return s.prettyName;
+          if (s?.name && typeof s.name === "string") return s.name;
+          if (s?.node?.prettyName) return s.node.prettyName;
+          return String(s);
+        }).filter(Boolean)
+      : [];
 
-    if (isUpworkApi) {
-      apiCallCount++;
+    const hourlyRate = stats.hourlyRate?.node?.amount
+      || p.hourlyRate?.node?.amount
+      || src.hourlyRate?.node?.amount
+      || src.hourly_rate
+      || null;
 
-      try {
-        const response = await originalFetch.apply(this, args);
-        const clone = response.clone();
-        const contentType = clone.headers.get("content-type") || "";
+    const totalEarnings = stats.totalEarnings ?? p.totalEarnings ?? src.totalEarnings ?? src.total_earnings ?? null;
+    const totalJobs = stats.totalJobsWorked ?? p.totalJobsWorked ?? src.totalJobsWorked ?? src.total_jobs_done ?? null;
+    const totalHours = stats.totalHoursActual ?? p.totalHoursActual ?? src.totalHoursActual ?? src.total_hours ?? null;
+    const rating = stats.rating ?? p.rating ?? src.rating ?? src.client_rating ?? null;
+    const memberSince = stats.memberSince || p.memberSince || src.memberSince || null;
+    const country = (profile.location?.country || p.location?.country || src.location?.country || "");
 
-        if (contentType.includes("json")) {
-          const json = await clone.json();
-          const jobs = extractJobsFromApiResponse(json, requestUrl);
-          if (jobs.length > 0) {
-            chrome.runtime.sendMessage({
-              type: "API_ENDPOINT_DISCOVERED",
-              endpoint: {
-                url: requestUrl,
-                method: args[1]?.method || "GET",
-                responseSample: {
-                  keys: Object.keys(json).slice(0, 10),
-                  hasJobs: jobs.length > 0,
-                  jobCount: jobs.length,
-                },
-              },
-            });
-
-            chrome.runtime.sendMessage({ type: "JOBS_CAPTURED", jobs });
-            addToCaptured(jobs);
+    const portfolioData = data?.data?.portfolioV2;
+    let portfolioItems = [];
+    if (portfolioData) {
+      if (Array.isArray(portfolioData)) {
+        portfolioItems = portfolioData;
+      } else if (Array.isArray(portfolioData.items)) {
+        portfolioItems = portfolioData.items;
+      } else if (Array.isArray(portfolioData.projects)) {
+        portfolioItems = portfolioData.projects;
+      } else if (Array.isArray(portfolioData.data)) {
+        portfolioItems = portfolioData.data;
+      } else if (Array.isArray(portfolioData.portfolioItems)) {
+        portfolioItems = portfolioData.portfolioItems;
+      } else if (Array.isArray(portfolioData.publishedCurrentPageProjects)) {
+        portfolioItems = portfolioData.publishedCurrentPageProjects;
+      } else if (Array.isArray(portfolioData.draftCurrentPageProjects)) {
+        portfolioItems = portfolioData.draftCurrentPageProjects;
+      } else if (Array.isArray(portfolioData.results)) {
+        portfolioItems = portfolioData.results;
+      } else {
+        for (const key of Object.keys(portfolioData)) {
+          const val = portfolioData[key];
+          if (Array.isArray(val) && val.length > 0 && val[0]?.title) {
+            portfolioItems = val;
+            break;
           }
         }
-
-        return response;
-      } catch {
-        return originalFetch.apply(this, args);
       }
     }
+    const portfolio = portfolioItems.length
+      ? portfolioItems.slice(0, 20).map((item) => ({
+            title: item.title || "",
+            description: (item.description || "").slice(0, 1000),
+            url: item.url || "",
+            images: Array.isArray(item.images)
+              ? item.images.map((img) => (typeof img === "string" ? img : img?.url || img?.src || "")).filter(Boolean)
+              : [],
+            skills: Array.isArray(item.skills)
+              ? item.skills.map((s) => typeof s === "string" ? s : s?.prettyName || s?.name || "")
+              : [],
+          })).filter((i) => i.title)
+      : [];
 
-    return originalFetch.apply(this, args);
-  };
-})();
+    return {
+      upwork_url: window.location.href,
+      title: profile.title || p.title || src.title || "",
+      bio: (profile.description || p.description || src.description || "").slice(0, 5000),
+      skills,
+      hourly_rate: hourlyRate,
+      total_earnings: totalEarnings,
+      total_jobs_done: totalJobs,
+      total_hours: totalHours,
+      member_since: memberSince,
+      client_rating: rating,
+      country,
+      portfolio,
+      captured_at: new Date().toISOString(),
+    };
+  } catch (err) {
+    console.error("[UpScore] normalizeProfile error:", err);
+    return {};
+  }
+}
 
-// ═══════════════════════════════════════════════════
-// INTERCEPT XMLHttpRequest
-// ═══════════════════════════════════════════════════
+function detectProfilePage() {
+  return window.location.href.match(/\/freelancers\/~/);
+}
 
-(function interceptXHR() {
-  const originalOpen = XMLHttpRequest.prototype.open;
-  const originalSend = XMLHttpRequest.prototype.send;
+function detectJobPage() {
+  return window.location.href.match(/\/(?:jobs|job)\/[^/]/) || window.location.href.match(/[~/][a-f0-9]{16,}/);
+}
 
-  XMLHttpRequest.prototype.open = function (method, url) {
-    this._upscoreUrl = typeof url === "string" ? url : url?.href || "";
-    this._upscoreMethod = method;
-    return originalOpen.apply(this, arguments);
-  };
+function detectApplyPage() {
+  return window.location.href.match(/\/proposals\/job\/[^/]+\/apply/);
+}
 
-  XMLHttpRequest.prototype.send = function (...args) {
-    const url = this._upscoreUrl || "";
-    const isUpworkApi = UPWORK_API_PATTERNS.some((p) => url.includes(p));
+function extractAndSend() {
+  if (detectProfilePage()) {
+    console.log("[UpScore] Profile page detected, requesting profile data");
+    injectMainWorld("getProfileFromDom");
+  }
+  if (detectJobPage()) {
+    console.log("[UpScore] Job page detected, extracting job details");
+    extractJobFromPage();
+  }
+}
 
-    if (isUpworkApi) {
-      this.addEventListener("load", function () {
-        try {
-          const contentType = this.getResponseHeader("content-type") || "";
-          if (contentType.includes("json")) {
-            const json = JSON.parse(this.responseText);
-            const jobs = extractJobsFromApiResponse(json, url);
-            if (jobs.length > 0) {
-              addToCaptured(jobs);
-              chrome.runtime.sendMessage({ type: "JOBS_CAPTURED", jobs });
-            }
-          }
-        } catch {
-          // Silently ignore
-        }
+function injectApplyButton() {
+  if (!detectApplyPage()) return;
+  const existing = document.getElementById("upscore-apply-btn");
+  if (existing) return;
+
+  const target = document.querySelector('[data-qa="cover-letter-textarea"]')?.closest(".form-group") ||
+                 document.querySelector("textarea[name='cover_letter']")?.closest("div") ||
+                 document.querySelector(".up-form-group");
+
+  if (!target) {
+    setTimeout(injectApplyButton, 2000);
+    return;
+  }
+
+  const btn = document.createElement("button");
+  btn.id = "upscore-apply-btn";
+  btn.textContent = "Write with AI";
+  btn.type = "button";
+  Object.assign(btn.style, {
+    marginTop: "8px",
+    padding: "8px 16px",
+    backgroundColor: "#7c3aed",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "500",
+  });
+  btn.addEventListener("mouseenter", () => { btn.style.backgroundColor = "#6d28d9"; });
+  btn.addEventListener("mouseleave", () => { btn.style.backgroundColor = "#7c3aed"; });
+  btn.addEventListener("click", async () => {
+    btn.textContent = "Generating...";
+    btn.disabled = true;
+    try {
+      const applyMatch = window.location.href.match(/~([a-f0-9]{16,})/);
+      const jobUrl = applyMatch
+        ? `https://www.upwork.com/jobs/~${applyMatch[1]}`
+        : window.location.href;
+      const result = await fetchJobFromApi(jobUrl);
+      if (!result.success) {
+        btn.textContent = "Failed to fetch job";
+        setTimeout(() => { btn.textContent = "Write with AI"; btn.disabled = false; }, 2000);
+        return;
+      }
+      chrome.runtime.sendMessage({
+        type: "OPEN_SIDEPANEL_WITH_JOB",
+        jobDetails: result.data,
       });
+    } catch {
+      btn.textContent = "Error";
+      setTimeout(() => { btn.textContent = "Write with AI"; btn.disabled = false; }, 2000);
     }
-
-    return originalSend.apply(this, args);
-  };
-})();
-
-// ═══════════════════════════════════════════════════
-// MESSAGE LISTENER
-// ═══════════════════════════════════════════════════
+  });
+  target.parentNode?.insertBefore(btn, target.nextSibling);
+}
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
-    case "SCAN_JOBS":
-      scanForJobs();
-      // Also run GraphQL search for page's query
-      triggerGraphQLSearch();
-      // Capture cookies for server-side use
-      captureUpworkCookies();
-      sendResponse({ ok: true });
-      break;
-
-    case "FETCH_GRAPHQL":
-      // Background worker asks content script to fetch GraphQL
-      if (msg.query) {
-        searchJobsViaGraphQL(msg.query, msg.offset || 0, msg.count || 10);
-      } else {
-        triggerGraphQLSearch();
-      }
-      sendResponse({ ok: true });
-      break;
-
     case "GET_COOKIES":
-      // Background worker needs cookies right now
-      captureUpworkCookies();
+      captureCookies();
       sendResponse({ ok: true });
       break;
-
-    case "GET_CAPTURED_JOBS":
-      sendResponse({ jobs: capturedJobs });
+    case "EXTRACT_PAGE":
+      extractAndSend();
+      sendResponse({ ok: true });
+      break;
+    case "EXTRACT_JOB_FROM_PAGE":
+      extractJobFromPage().then((result) => {
+        sendResponse(result);
+      });
+      return true;
+    case "FETCH_JOB_FROM_API":
+      fetchJobFromApi(msg.jobUrl).then((result) => {
+        sendResponse(result);
+      });
+      return true;
+    case "INSERT_PORTFOLIO":
+      injectMainWorld("insertPortfolioOnApply", { portfolio: msg.portfolio || [] });
+      sendResponse({ ok: true });
       break;
   }
   return true;
 });
 
-function triggerGraphQLSearch() {
-  const url = new URL(window.location.href);
-  const q = url.searchParams.get("q") || "";
-  if (q) {
-    searchJobsViaGraphQL(q);
-  }
-}
-
-// ═══════════════════════════════════════════════════
-// SCAN PAGE (DOM-based extraction)
-// ═══════════════════════════════════════════════════
-
-function scanForJobs() {
-  const url = window.location.href;
-  const isSearch = UPWORK_SEARCH_PATHS.some((path) => url.includes(path));
-  if (!isSearch) return;
-
-  // Strategy 1: __NEXT_DATA__
-  const jobs1 = extractFromNextData();
-  if (jobs1.length > 0) {
-    addToCaptured(jobs1);
-    chrome.runtime.sendMessage({ type: "JOBS_CAPTURED", jobs: jobs1 });
-    return;
-  }
-
-  // Strategy 2: DOM parsing
-  const jobs2 = extractFromDOM();
-  if (jobs2.length > 0) {
-    addToCaptured(jobs2);
-    chrome.runtime.sendMessage({ type: "JOBS_CAPTURED", jobs: jobs2 });
-  }
-}
-
-// ═══════════════════════════════════════════════════
-// PARSERS (unchanged from original)
-// ═══════════════════════════════════════════════════
-
-function extractJobsFromApiResponse(json, url) {
-  if (!json || typeof json !== "object") return [];
-  const jobs = [];
-  const walkForJobs = (obj, depth = 0) => {
-    if (depth > 8 || !obj || typeof obj !== "object") return;
-    if (Array.isArray(obj)) {
-      for (const item of obj) {
-        if (item && typeof item === "object" && item.title && item.ciphertext) {
-          const job = normalizeJob(item);
-          if (job) jobs.push(job);
-        }
-        walkForJobs(item, depth + 1);
-      }
-    } else {
-      if (obj.title && (obj.ciphertext || obj.id) && !obj.items && !obj.results) {
-        const job = normalizeJob(obj);
-        if (job) jobs.push(job);
-      }
-      for (const key of Object.keys(obj)) {
-        walkForJobs(obj[key], depth + 1);
-      }
-    }
-  };
-  walkForJobs(json);
-  return jobs;
-}
-
-function extractFromNextData() {
-  const el = document.getElementById("__NEXT_DATA__");
-  if (!el) return [];
+function captureCookies() {
   try {
-    const data = JSON.parse(el.textContent);
-    const jobs = [];
-    const walk = (obj, depth = 0) => {
-      if (depth > 10 || !obj || typeof obj !== "object") return;
-      if (Array.isArray(obj)) {
-        for (const item of obj) {
-          if (item && isJobItem(item)) {
-            const job = normalizeJob(item);
-            if (job) jobs.push(job);
-          }
-          walk(item, depth + 1);
-        }
-      } else {
-        for (const key of Object.keys(obj)) {
-          if (isJobItem(obj[key])) {
-            const job = normalizeJob(obj[key]);
-            if (job) jobs.push(job);
-          }
-          walk(obj[key], depth + 1);
-        }
-      }
-    };
-    walk(data);
-    return jobs;
-  } catch {
-    return [];
-  }
+    chrome.runtime.sendMessage({ type: "GET_UPWORK_COOKIES" });
+  } catch (e) { console.warn("[UpScore] captureCookies error:", e); }
 }
 
-function isJobItem(item) {
-  if (!item || typeof item !== "object") return false;
-  return !!(
-    item.title &&
-    typeof item.title === "string" &&
-    item.title.length > 5 &&
-    (item.ciphertext || item.jobId || item.id) &&
-    Object.keys(item).length < 30
-  );
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(() => {
+      captureCookies();
+      extractAndSend();
+      injectApplyButton();
+    }, 2000);
+  });
+} else {
+  setTimeout(() => {
+    captureCookies();
+    extractAndSend();
+    injectApplyButton();
+  }, 2000);
 }
 
-function extractFromDOM() {
-  const jobs = [];
-  const selectors = [
-    "[data-job-id]",
-    "[data-test*='job']",
-    "[class*='job-tile']",
-    "[class*='JobTile']",
-    "[class*='job-card']",
-    "article",
-    ".up-card-section",
-  ];
-
-  const candidates = new Set();
-  for (const sel of selectors) {
-    document.querySelectorAll(sel).forEach((el) => candidates.add(el));
-  }
-
-  for (const el of candidates) {
-    if (el.tagName === "BODY" || el.tagName === "HTML") continue;
-
-    const titleEl = el.querySelector(
-      'h2, h3, h4, [class*="title"], [class*="Title"], a[href*="~"]'
-    );
-    if (!titleEl) continue;
-
-    const title = titleEl.textContent.trim();
-    if (!title || title.length < 5) continue;
-
-    const link = el.querySelector("a[href]") || titleEl.closest("a");
-    let url = "";
-    if (link) {
-      const href = link.getAttribute("href");
-      if (href) url = href.startsWith("http") ? href : `https://www.upwork.com${href}`;
-    }
-
-    const jobId = el.getAttribute("data-job-id") || url.match(/~([a-f0-9]{16,})/)?.[1] || "";
-
-    const descEl = el.querySelector('[class*="description"], [class*="Description"], p');
-    const description = descEl?.textContent?.trim()?.slice(0, 500) || "";
-
-    const skillEls = el.querySelectorAll('[class*="skill"], [class*="Skill"], [class*="token"]');
-    const skills = Array.from(skillEls).map((s) => s.textContent.trim()).filter(Boolean).slice(0, 10);
-
-    const budgetEl = el.querySelector('[class*="budget"], [class*="Budget"], [class*="rate"], [class*="Rate"]');
-    const budget = budgetEl?.textContent?.trim() || "";
-
-    const countryEl = el.querySelector('[class*="location"], [class*="Location"]');
-    const country = countryEl?.textContent?.trim() || "";
-
-    const proposalsEl = el.querySelector('[class*="proposals"], [class*="Proposals"]');
-    const proposalsCount = parseInt(proposalsEl?.textContent?.match(/\d+/)?.[0] || "0", 10);
-
-    const timeEl = el.querySelector('[class*="time"], [class*="posted"]');
-    const postedAt = timeEl?.textContent?.trim() || "";
-
-    const isDuplicate = jobs.some((j) => j.title === title && j.url === url);
-    if (!isDuplicate) {
-      jobs.push({
-        job_id: jobId,
-        title,
-        url,
-        description,
-        skills,
-        budget,
-        country,
-        proposals_count: proposalsCount,
-        posted_at: postedAt,
-        client_info: "",
-        payment_verified: false,
-        captured_at: new Date().toISOString(),
-        source: "dom_scan",
-        synced: false,
-      });
-    }
-  }
-
-  return jobs;
-}
-
-function normalizeJob(item) {
-  const title = typeof item.title === "string" ? item.title : item.title?.text || "";
-  if (!title || title.length < 5) return null;
-
-  const jobId = item.ciphertext || item.jobId || item.id || "";
-
-  return {
-    job_id: jobId,
-    title: title.slice(0, 500),
-    url: item.url
-      ? (item.url.startsWith("http") ? item.url : `https://www.upwork.com${item.url}`)
-      : jobId
-        ? `https://www.upwork.com/jobs/~${jobId}`
-        : "",
-    description: (typeof item.description === "string" ? item.description : item.description?.text || "").slice(0, 10000),
-    skills: (item.skills || item.jobSkills || []).map((s) =>
-      typeof s === "string" ? s : s.name || s.label || String(s)
-    ).filter(Boolean).slice(0, 20),
-    budget: item.budget?.amount ? `$${item.budget.amount}` : item.rate || item.hourlyBudget || "",
-    country: item.client?.country || item.country || "",
-    proposals_count: item.proposalsCount || item.applicationsCount || 0,
-    posted_at: item.publishedDate || item.createdAt || "",
-    client_info: item.client?.name || item.clientName || "",
-    payment_verified: item.client?.paymentVerified || false,
-    captured_at: new Date().toISOString(),
-    source: "api_intercept",
-    synced: false,
-  };
-}
-
-// ─── Helpers ───
-function addToCaptured(jobs) {
-  if (jobs.length === 0) return;
-  const seen = new Set(capturedJobs.map((j) => `${j.job_id}:${j.title}`));
-  const newOnes = jobs.filter((j) => !seen.has(`${j.job_id}:${j.title}`));
-  capturedJobs = [...capturedJobs, ...newOnes];
-  if (capturedJobs.length > 500) capturedJobs = capturedJobs.slice(-500);
-}
-
-// ═══════════════════════════════════════════════════
-// AUTO INIT
-// ═══════════════════════════════════════════════════
-
-// Scan + capture cookies + search GraphQL after page loads
-setTimeout(() => {
-  scanForJobs();
-  captureUpworkCookies();
-  triggerGraphQLSearch();
-}, 3000);
-
-// Watch for SPA navigation
 let lastUrl = location.href;
 const observer = new MutationObserver(() => {
   const currentUrl = location.href;
   if (currentUrl !== lastUrl) {
     lastUrl = currentUrl;
     setTimeout(() => {
-      scanForJobs();
-      captureUpworkCookies();
-      triggerGraphQLSearch();
+      captureCookies();
+      extractAndSend();
+      injectApplyButton();
     }, 2000);
   }
 });
 if (document.body) {
   observer.observe(document.body, { childList: true, subtree: true });
+} else {
+  document.addEventListener("DOMContentLoaded", () => {
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
 }

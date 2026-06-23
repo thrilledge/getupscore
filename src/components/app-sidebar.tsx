@@ -27,6 +27,13 @@ import {
   Settings,
   LogOut,
   ChevronRight,
+  Heart,
+  Activity,
+  ExternalLink,
+  BarChart3,
+  Shield,
+  UserCircle,
+  BookOpen,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useUser } from "@/hooks/use-user";
@@ -42,8 +49,15 @@ const iconMap: Record<string, React.ElementType> = {
   Filter,
   Briefcase,
   Bell,
+  Activity,
   FileText,
+  Heart,
+  ExternalLink,
+  BarChart3,
+  Shield,
   Settings,
+  UserCircle,
+  BookOpen,
 };
 
 export function AppSidebar() {
@@ -110,11 +124,11 @@ export function AppSidebar() {
                       tooltip={item.title}
                       size="default"
                       className={`
-                        relative overflow-hidden rounded-sm px-3 py-6
+                        relative overflow-hidden rounded-sm px-3 py-5
                         transition-all duration-200 ease-out
                         ${isActive
-                          ? "bg-sidebar-accent/70 font-medium text-sidebar-accent-foreground shadow-sm py-6"
-                          : "text-sidebar-foreground/65 hover:text-sidebar-foreground hover:bg-sidebar-accent/30 py-6"
+                          ? "bg-sidebar-accent/70 font-medium text-sidebar-accent-foreground shadow-sm py-5"
+                          : "text-sidebar-foreground/65 hover:text-sidebar-foreground hover:bg-sidebar-accent/30 py-5"
                         }
                       `}
                     >

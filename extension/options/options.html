@@ -24,14 +24,13 @@
       </div>
       <div>
         <h1>UpScore Extension</h1>
-        <p class="subtitle">Configure your connection and monitoring</p>
+        <p class="subtitle">Configure your API connection</p>
       </div>
     </div>
 
-    <!-- Connection -->
     <section class="card">
       <h2>API Connection</h2>
-      <p class="desc">Connect this extension to your UpScore account to sync captured jobs.</p>
+      <p class="desc">Connect this extension to your UpScore account. The server handles all job scraping and analysis.</p>
 
       <div class="field">
         <label for="apiUrl">API URL</label>
@@ -59,92 +58,10 @@
       <button id="btnSave" class="btn btn-success">Save Settings</button>
     </section>
 
-    <!-- Monitoring -->
-    <section class="card">
-      <h2>Monitoring</h2>
-      <p class="desc">The extension monitors Upwork job pages and captures opportunities.</p>
-
-      <div class="field">
-        <label for="checkInterval">Check Interval (minutes)</label>
-        <select id="checkInterval">
-          <option value="5">Every 5 minutes</option>
-          <option value="10">Every 10 minutes</option>
-          <option value="15" selected>Every 15 minutes</option>
-          <option value="30">Every 30 minutes</option>
-          <option value="60">Every hour</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="defaultSearch">Default Search Query (fallback when no filters exist)</label>
-        <input type="text" id="defaultSearch" placeholder="e.g. nextjs react typescript" />
-        <p class="field-hint">Used when you have no job filters configured. Separate terms with spaces.</p>
-      </div>
-
-      <div class="field">
-        <label>Monitoring Status</label>
-        <div class="status-indicator" id="monitoringStatus">
-          <span class="dot idle"></span>
-          <span id="monitoringText">Waiting for configuration</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Active Filters -->
-    <section class="card">
-      <h2>Active Filters</h2>
-      <p class="desc">These filters from your UpScore account are used to prioritize jobs.</p>
-      <div id="filtersList">
-        <div class="empty-filters">No filters configured. Add filters in the UpScore web app.</div>
-      </div>
-    </section>
-
-    <!-- AI Analysis (GroqCloud) -->
-    <section class="card">
-      <h2>AI Analysis — GroqCloud</h2>
-      <p class="desc">
-        Add up to 3 GroqCloud API keys for round-robin usage (rate limits: ~30 req/min per key).
-        Jobs are automatically analyzed before syncing. Get free keys at
-        <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com/keys</a>.
-      </p>
-
-      <div class="field">
-        <label for="groqModel">Model</label>
-        <select id="groqModel">
-          <option value="llama-3.1-70b-versatile">Llama 3.1 70B (fast, high quality)</option>
-          <option value="llama-3.1-8b-instant">Llama 3.1 8B (lightning fast)</option>
-          <option value="mixtral-8x7b-32768">Mixtral 8x7B (32K context)</option>
-          <option value="gemma2-9b-it">Gemma 2 9B (lightweight)</option>
-        </select>
-      </div>
-
-      <div class="field">
-        <label for="groqKey1">API Key #1 (primary)</label>
-        <input type="password" id="groqKey1" placeholder="gsk_..." />
-      </div>
-
-      <div class="field">
-        <label for="groqKey2">API Key #2 (fallback)</label>
-        <input type="password" id="groqKey2" placeholder="gsk_... (optional)" />
-      </div>
-
-      <div class="field">
-        <label for="groqKey3">API Key #3 (fallback)</label>
-        <input type="password" id="groqKey3" placeholder="gsk_... (optional)" />
-      </div>
-
-      <button id="btnTestGroq" class="btn btn-primary">Test GroqCloud</button>
-      <div class="connection-status" id="groqStatus">
-        <span class="dot idle"></span>
-        <span>Not configured</span>
-      </div>
-    </section>
-
-    <!-- About -->
     <section class="card about">
       <h2>About</h2>
       <p class="desc">UpScore Extension v1.0.0</p>
-      <p class="desc">Captures job listings from Upwork, analyzes them with GroqCloud AI, and syncs to your UpScore dashboard.</p>
+      <p class="desc">Captures Upwork cookies for server-side scraping and displays synced data from your UpScore dashboard.</p>
     </section>
   </div>
 

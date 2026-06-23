@@ -1,27 +1,10 @@
-/**
- * POST /api/proposals/generate
- *
- * Generate an AI proposal for a specific job using GroqCloud.
- * Requires the user to be authenticated (either via Supabase session or extension token).
- *
- * Body:
- *   { jobId: string; customInstructions?: string }
- *
- * The API will:
- *  1. Fetch the job details from the DB
- *  2. Fetch the user's profile info for personalization
- *  3. Fetch any existing analysis (for tips)
- *  4. Generate the proposal via GroqCloud
- *  5. Store it in the proposals table
- *  6. Return the generated proposal
- */
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { generateProposal } from "@/lib/proposals/generate";
+import { analyzeJob } from "@/lib/jobs/analyze";
 
 export async function POST(request: Request) {
   try {
-    // Auth
     const authHeader = request.headers.get("authorization") || "";
     let userId: string | null = null;
 
@@ -45,15 +28,150 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { jobId, customInstructions } = body;
+    const { jobId, jobDetails, customInstructions } = body;
 
-    if (!jobId) {
-      return NextResponse.json({ error: "jobId is required" }, { status: 400 });
+    if (!jobId && !jobDetails) {
+      return NextResponse.json({ error: "Provide either jobId or jobDetails" }, { status: 400 });
     }
 
     const supabase = await createSupabaseAdminClient();
+    const { data: userData } = await supabase.auth.admin.getUserById(userId);
+    const metadata = userData?.user?.user_metadata || {};
 
-    // Fetch job
+    const { data: filters } = await supabase
+      .from("job_filters")
+      .select("keywords")
+      .eq("user_id", userId)
+      .limit(5);
+
+    const userKeywords = (filters?.flatMap((f: Record<string, unknown>) => (f.keywords as string[]) || []) || []) as string[];
+
+    const { data: profile } = await supabase
+      .from("upwork_profiles")
+      .select("title, bio, skills, portfolio, hourly_rate")
+      .eq("user_id", userId)
+      .single();
+
+    const portfolio = (profile?.portfolio as { title: string; description?: string }[]) || [];
+    const portfolioPreview = portfolio.length
+      ? portfolio.slice(0, 5).map((p) => `- ${p.title}${p.description ? ": " + p.description.slice(0, 200) : ""}`).join("\n")
+      : undefined;
+
+    const baseInput = {
+      userName: metadata?.display_name || metadata?.full_name || undefined,
+      userTitle: profile?.title || undefined,
+      userSkills: (profile?.skills as string[])?.length ? (profile.skills as string[]) : userKeywords,
+      userExperience: profile?.bio || undefined,
+      portfolioItems: portfolioPreview,
+      customInstructions: customInstructions || undefined,
+    };
+
+    if (jobDetails) {
+      const d = jobDetails as Record<string, unknown>;
+
+      // ── STEP 1: Auto-save the job to the database ──
+      const upworkJobId =
+        String(d.job_id || d.upwork_job_id || "").trim() ||
+        String(d.url || "")
+          .match(/~([a-f0-9]{16,})/)?.[1] ||
+        `inline_${Date.now()}`;
+
+      const jobRecord = {
+        upwork_job_id: upworkJobId,
+        title: String(d.title || d.jobTitle || "Untitled").slice(0, 500),
+        description: d.description || d.jobDescription ? String(d.description || d.jobDescription).slice(0, 10000) : null,
+        url: String(d.url || "").slice(0, 1000),
+        posted_at: d.posted_at || d.postedAt ? new Date(d.posted_at || d.postedAt).toISOString() : null,
+        budget: parseFloat(d.budget) || null,
+        hourly_min: typeof d.hourly_min === "number" ? d.hourly_min : null,
+        hourly_max: typeof d.hourly_max === "number" ? d.hourly_max : null,
+        client_country: String(d.client_country || d.clientCountry || "").slice(0, 100) || null,
+        proposals_count: typeof d.proposals_count === "number" ? d.proposals_count
+          : typeof d.proposalsCount === "number" ? d.proposalsCount : null,
+        skills: Array.isArray(d.skills) ? d.skills.slice(0, 50) : null,
+        client_rating: parseFloat(d.client_rating || d.clientRating) || null,
+        client_total_spend: parseFloat(d.client_total_spend || d.clientTotalSpend) || null,
+        client_spend: parseFloat(d.client_total_spend || d.clientTotalSpend) || null,
+        client_total_hires: parseInt(d.client_total_hires, 10) || null,
+        client_hire_rate: parseInt(d.client_hire_rate_pct || d.client_hire_rate, 10) || null,
+        client_name: String(d.client_name || "").slice(0, 200) || null,
+        client_member_since: d.client_member_since ? new Date(d.client_member_since).toISOString() : null,
+        payment_verified: d.client_payment_verified === true || d.payment_verified === true,
+        job_type: String(d.budget_type || d.job_type || "").slice(0, 50) || null,
+        contractor_tier: String(d.experience_level || "").slice(0, 50) || null,
+        hours_per_week: String(d.hours_per_week || "").slice(0, 50) || null,
+        source: "extension_proposal",
+      };
+
+      const { data: savedJob, error: saveError } = await supabase
+        .from("jobs")
+        .upsert(jobRecord as any, { onConflict: "upwork_job_id", ignoreDuplicates: false })
+        .select("id")
+        .single();
+
+      let dbJobId = savedJob?.id;
+
+      if (!dbJobId || saveError) {
+        console.warn("[Proposals] Auto-save failed:", saveError?.message);
+      }
+
+      // ── STEP 2: Analyze the job (even if save failed — we have rich data) ──
+      let analysisData: Record<string, any> | null = null;
+      if (dbJobId) {
+        try {
+          analysisData = await analyzeJob(supabase, jobRecord, dbJobId, userId);
+        } catch (analyzeErr: any) {
+          console.warn("[Proposals] Analysis error:", analyzeErr.message);
+        }
+      }
+
+      // ── STEP 3: Build rich proposal input with analysis context ──
+      const budgetStr = d.budget_type === "hourly"
+        ? d.budget ? String(d.budget) : d.hourly_min ? `$${d.hourly_min}/hr - $${d.hourly_max}/hr` : undefined
+        : d.budget ? String(d.budget) : undefined;
+
+      const proposalsCount = typeof d.proposals_count === "number" ? d.proposals_count
+        : typeof d.proposalsCount === "number" ? d.proposalsCount : undefined;
+
+      const proposalInput = {
+        ...baseInput,
+        jobTitle: String(d.title || d.jobTitle || "Untitled"),
+        jobDescription: String(d.description || d.jobDescription || ""),
+        jobUrl: d.url ? String(d.url) : undefined,
+        budget: budgetStr,
+        skills: Array.isArray(d.skills) ? d.skills as string[] : [],
+        clientCountry: String(d.client_country || d.clientCountry || "").slice(0, 100) || undefined,
+        proposalsCount,
+        postedAt: d.posted_at || d.postedAt ? String(d.posted_at || d.postedAt) : undefined,
+        clientHireRate: typeof d.client_hire_rate === "number" ? d.client_hire_rate
+          : typeof d.clientHireRate === "number" ? d.clientHireRate : undefined,
+        clientTotalSpend: typeof d.client_total_spend === "number" ? d.client_total_spend
+          : typeof d.clientTotalSpend === "number" ? d.clientTotalSpend : undefined,
+        clientRating: typeof d.client_rating === "number" ? d.client_rating
+          : typeof d.clientRating === "number" ? d.clientRating : undefined,
+        // Include analysis results if available
+        proposalTips: (analysisData?.proposal_tips as string[]) || undefined,
+        matchScore: analysisData?.match_score || undefined,
+        opportunityScore: analysisData?.opportunity_score || undefined,
+        winProbability: analysisData?.win_probability || undefined,
+        recommendation: analysisData?.recommendation || undefined,
+      };
+
+      const result = await generateProposal(proposalInput);
+
+      if (!result.generated_text || result.generated_text.length < 50) {
+        return NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 });
+      }
+
+      return NextResponse.json({
+        ok: true,
+        proposal: result.generated_text,
+        score: result.score,
+        saved: !!dbJobId,
+        jobId: dbJobId,
+      });
+    }
+
     const { data: job, error: jobError } = await supabase
       .from("jobs")
       .select("*")
@@ -64,12 +182,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    // Fetch user metadata for personalization
-    const { data: userData } = await supabase.auth.admin.getUserById(userId);
-    const metadata = userData?.user?.user_metadata || {};
-    const userEmail = userData?.user?.email || "";
-
-    // Fetch existing analysis for tips
     const { data: analysis } = await supabase
       .from("job_analyses")
       .select("*")
@@ -77,44 +189,34 @@ export async function POST(request: Request) {
       .eq("user_id", userId)
       .single();
 
-    const analysisData = analysis as Record<string, any> | null;
+    const analysisData = analysis as Record<string, unknown> | null;
 
-    // Fetch user's skills from their filters
-    const { data: filters } = await supabase
-      .from("job_filters")
-      .select("keywords")
-      .eq("user_id", userId)
-      .limit(5);
-
-    const userKeywords = filters?.flatMap((f: any) => f.keywords || []) || [];
-
-    // Build proposal input
     const proposalInput = {
+      ...baseInput,
       jobTitle: job.title || "Untitled",
       jobDescription: job.description || "",
       jobUrl: job.url || undefined,
-      skills: [] as string[],
+      skills: (job.skills as string[]) || [],
       budget: job.budget ? `$${job.budget}` : job.hourly_min ? `$${job.hourly_min}-$${job.hourly_max}/hr` : undefined,
       clientCountry: job.client_country || undefined,
+      proposalsCount: job.proposals_count || undefined,
+      postedAt: job.posted_at || undefined,
+      clientHireRate: job.client_hire_rate || undefined,
+      clientTotalSpend: job.client_spend || undefined,
+      clientRating: job.client_rating || undefined,
       proposalTips: (analysisData?.proposal_tips as string[]) || [],
       matchScore: analysisData?.match_score || undefined,
       opportunityScore: analysisData?.opportunity_score || undefined,
       winProbability: analysisData?.win_probability || undefined,
       recommendation: analysisData?.recommendation || undefined,
-      userName: metadata?.display_name || userEmail?.split("@")[0] || "Freelancer",
-      userSkills: userKeywords,
-      userExperience: customInstructions || undefined,
     };
 
-    // Generate proposal
     const result = await generateProposal(proposalInput);
 
-    // Validate result
     if (!result.generated_text || result.generated_text.length < 50) {
       return NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 });
     }
 
-    // Store in DB
     const { data: proposal, error: insertError } = await supabase
       .from("proposals")
       .insert({
@@ -129,7 +231,6 @@ export async function POST(request: Request) {
 
     if (insertError) {
       console.error("[Proposals] Insert error:", insertError.message);
-      // Still return the generated text even if DB save fails
       return NextResponse.json({
         ok: true,
         proposal: result.generated_text,
@@ -146,8 +247,9 @@ export async function POST(request: Request) {
       saved: true,
       created_at: proposal.created_at,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[Proposals] Error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Upwork job ingester every 5 minutes
+After=docker.service
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=upwork-ingest.service
+
+[Install]
+WantedBy=timers.target

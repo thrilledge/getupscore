@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "UpScore",
   "version": "1.0.0",
-  "description": "AI-powered Upwork opportunity finder — capture jobs and get smart alerts.",
+  "description": "AI-powered Upwork opportunity finder — job alerts, scoring, and proposals.",
   "homepage_url": "https://upscore.app",
   "icons": {
     "16": "icons/icon-16.png",
@@ -12,13 +12,26 @@
   "permissions": [
     "storage",
     "alarms",
-    "scripting",
-    "sidePanel"
+    "sidePanel",
+    "cookies"
   ],
   "host_permissions": [
-    "https://www.upwork.com/*",
     "http://localhost:3000/*",
-    "https://*.upscore.app/*"
+    "https://*.upscore.app/*",
+    "https://www.upwork.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.upwork.com/*"],
+      "js": ["upscore-content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["lib/main-world.js"],
+      "matches": ["https://www.upwork.com/*"]
+    }
   ],
   "action": {
     "default_title": "UpScore — Open Sidebar",
@@ -38,20 +51,5 @@
   "background": {
     "service_worker": "background.js",
     "type": "module"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://www.upwork.com/*"
-      ],
-      "js": ["upscore-content.js"],
-      "run_at": "document_idle"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["lib/main-world.js"],
-      "matches": ["https://www.upwork.com/*"]
-    }
-  ]
+  }
 }

@@ -8,7 +8,6 @@
 </head>
 <body>
   <div id="app">
-    <!-- Header -->
     <div class="header">
       <div class="logo">
         <svg width="20" height="20" viewBox="0 0 128 128">
@@ -27,54 +26,20 @@
       <span class="status-dot" id="statusDot"></span>
     </div>
 
-    <!-- Status Bar -->
     <div class="status-bar" id="statusBar">
       <span id="statusText">Initializing...</span>
-      <span class="last-check" id="lastCheck"></span>
     </div>
 
-    <!-- Monitoring Mode Indicator -->
-    <div class="monitoring-mode" id="monitoringMode">
-      <div class="mode-icon" id="modeIcon">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 0 1 9-9"/>
-        </svg>
-      </div>
-      <div class="mode-text">
-        <span id="modeLabel">Background Monitoring</span>
-        <span class="mode-detail" id="modeDetail">Active — checking every 15 min</span>
-      </div>
+    <div class="info-row">
+      <span class="label">API Token</span>
+      <span class="value" id="displayApiToken">Not set</span>
+    </div>
+    <div class="info-row">
+      <span class="label">Cookies</span>
+      <span class="value" id="displayCookies">Not captured</span>
     </div>
 
-    <!-- Stats -->
-    <div class="stats">
-      <div class="stat">
-        <span class="stat-value" id="statJobs">0</span>
-        <span class="stat-label">Captured</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value" id="statSynced">0</span>
-        <span class="stat-label">Synced</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value" id="statFilters">0</span>
-        <span class="stat-label">Filters</span>
-      </div>
-      <div class="stat">
-        <span class="stat-value" id="statPending">0</span>
-        <span class="stat-label">Pending</span>
-      </div>
-    </div>
-
-    <!-- Actions -->
     <div class="actions">
-      <button id="btnCheck" class="btn btn-primary">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="23 4 23 10 17 10"/>
-          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-        </svg>
-        Check Now
-      </button>
       <button id="btnOptions" class="btn btn-secondary">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"/>
@@ -82,12 +47,6 @@
         </svg>
         Settings
       </button>
-    </div>
-
-    <!-- Recent Captures -->
-    <div class="section-title" id="sectionTitle">Recent Captures</div>
-    <div class="job-list" id="jobList">
-      <div class="empty-state">No jobs captured yet.<br>The extension checks Upwork automatically.</div>
     </div>
   </div>
 

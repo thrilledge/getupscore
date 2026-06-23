@@ -3,23 +3,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { useUser } from "@/hooks/use-user";
 import {
   FileText,
   Loader2,
-  Plus,
-  Eye,
-  EyeOff,
   Copy,
-  CheckCircle2,
   Clock,
   ExternalLink,
-  Sparkles,
   Trash2,
-  Search,
   RefreshCw,
 } from "lucide-react";
 
@@ -38,18 +29,9 @@ interface ProposalItem {
 }
 
 export default function ProposalsPage() {
-  const { user } = useUser();
   const [proposals, setProposals] = useState<ProposalItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Generate proposal dialog state
-  const [showGenerate, setShowGenerate] = useState(false);
-  const [jobIdInput, setJobIdInput] = useState("");
-  const [customInstructions, setCustomInstructions] = useState("");
-  const [generating, setGenerating] = useState(false);
-
-  // View proposal state
   const [viewingId, setViewingId] = useState<string | null>(null);
 
   const fetchProposals = useCallback(async () => {
@@ -60,8 +42,8 @@ export default function ProposalsPage() {
       const data = await res.json();
       setProposals(data.proposals || []);
       setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -70,42 +52,6 @@ export default function ProposalsPage() {
   useEffect(() => {
     fetchProposals();
   }, [fetchProposals]);
-
-  const handleGenerate = useCallback(async () => {
-    if (!jobIdInput.trim()) {
-      toast.error("Please enter a Job ID");
-      return;
-    }
-
-    setGenerating(true);
-    try {
-      const res = await fetch("/api/proposals/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jobId: jobIdInput.trim(),
-          customInstructions: customInstructions.trim() || undefined,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || "Failed to generate proposal");
-        return;
-      }
-
-      toast.success("Proposal generated successfully!");
-      setJobIdInput("");
-      setCustomInstructions("");
-      setShowGenerate(false);
-      await fetchProposals();
-    } catch (err: any) {
-      toast.error(`Error: ${err.message}`);
-    } finally {
-      setGenerating(false);
-    }
-  }, [jobIdInput, customInstructions, fetchProposals]);
 
   const copyProposal = useCallback((text: string) => {
     navigator.clipboard.writeText(text);
@@ -120,8 +66,8 @@ export default function ProposalsPage() {
       if (!res.ok) throw new Error("Delete failed");
       toast.success("Proposal deleted");
       await fetchProposals();
-    } catch (err: any) {
-      toast.error(`Delete failed: ${err.message}`);
+    } catch (err: unknown) {
+      toast.error(`Delete failed: ${err instanceof Error ? err.message : "Unknown error"}`);
     }
   }, [fetchProposals]);
 
@@ -135,75 +81,19 @@ export default function ProposalsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-heading">Proposals</h1>
           <p className="text-muted-foreground mt-1">
-            AI-generated proposals and history
+            AI-generated proposals submitted via the extension.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={fetchProposals} disabled={loading}>
-            <RefreshCw className={`size-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-          <Button onClick={() => setShowGenerate(!showGenerate)}>
-            <Sparkles className="size-4 mr-2" />
-            Generate Proposal
-          </Button>
-        </div>
+        <Button variant="outline" size="sm" onClick={fetchProposals} disabled={loading}>
+          <RefreshCw className={`size-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
       </div>
 
-      {/* Generate dialog */}
-      {showGenerate && (
-        <Card className="border-accent-blue/30 bg-accent-blue/[0.02]">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-heading flex items-center gap-2">
-              <Sparkles className="size-4 text-accent-purple" />
-              Generate AI Proposal
-            </CardTitle>
-            <CardDescription>
-              Enter a job ID to generate a tailored proposal using GroqCloud AI
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="jobId">Job ID (UUID from UpScore)</Label>
-              <Input
-                id="jobId"
-                placeholder="Paste the job UUID here..."
-                value={jobIdInput}
-                onChange={(e) => setJobIdInput(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="instructions">Custom Instructions (optional)</Label>
-              <Input
-                id="instructions"
-                placeholder="e.g. Highlight my React Native experience"
-                value={customInstructions}
-                onChange={(e) => setCustomInstructions(e.target.value)}
-              />
-            </div>
-            <Button onClick={handleGenerate} disabled={generating} className="w-full">
-              {generating ? (
-                <>
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                  Generating with GroqCloud...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="size-4 mr-2" />
-                  Generate Proposal
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Proposals List */}
       {error ? (
         <Card>
           <CardContent className="text-center py-8">
@@ -216,9 +106,9 @@ export default function ProposalsPage() {
       ) : proposals.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Generated Proposals</CardTitle>
+            <CardTitle>Proposal Tracking</CardTitle>
             <CardDescription>
-              Your AI-generated proposals will appear here
+              Proposals generated via the extension will appear here
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center py-12 text-muted-foreground">
@@ -229,7 +119,7 @@ export default function ProposalsPage() {
               <div>
                 <p className="font-medium">No proposals yet</p>
                 <p className="text-sm mt-1">
-                  Click &quot;Generate Proposal&quot; above to create your first AI proposal.
+                  Install the extension and use it on Upwork job pages to generate proposals.
                 </p>
               </div>
             </div>

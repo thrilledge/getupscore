@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { nanoid } from "nanoid";
+import type { UserPreferenceInsert, UserPreferenceUpdate } from "@/lib/supabase/database-types";
 
 export type SettingsActionResult = {
   success: boolean;
@@ -182,5 +183,74 @@ export async function sendPasswordReset(): Promise<SettingsActionResult> {
     return { success: false, error: error.message };
   }
 
+  return { success: true };
+}
+
+export async function getPreferences(): Promise<
+  SettingsActionResult & { preferences?: UserPreferenceInsert }
+> {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin
+    .from("user_preferences")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return {
+    success: true,
+    preferences: data ?? {
+      user_id: user.id,
+      timezone: "UTC",
+      notify_on_match: true,
+      notify_on_proposal_status: true,
+      notify_on_contract_updates: true,
+      daily_digest: false,
+      quiet_hours_start: null,
+      quiet_hours_end: null,
+    } as UserPreferenceInsert,
+  };
+}
+
+export async function savePreferences(
+  prefs: Partial<UserPreferenceUpdate>
+): Promise<SettingsActionResult> {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  const admin = createSupabaseAdminClient();
+
+  const { data: existing } = await admin
+    .from("user_preferences")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await admin
+      .from("user_preferences")
+      .update(prefs)
+      .eq("id", existing.id);
+    if (error) return { success: false, error: error.message };
+  } else {
+    const { error } = await admin
+      .from("user_preferences")
+      .insert({ user_id: user.id, ...prefs } as UserPreferenceInsert);
+    if (error) return { success: false, error: error.message };
+  }
+
+  revalidatePath("/settings");
   return { success: true };
 }

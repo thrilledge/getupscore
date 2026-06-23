@@ -3,16 +3,6 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/jobs
- *
- * Returns the authenticated user's captured jobs with AI analysis.
- * Query params:
- *   ?page=1 (default)
- *   ?limit=20 (default, max 50)
- *   ?score_min=0 (filter by minimum match_score)
- *   ?sort=newest|score (default: newest)
- */
 export async function GET(request: Request) {
   const supabase = await createSupabaseServerClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -24,51 +14,20 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
   const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20")));
-  const scoreMin = parseInt(searchParams.get("score_min") || "0");
-  const sort = searchParams.get("sort") === "score" ? "score" : "newest";
+  const ids = searchParams.get("ids")?.trim() || null;
+  const q = searchParams.get("q")?.trim() || null;
+  const jobType = searchParams.get("job_type")?.toUpperCase() || null;
+  const tier = searchParams.get("contractor_tier") || null;
+  const budgetMin = searchParams.get("budget_min") ? parseFloat(searchParams.get("budget_min")!) : null;
+  const budgetMax = searchParams.get("budget_max") ? parseFloat(searchParams.get("budget_max")!) : null;
+  const hourlyMin = searchParams.get("hourly_min") ? parseFloat(searchParams.get("hourly_min")!) : null;
+  const hourlyMax = searchParams.get("hourly_max") ? parseFloat(searchParams.get("hourly_max")!) : null;
+  const skill = searchParams.get("skill")?.trim() || null;
+  const category = searchParams.get("category")?.trim() || null;
+  const subcategory = searchParams.get("subcategory")?.trim() || null;
+  const country = searchParams.get("client_country")?.trim() || null;
 
-  const from = (page - 1) * limit;
-  const to = from + limit - 1;
-
-  // Step 1: get total count for pagination (separate query avoids count + complex joins)
-  let countQuery = supabase
-    .from("job_scores")
-    .select("job_id", { count: "exact", head: true })
-    .eq("user_id", user.id);
-
-  if (scoreMin > 0 && sort === "score") {
-    countQuery = countQuery.gte("match_score", scoreMin);
-  }
-
-  const { count: total } = await countQuery;
-  const totalPages = Math.ceil((total || 0) / limit);
-
-  // Step 2: fetch paginated job_ids from job_scores
-  let scoresQuery = supabase
-    .from("job_scores")
-    .select("job_id, match_score, opportunity_score")
-    .eq("user_id", user.id)
-    .order(sort === "score" ? "match_score" : "created_at", { ascending: sort !== "score" })
-    .range(from, to);
-
-  const { data: scoreData, error: scoreError } = await scoresQuery;
-
-  if (scoreError) {
-    console.error("[Jobs API] Scores query error:", scoreError.message);
-    return NextResponse.json({ error: "Database error" }, { status: 500 });
-  }
-
-  if (!scoreData || scoreData.length === 0) {
-    return NextResponse.json({
-      jobs: [],
-      pagination: { page, limit, total: 0, totalPages: 0 },
-    });
-  }
-
-  const jobIds = scoreData.map((s) => s.job_id);
-
-  // Step 3: fetch full job details + analyses
-  const { data: jobs, error: jobsError } = await supabase
+  let query = supabase
     .from("jobs")
     .select(`
       id,
@@ -80,10 +39,28 @@ export async function GET(request: Request) {
       budget,
       hourly_min,
       hourly_max,
+      job_type,
+      contractor_tier,
+      duration_label,
+      duration_weeks,
+      skills,
       client_country,
+      client_name,
+      client_rating,
+      client_total_assignments,
+      client_total_hires,
+      client_total_spend,
+      client_member_since,
+      client_industry,
+      hours_per_week,
       proposals_count,
+      total_invited,
+      total_hired,
+      payment_verified,
+      category,
+      source,
       created_at,
-      job_analyses!left (
+      job_analyses (
         match_score,
         opportunity_score,
         win_probability,
@@ -98,26 +75,76 @@ export async function GET(request: Request) {
         model_used,
         analyzed_at
       )
-    `)
-    .in("id", jobIds);
+    `, { count: "exact" });
 
-  if (jobsError) {
-    console.error("[Jobs API] Jobs query error:", jobsError.message);
-    return NextResponse.json({ error: "Database error" }, { status: 500 });
+  if (ids) {
+    const idList = ids.split(",").map((id) => id.trim()).filter(Boolean);
+    if (idList.length > 0) {
+      query = query.in("id", idList);
+    }
   }
 
-  // Step 4: merge scores into each job
-  const scoreMap = new Map(scoreData.map((s) => [s.job_id, s]));
-  const merged = (jobs || []).map((job) => {
-    const s = scoreMap.get(job.id);
-    return {
-      ...job,
-      job_scores: s ? [{ match_score: s.match_score, opportunity_score: s.opportunity_score }] : [],
-    };
-  });
+  if (q) {
+    const keywords = q.split(/[,;]+/).map((k) => k.trim()).filter(Boolean);
+    if (keywords.length === 1) {
+      const sanitized = keywords[0].replace(/%/g, "");
+      query = query.or(`title.ilike.%${sanitized}%,description.ilike.%${sanitized}%`);
+    } else if (keywords.length > 1) {
+      const conditions = keywords.flatMap((k) => {
+        const s = k.replace(/%/g, "");
+        return [`title.ilike.%${s}%`, `description.ilike.%${s}%`];
+      }).join(",");
+      query = query.or(conditions);
+    }
+  }
+  if (jobType) {
+    const dbJobType = jobType === "FIXED_PRICE" ? "FIXED" : jobType;
+    query = (query as any).filter("job_type", "eq", dbJobType);
+  }
+  if (tier) {
+    query = (query as any).filter("contractor_tier", "eq", tier);
+  }
+  if (budgetMin !== null) {
+    query = query.gte("budget", budgetMin);
+  }
+  if (budgetMax !== null) {
+    query = query.lte("budget", budgetMax);
+  }
+  if (hourlyMin !== null) {
+    query = query.gte("hourly_min", hourlyMin);
+  }
+  if (hourlyMax !== null) {
+    query = query.lte("hourly_max", hourlyMax);
+  }
+  if (skill) {
+    query = query.contains("skills", [skill]);
+  }
+  if (country) {
+    query = query.ilike("client_country", `%${country}%`);
+  }
+  if (category) {
+    query = (query as any).filter("category", "eq", category);
+  }
+  if (subcategory) {
+    query = (query as any).filter("subcategory", "eq", subcategory);
+  }
+
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
+
+  const { data: jobs, error: jobsError, count: total } = await query
+    .order("posted_at", { ascending: false, nullsFirst: false })
+    .range(from, to);
+
+  if (jobsError) {
+    console.error("[Jobs API] Query error:", jobsError.message);
+    return NextResponse.json({ error: `Jobs query: ${jobsError.message}` }, { status: 500 });
+  }
+
+  const totalPages = Math.ceil((total || 0) / limit);
 
   return NextResponse.json({
-    jobs: merged,
+    jobs: jobs || [],
     pagination: {
       page,
       limit,

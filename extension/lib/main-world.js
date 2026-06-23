@@ -1,132 +1,1391 @@
-/**
- * UpScore — Main World Bridge
- *
- * Injected as <script src="chrome-extension://<id>/lib/main-world.js">
- * This runs in the page's MAIN world where Cloudflare cookies and
- * clearance are available. CSP allows chrome-extension:// URLs.
- *
- * Communication:
- *   Content script → postMessage({type:'__upscore_exec',...}) → this script
- *   This script    → CustomEvent('__upscore_graphql_result'|'__upscore_cookies') → content script
- */
-
 (function () {
-  // Guard: don't register twice
   if (window.__upscoreBridgeLoaded) return;
   window.__upscoreBridgeLoaded = true;
 
-  const GRAPHQL_URL = "https://www.upwork.com/api/graphql/v1";
+  console.log("[UpScore Main] Bridge loaded");
 
-  const QUERIES = {
-    jobSearch: `query VisitorJobSearch($requestVariables: VisitorJobSearchV1Request!) { search { universalSearchNuxt { visitorJobSearchV1(request: $requestVariables) { paging { total offset count } facets { jobType { key value } workload { key value } clientHires { key value } durationV3 { key value } amount { key value } contractorTier { key value } contractToHire { key value } } results { id title description relevanceEncoded ontologySkills { uid parentSkillUid prefLabel freeText highlighted } jobTile { job { id ciphertext: cipherText jobType weeklyRetainerBudget hourlyBudgetMax hourlyBudgetMin hourlyEngagementType contractorTier sourcingTimestamp createTime publishTime hourlyEngagementDuration { rid label weeks mtime ctime } fixedPriceAmount { isoCurrencyCode amount } fixedPriceEngagementDuration { id rid label weeks ctime mtime } } } } } } }`,
+  // ─── Intercept fetch to capture Upwork's own GraphQL responses ───
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = function (...args) {
+    const requestUrl = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
+    const requestBody = typeof args[1]?.body === "string" ? args[1].body : "";
 
-    jobDetails: `query VisitorJobDetails($jobCiphertext: String!) { jobPubDetails { opening(ciphertext: $jobCiphertext) { status postedOn publishTime description info { ciphertext id type access title hideBudget createdOn premium } sandsData { occupation { uid prefLabel } ontologySkills { uid prefLabel relevance } additionalSkills { uid prefLabel relevance } } category { name urlSlug } budget { amount currencyCode } hiringOdbc { uid name } attachments { name type } client { name feedback visibility location { city country } company { name size url } } buyer { location { city country } stats { totalAssignments activeAssignmentsCount hoursCount feedbackCount score totalJobsWithHires totalCharges { amount } } company { profile { industry size } } } buyerExtra { isPaymentMethodVerified } } } }`,
+    return originalFetch.apply(this, args).then(async (response) => {
+      if (response.status !== 200) return response;
+
+      // Log ALL non-trivial fetches on job pages to find where job data comes from
+      if (!requestUrl.includes("analytics") && !requestUrl.includes("telemetry") && !requestUrl.includes("favicon") && !requestUrl.includes("cdn-cgi")) {
+        if (requestUrl.includes("api/") || requestUrl.includes("graphql") || requestUrl.includes("gql") || requestUrl.includes("json") || requestUrl.includes("nuxt") || requestUrl.includes("page-data")) {
+          console.log("[UpScore Main] Fetch URL:", requestUrl.slice(0, 250));
+        }
+      }
+
+      // Always let through - we only observe, don't block
+      if (!requestUrl.includes("api/") && !requestUrl.includes("graphql") && !requestUrl.includes("gql")) return response;
+      if (requestUrl.includes("__upscore_fetch")) return response;
+
+      const cloned = response.clone();
+      try {
+        const text = await cloned.text();
+        try {
+          const json = JSON.parse(text);
+
+          // Debug: log graphql response sample for job pages
+          if (requestUrl.includes("graphql") && text.length > 100) {
+            const sample = text.slice(0, 600);
+            const keys = json?.data ? Object.keys(json.data).join(", ") : "no data";
+            console.log("[UpScore Main] GraphQL [" + keys + "] (" + requestUrl.slice(0, 60) + "):", sample);
+            // Log full response structure keys to dev console
+            if (json?.data) {
+              console.log("[UpScore Main] GraphQL data keys:", Object.keys(json.data));
+              for (const k of Object.keys(json.data)) {
+                const v = json.data[k];
+                if (v && typeof v === "object") {
+                  console.log("[UpScore Main]   " + k + " keys:", Object.keys(v).join(", "));
+                }
+              }
+            }
+          }
+
+          // Specifically intercept gql-query-get-visitor-job-details
+          if (requestUrl.includes("visitor-job-details") || requestUrl.includes("VisitorJobDetails") || requestBody.includes("VisitorJobDetails")) {
+            console.log("[UpScore Main] Intercepted VisitorJobDetails API response");
+            if (json?.data?.jobPubDetails) {
+              const job = normalizeJobData(json.data.jobPubDetails);
+              if (job && job.title) {
+                job._source = "api-interceptor";
+                window.postMessage({
+                  type: "__upscore_result",
+                  operation: "jobDetails",
+                  success: true,
+                  data: job,
+                }, "*");
+              }
+            }
+          }
+
+          // Look for profile-like data
+          if (text.includes("talentVPDAuthProfile") || text.includes('"profile"') && text.includes("skills")) {
+            if (json?.data?.talentVPDAuthProfile) {
+              console.log("[UpScore Main] Intercepted profile from fetch");
+              window.postMessage({
+                type: "__upscore_result",
+                operation: "profileDetail",
+                success: true,
+                data: json,
+              }, "*");
+              return response;
+            }
+            if (json?.data) {
+              for (const key of Object.keys(json.data)) {
+                const val = json.data[key];
+                if (val && typeof val === "object" && (val.profile?.title || val.title) && val.skills) {
+                  console.log("[UpScore Main] Intercepted profile-like data from fetch key:", key);
+                  window.postMessage({
+                    type: "__upscore_result",
+                    operation: "profileDetail",
+                    success: true,
+                    data: { data: { talentVPDAuthProfile: val } },
+                  }, "*");
+                  break;
+                }
+              }
+            }
+          }
+          // Look for job-like data in GraphQL responses — use recursive findJobInJson
+          if (json?.data) {
+            const foundJob = findJobInJson(json);
+            if (foundJob) {
+              console.log("[UpScore Main] Intercepted job from fetch (graphql)");
+              const job = normalizeJobData(foundJob);
+              if (job) {
+                window.postMessage({
+                  type: "__upscore_result",
+                  operation: "jobDetails",
+                  success: true,
+                  data: job,
+                }, "*");
+                return response;
+              }
+            }
+          }
+        } catch { /* ignore */ }
+      } catch { /* ignore */ }
+
+      return response;
+    });
   };
 
+  // ─── Also intercept XMLHttpRequest ───
+  const origOpen = XMLHttpRequest.prototype.open;
+  const origSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.open = function (method, url) {
+    this.__upscoreUrl = typeof url === "string" ? url : (url || "").toString();
+    return origOpen.apply(this, arguments);
+  };
+  XMLHttpRequest.prototype.send = function (body) {
+    const xhr = this;
+    if (xhr.__upscoreUrl?.includes("api/") || xhr.__upscoreUrl?.includes("graphql")) {
+      xhr.addEventListener("load", function () {
+        try {
+          const text = xhr.responseText;
+          const json = JSON.parse(text);
+          if (!json || !json.data) return;
+
+          // Profile
+          if (text.includes("talentVPDAuthProfile") || (text.includes('"profile"') && text.includes("skills"))) {
+            if (json?.data?.talentVPDAuthProfile) {
+              window.postMessage({
+                type: "__upscore_result",
+                operation: "profileDetail",
+                success: true,
+                data: json,
+              }, "*");
+            } else {
+              for (const key of Object.keys(json.data)) {
+                const val = json.data[key];
+                if (val && typeof val === "object" && (val.profile?.title || val.title) && val.skills) {
+                  window.postMessage({
+                    type: "__upscore_result",
+                    operation: "profileDetail",
+                    success: true,
+                    data: { data: { talentVPDAuthProfile: val } },
+                  }, "*");
+                  break;
+                }
+              }
+            }
+          }
+
+          // Job — use recursive findJobInJson
+          if (json?.data) {
+            const foundJob = findJobInJson(json);
+            if (foundJob) {
+              console.log("[UpScore Main] Intercepted job from XHR");
+              const job = normalizeJobData(foundJob);
+              if (job) {
+                window.postMessage({
+                  type: "__upscore_result",
+                  operation: "jobDetails",
+                  success: true,
+                  data: job,
+                }, "*");
+              }
+            }
+          }
+        } catch { /* ignore */ }
+      });
+    }
+    return origSend.apply(this, arguments);
+  };
+
+  // ─── Listen for manual EXTRACT_PAGE triggers ───
   window.addEventListener("message", (event) => {
     if (event.source !== window) return;
     if (event.data?.type !== "__upscore_exec") return;
 
-    const { operation, params } = event.data;
+    const { operation } = event.data;
 
     switch (operation) {
-      case "getCookies":
-        window.dispatchEvent(
-          new CustomEvent("__upscore_cookies", {
-            detail: { cookies: document.cookie },
-          })
-        );
+      case "getProfileFromDom":
+        tryExtractWithRetry(0);
         break;
-
-      case "jobSearch":
-        {
-          const query = params?.query || QUERIES.jobSearch;
-          const variables = params?.variables || {};
-          fetch(GRAPHQL_URL + "?alias=visitorJobSearch", {
-            method: "POST",
-            credentials: "include",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-              Origin: "https://www.upwork.com",
-              Referer: "https://www.upwork.com/nx/search/jobs/",
-            },
-            body: JSON.stringify({ query, variables }),
-          })
-            .then((r) => r.json())
-            .then((data) => {
-              window.dispatchEvent(
-                new CustomEvent("__upscore_graphql_result", {
-                  detail: {
-                    success: true,
-                    operation: "jobSearch",
-                    data,
-                    variables,
-                  },
-                })
-              );
-            })
-            .catch((err) => {
-              window.dispatchEvent(
-                new CustomEvent("__upscore_graphql_result", {
-                  detail: {
-                    success: false,
-                    operation: "jobSearch",
-                    error: err.message,
-                  },
-                })
-              );
-            });
-        }
+      case "getJobDetailsFromDom":
+        tryExtractJobWithRetry(0);
         break;
-
-      case "jobDetails":
-        {
-          const ciphertext = params?.ciphertext || "";
-          fetch(
-            GRAPHQL_URL + "?alias=gql-query-get-visitor-job-details",
-            {
-              method: "POST",
-              credentials: "include",
-              headers: {
-                "Content-Type": "application/json",
-                Accept: "application/json",
-                Origin: "https://www.upwork.com",
-                Referer:
-                  "https://www.upwork.com/jobs/~" + ciphertext,
-              },
-              body: JSON.stringify({
-                query: QUERIES.jobDetails,
-                variables: { jobCiphertext: ciphertext },
-              }),
-            }
-          )
-            .then((r) => r.json())
-            .then((data) => {
-              window.dispatchEvent(
-                new CustomEvent("__upscore_graphql_result", {
-                  detail: {
-                    success: true,
-                    operation: "jobDetails",
-                    data,
-                    ciphertext,
-                  },
-                })
-              );
-            })
-            .catch((err) => {
-              window.dispatchEvent(
-                new CustomEvent("__upscore_graphql_result", {
-                  detail: {
-                    success: false,
-                    operation: "jobDetails",
-                    error: err.message,
-                  },
-                })
-              );
-            });
-        }
+      case "insertPortfolioOnApply":
+        insertPortfolioOnApplyPage(event.data?.params?.portfolio);
+        break;
+      case "fetchJobFromApi":
+        fetchJobDetailsFromUpworkApi(event.data?.params?.ciphertext, event.data?.params?.token);
         break;
     }
   });
+
+  function tryExtractWithRetry(attempt) {
+    const profile = extractProfileFromDom();
+    const pv = window.__NUXT__?.state?.profileViewer;
+    const portfolio = pv?.portfolioV2 ?? null;
+    const portfolioReady = portfolio && portfolio.isLoading === false;
+    const hasPortfolioItems = portfolioReady && (
+      (Array.isArray(portfolio.publishedCurrentPageProjects) && portfolio.publishedCurrentPageProjects.length > 0) ||
+      (Array.isArray(portfolio.draftCurrentPageProjects) && portfolio.draftCurrentPageProjects.length > 0)
+    );
+
+    if (profile && (hasPortfolioItems || attempt >= 10)) {
+      console.log("[UpScore Main] portfolioV2 keys:", portfolio ? Object.keys(portfolio).slice(0, 10) : "null",
+        "isLoading:", portfolio?.isLoading,
+        "published:", portfolio?.publishedCurrentPageProjects?.length ?? 0,
+        "draft:", portfolio?.draftCurrentPageProjects?.length ?? 0);
+      window.postMessage({
+        type: "__upscore_result",
+        operation: "profileDetail",
+        success: true,
+        data: {
+          data: {
+            talentVPDAuthProfile: profile,
+            portfolioV2: portfolio,
+          },
+        },
+      }, "*");
+      return;
+    }
+
+    // If portfolio or profile is still loading, wait (up to 15s)
+    const stillWaiting = (portfolio?.isLoading === true) || (pv?.loadedDetails === false);
+    if (stillWaiting && attempt < 15) {
+      setTimeout(() => tryExtractWithRetry(attempt + 1), 1000);
+      return;
+    }
+
+    // Fallback: send what we have after all retries
+    if (profile) {
+      console.log("[UpScore Main] Sending profile without portfolio data (timeout)");
+      window.postMessage({
+        type: "__upscore_result",
+        operation: "profileDetail",
+        success: true,
+        data: {
+          data: {
+            talentVPDAuthProfile: profile,
+            portfolioV2: portfolio,
+          },
+        },
+      }, "*");
+      return;
+    }
+
+    window.postMessage({
+      type: "__upscore_result",
+      operation: "profileDetail",
+      success: false,
+      error: "Could not extract profile from DOM",
+    }, "*");
+  }
+
+  function extractProfileFromDom() {
+    return (
+      extractFromNuxt() ||
+      extractFromVueApp() ||
+      extractFromScripts() ||
+      extractFromSelectors()
+    );
+  }
+
+  /** Method 1: Nuxt __NUXT__ state */
+  function extractFromNuxt() {
+    try {
+      const nuxt = window.__NUXT__;
+      if (!nuxt) {
+        console.log("[UpScore Main] window.__NUXT__ is undefined");
+        return null;
+      }
+      console.log("[UpScore Main] __NUXT__ keys:", Object.keys(nuxt).join(", "));
+
+      if (nuxt.state) {
+        // Direct extraction from known state keys
+        const pv = nuxt.state.profileViewer;
+        if (pv) {
+          // profileViewer.profile is the freelancer profile
+          if (pv.profile) {
+            console.log("[UpScore Main] Found profileViewer.profile");
+            return pv.profile;
+          }
+          // profileViewer.person contains user info
+          if (pv.person) {
+            console.log("[UpScore Main] Found profileViewer.person");
+            return pv.person;
+          }
+          // Fallback: deep search profileViewer
+          const found = findProfileInJson(pv);
+          if (found) return found;
+        }
+      }
+    } catch (e) { console.log("[UpScore Main] extractFromNuxt error:", e); }
+    return null;
+  }
+
+  /** Method 2: Vue app root component */
+  function extractFromVueApp() {
+    try {
+      const appRoot = document.getElementById("__nuxt") || document.getElementById("app");
+      if (!appRoot) {
+        console.log("[UpScore Main] No #__nuxt or #app element found");
+        // List all id elements as debug
+        const allIds = Array.from(document.querySelectorAll("[id]")).map(el => el.id).join(", ");
+        if (allIds) console.log("[UpScore Main] Elements with IDs:", allIds);
+        return null;
+      }
+
+      const vue = appRoot.__vue__;
+      if (!vue) return null;
+
+      // Traverse Vue component tree for profile data
+      let profile = null;
+      function walk(component) {
+        if (!component || component.__upscoreVisited) return;
+        component.__upscoreVisited = true;
+        try {
+          const state = component.$store?.state;
+          if (state) {
+            profile = profile || findProfileInJson(state);
+          }
+        } catch { /* ignore */ }
+        try {
+          if (component.$children) {
+            component.$children.forEach(walk);
+          }
+        } catch { /* ignore */ }
+      }
+      walk(vue);
+      if (profile) console.log("[UpScore Main] Extracted from Vue app");
+      return profile;
+    } catch { /* ignore */ }
+    return null;
+  }
+
+  /** Method 3: Scan script tags - try JSON parse first, then string extraction */
+  function extractFromScripts() {
+    for (const script of document.querySelectorAll("script")) {
+      const text = script.textContent || "";
+      if (text.includes("talentVPDAuthProfile")) {
+        // Try to extract the profile object from JavaScript code
+        const match = text.match(/talentVPDAuthProfile\s*[=:]\s*(\{[\s\S]*?\})\s*[;}]/);
+        if (match) {
+          try {
+            const profile = JSON.parse(match[1]);
+            console.log("[UpScore Main] Extracted talentVPDAuthProfile from script");
+            return profile;
+          } catch { /* not plain JSON */ }
+        }
+        // Try finding complete object after talentVPDAuthProfile
+        const idx = text.indexOf("talentVPDAuthProfile");
+        const slice = text.slice(idx + "talentVPDAuthProfile".length);
+        const objMatch = slice.match(/[=:]\s*(\{[\s\S]*?\})\s*[;,\]\}]/);
+        if (objMatch) {
+          try {
+            const profile = JSON.parse(objMatch[1]);
+            console.log("[UpScore Main] Extracted talentVPDAuthProfile object from script");
+            return profile;
+          } catch { /* not plain JSON */ }
+        }
+      }
+      if (text.includes("__NUXT__")) {
+        const nuxtMatch = text.match(/window\.__NUXT__\s*=\s*(\{[\s\S]*?\})\s*[;]/);
+        if (nuxtMatch) {
+          try {
+            const nuxt = JSON.parse(nuxtMatch[1]);
+            return findProfileInJson(nuxt);
+          } catch { /* not plain JSON */ }
+        }
+      }
+    }
+    // Fallback: search all JSON-like objects in all script tags
+    for (const script of document.querySelectorAll("script")) {
+      const text = script.textContent || "";
+      if (text.includes("profile") && (text.includes("skills") || text.includes("hourly"))) {
+        try {
+          const json = JSON.parse(text);
+          const profile = findProfileInJson(json);
+          if (profile) {
+            console.log("[UpScore Main] Extracted profile from JSON script");
+            return profile;
+          }
+        } catch { /* not JSON */ }
+      }
+    }
+    return null;
+  }
+
+  /** Method 4: Rendered DOM selectors */
+  function extractFromSelectors() {
+    try {
+      const profile = {};
+
+      // Try microdata / schema.org
+      const ldJson = document.querySelector('script[type="application/ld+json"]');
+      if (ldJson) {
+        try {
+          const ld = JSON.parse(ldJson.textContent);
+          if (ld.name) profile.title = ld.name;
+          if (ld.description) profile.description = ld.description;
+          if (ld.knowsAbout) {
+            profile.skills = (Array.isArray(ld.knowsAbout) ? ld.knowsAbout : [ld.knowsAbout])
+              .map((s) => s.name || s)
+              .filter(Boolean)
+              .map((name) => ({ node: { prettyName: name } }));
+          }
+        } catch { /* ignore */ }
+      }
+
+      // Generic selectors — try visible text
+      const h1 = document.querySelector("h1");
+      if (h1 && !profile.title) profile.title = h1.textContent?.trim();
+
+      // Rate
+      const air = document.querySelector('[data-qa="air"]');
+      if (air) {
+        const rateMatch = air.textContent.match(/\$[\d.]+/);
+        if (rateMatch) profile.hourlyRate = { node: { amount: parseFloat(rateMatch[0].replace("$", "")) } };
+      }
+
+      // Location
+      const locationItem = document.querySelector('[data-qa="location"]');
+      if (locationItem) {
+        profile.location = { country: locationItem.textContent?.trim() || "" };
+      }
+
+      // Stats section
+      const statLabels = document.querySelectorAll('[data-qa="stat-label"]');
+      const statValues = document.querySelectorAll('[data-qa="stat-value"]');
+      if (statLabels.length > 0) {
+        for (let i = 0; i < statLabels.length; i++) {
+          const label = statLabels[i]?.textContent?.toLowerCase() || "";
+          const value = statValues[i]?.textContent?.trim() || "";
+          const numMatch = value.match(/[\d,.]+/);
+          const num = numMatch ? parseFloat(numMatch[0].replace(/,/g, "")) : NaN;
+
+          if (label.includes("earnings") && !isNaN(num)) profile.totalEarnings = num;
+          if (label.includes("job") && !isNaN(num)) profile.totalJobsWorked = num;
+          if (label.includes("hour") && !isNaN(num)) profile.totalHoursActual = num;
+          if (label.includes("rating") && !isNaN(num)) profile.rating = num;
+        }
+      }
+
+      // Skills
+      const skillLinks = document.querySelectorAll('a[data-qa^="skill"]');
+      if (skillLinks.length > 0) {
+        profile.skills = Array.from(skillLinks)
+          .map((a) => a.textContent?.trim())
+          .filter(Boolean)
+          .map((name) => ({ node: { prettyName: name } }));
+      }
+
+      if (profile.title || (profile.description && profile.description.length > 10)) {
+        console.log("[UpScore Main] Extracted from DOM selectors");
+        return profile;
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
+
+  function findProfileInJson(json) {
+    if (!json || typeof json !== "object") return null;
+    if (json.talentVPDAuthProfile) return json.talentVPDAuthProfile;
+    if (json.profile?.talentVPDAuthProfile) return json.profile.talentVPDAuthProfile;
+    if (json.state?.talentVPDAuthProfile) return json.state.talentVPDAuthProfile;
+    if (json.data?.talentVPDAuthProfile) return json.data.talentVPDAuthProfile;
+    if (json.props?.pageProps?.talentVPDAuthProfile) return json.props.pageProps.talentVPDAuthProfile;
+
+    // Direct profile-shaped objects
+    if (isProfileShape(json)) return json;
+
+    // Apollo cache entries
+    for (const key of Object.keys(json)) {
+      if (typeof json[key] === "object" && json[key] !== null) {
+        const found = findProfileInJson(json[key]);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  function isProfileShape(obj) {
+    if (!obj || typeof obj !== "object") return false;
+    const hasTitle = typeof obj.title === "string" && obj.title.length > 0;
+    const hasSkills = Array.isArray(obj.skills) || typeof obj.skills === "object";
+    const hasDesc = typeof obj.description === "string" && obj.description.length > 10;
+    return hasTitle && (hasSkills || hasDesc);
+  }
+
+  // ─── JOB EXTRACTION ───
+
+  let pendingPartialJob = null;
+
+  function tryExtractJobWithRetry(attempt) {
+    if (attempt === 0) {
+      pendingPartialJob = null;
+      // Click "more" buttons to expand truncated feedback text
+      const moreBtns = document.querySelectorAll('.air3-truncation-btn[aria-expanded="false"]');
+      if (moreBtns.length > 0) {
+        moreBtns.forEach(btn => btn.click());
+        // Wait one frame for Vue to update DOM, then extract
+        requestAnimationFrame(() => tryExtractJobWithRetry(attempt));
+        return;
+      }
+      const nuxt = window.__NUXT__;
+      console.log("[UpScore Main] __NUXT__ exists:", !!nuxt, "state exists:", !!nuxt?.state);
+      if (nuxt?.state) {
+        console.log("[UpScore Main] __NUXT__.state keys:", Object.keys(nuxt.state).slice(0, 20).join(", "));
+        for (const key of Object.keys(nuxt.state)) {
+          const val = nuxt.state[key];
+          if (val && typeof val === "object") {
+            const subKeys = Object.keys(val);
+            if (subKeys.length > 0 && subKeys.length < 10) {
+              console.log("[UpScore Main]   state." + key + " keys:", subKeys.join(", "));
+            }
+          }
+        }
+      }
+    }
+
+    // Wait at least 4 attempts (~6s total) before accepting a result without history
+    const minAttemptsForPartial = 4;
+    const job = extractJobFromDom();
+
+    if (job) {
+      const hasHistory = job.client_recent_history && job.client_recent_history.length > 0;
+      if (hasHistory || attempt >= minAttemptsForPartial) {
+        // Accept: either history is loaded or we've waited long enough
+        if (pendingPartialJob && !hasHistory) {
+          // Merge any fields from partial that might be better
+          if (!job.client_recent_history) job.client_recent_history = pendingPartialJob.client_recent_history;
+        }
+        console.log("[UpScore Main] Job extracted:", job.title);
+        window.__upscoreLastJob = job;
+        window.postMessage({
+          type: "__upscore_result",
+          operation: "jobDetails",
+          success: true,
+          data: job,
+        }, "*");
+        pendingPartialJob = null;
+        return;
+      }
+      // Partial result with no history yet — save and retry
+      pendingPartialJob = job;
+    }
+
+    const nuxtJob = window.__NUXT__?.state?.jobViewer?.job || window.__NUXT__?.state?.job;
+    if (!nuxtJob && attempt < 20) {
+      setTimeout(() => tryExtractJobWithRetry(attempt + 1), 1000);
+      return;
+    }
+
+    if (nuxtJob) {
+      const jobData = normalizeJobData(nuxtJob);
+      if (pendingPartialJob) {
+        Object.assign(pendingPartialJob, jobData);
+        jobData.client_recent_history = pendingPartialJob.client_recent_history;
+      }
+      window.postMessage({
+        type: "__upscore_result",
+        operation: "jobDetails",
+        success: true,
+        data: jobData,
+      }, "*");
+      pendingPartialJob = null;
+      return;
+    }
+
+    if (attempt >= 20) {
+      console.log("[UpScore Main] Job extraction failed after", attempt, "attempts");
+    }
+
+    // Send whatever partial result we have as a last resort
+    const finalJob = pendingPartialJob || job;
+    if (finalJob && finalJob.title) {
+      window.postMessage({
+        type: "__upscore_result",
+        operation: "jobDetails",
+        success: true,
+        data: finalJob,
+      }, "*");
+    } else {
+      window.postMessage({
+        type: "__upscore_result",
+        operation: "jobDetails",
+        success: false,
+        error: "Could not extract job from DOM",
+      }, "*");
+    }
+    pendingPartialJob = null;
+  }
+
+  function extractJobFromDom() {
+    // Try detailed DOM extraction first (most data, no normalization)
+    const detailed = extractJobFromSelectors();
+    if (detailed) {
+      console.log("[UpScore Main] Detailed DOM extraction succeeded");
+      return detailed;
+    }
+    // Try page source extraction (JSON-LD, embedded data)
+    const fromSource = extractJobFromPageSource();
+    if (fromSource) {
+      console.log("[UpScore Main] Page source extraction succeeded");
+      return fromSource;
+    }
+    // Fall back to Nuxt/Vue/script extraction
+    return (
+      extractJobFromNuxt() ||
+      extractJobFromVueApp() ||
+      extractJobFromScripts()
+    );
+  }
+
+  function extractJobFromPageSource() {
+    try {
+      // ─── Method 1: JSON-LD (application/ld+json) ───
+      const ldScripts = document.querySelectorAll('script[type="application/ld+json"]');
+      for (const script of ldScripts) {
+        try {
+          const data = JSON.parse(script.textContent);
+          const jobs = Array.isArray(data) ? data : [data];
+          for (const item of jobs) {
+            if (item["@type"] === "JobPosting" || item["@type"]?.includes("JobPosting")) {
+              const skills = Array.isArray(item.skills) ? item.skills.map(s => s.name || s).filter(Boolean) : [];
+              const budget = item.baseSalary?.value?.value || item.estimatedBudget || "";
+              return {
+                title: item.title || "",
+                description: (item.description || "").replace(/<[^>]+>/g, "").trim().slice(0, 10000),
+                posted_at: item.datePosted || "",
+                client_country: item.jobLocation?.address?.addressCountry || item.applicantLocationRequirements?.name || "",
+                client_city: item.jobLocation?.address?.addressLocality || "",
+                skills,
+                budget: String(budget),
+                budget_type: item.employmentType?.includes("HOURLY") ? "Hourly" : "Fixed",
+                experience_level: item.experienceRequirements?.name || "",
+                url: item.url || window.location.href,
+                _source: "jsonld",
+              };
+            }
+          }
+        } catch {}
+      }
+
+      // ─── Method 2: Search ALL script tags for job-like JSON ───
+      const allScripts = document.querySelectorAll("script:not([type])");
+      for (const script of allScripts) {
+        const text = script.textContent || "";
+        if (text.includes('"@type"') && text.includes("JobPosting")) {
+          try {
+            const data = JSON.parse(text);
+            const jobs = Array.isArray(data) ? data : [data];
+            for (const item of jobs) {
+              if (item["@type"] === "JobPosting" && item.title) {
+                return normalizeJobData(item);
+              }
+            }
+          } catch {}
+        }
+        // Search for opening/info/ciphertext pattern
+        if (text.includes('"opening"') || text.includes('"ciphertext"')) {
+          try {
+            // Try to find a JSON object with opening or ciphertext
+            const startIdx = text.indexOf("{");
+            const endIdx = text.lastIndexOf("}");
+            if (startIdx !== -1 && endIdx > startIdx) {
+              const candidate = text.slice(startIdx, endIdx + 1);
+              const parsed = JSON.parse(candidate);
+              const found = findJobInJson(parsed);
+              if (found) {
+                const normalized = normalizeJobData(found);
+                if (normalized && normalized.title) {
+                  normalized._source = "script-json";
+                  return normalized;
+                }
+              }
+            }
+          } catch {}
+        }
+      }
+
+      // ─── Method 3: Search for __NEXT_DATA__ or similar ───
+      for (const globalKey of ["__NEXT_DATA__", "__RENDERED_DATA__", "__INITIAL_STATE__", "__INITIAL_PROPS__"]) {
+        const data = window[globalKey];
+        if (data) {
+          const found = findJobInJson(data);
+          if (found) {
+            const normalized = normalizeJobData(found);
+            if (normalized && normalized.title) {
+              normalized._source = globalKey;
+              return normalized;
+            }
+          }
+        }
+      }
+
+      return null;
+    } catch (e) {
+      console.log("[UpScore Main] extractJobFromPageSource error:", e);
+      return null;
+    }
+  }
+
+  function extractJobFromNuxt() {
+    try {
+      const nuxt = window.__NUXT__;
+      if (!nuxt?.state) return null;
+
+      const jobViewer = nuxt.state.jobViewer;
+      if (jobViewer?.job) {
+        console.log("[UpScore Main] Found jobViewer.job");
+        return normalizeJobData(jobViewer.job);
+      }
+
+      if (nuxt.state.job) {
+        console.log("[UpScore Main] Found state.job");
+        return normalizeJobData(nuxt.state.job);
+      }
+
+      if (jobViewer) {
+        const found = findJobInJson(jobViewer);
+        if (found) return normalizeJobData(found);
+      }
+
+      const found = findJobInJson(nuxt.state);
+      if (found) return normalizeJobData(found);
+    } catch (e) { console.log("[UpScore Main] extractJobFromNuxt error:", e); }
+    return null;
+  }
+
+  function extractJobFromVueApp() {
+    try {
+      // Vue 3: Walk all elements for __vueParentComponent
+      const results = [];
+      const allElements = document.querySelectorAll("*");
+      for (let i = 0; i < Math.min(allElements.length, 2000); i++) {
+        const el = allElements[i];
+        // Vue 3: __vueParentComponent
+        const v3 = el.__vueParentComponent;
+        if (v3?.setupState && typeof v3.setupState === "object") {
+          const ss = v3.setupState;
+          for (const key of Object.keys(ss)) {
+            const val = ss[key];
+            if (val && typeof val === "object") {
+              const found = findJobInJson(val);
+              if (found) results.push(found);
+            }
+          }
+        }
+        // Vue 2: __vue__
+        const v2 = el.__vue__;
+        if (v2 && typeof v2 === "object") {
+          for (const key of Object.keys(v2)) {
+            const val = v2[key];
+            if (val && typeof val === "object") {
+              const found = findJobInJson(val);
+              if (found) results.push(found);
+            }
+          }
+        }
+      }
+
+      for (const job of results) {
+        const normalized = normalizeJobData(job);
+        if (normalized && normalized.title) {
+          normalized._source = "vue-internal";
+          return normalized;
+        }
+      }
+
+      // Try vue app instance on root
+      const nuxtEl = document.getElementById("__nuxt") || document.getElementById("app");
+      const vueApp = nuxtEl?.__vue_app__;
+      if (vueApp) {
+        const pinia = vueApp.config?.globalProperties?.$pinia?.state?.value;
+        if (pinia) {
+          for (const key of Object.keys(pinia)) {
+            const state = pinia[key];
+            const found = findJobInJson(state);
+            if (found) {
+              const normalized = normalizeJobData(found);
+              if (normalized && normalized.title) {
+                normalized._source = "pinia";
+                return normalized;
+              }
+            }
+          }
+        }
+      }
+
+      return null;
+    } catch (e) {
+      console.log("[UpScore Main] extractJobFromVueApp error:", e);
+      return null;
+    }
+  }
+
+  function extractJobFromScripts() {
+    for (const script of document.querySelectorAll("script")) {
+      const text = script.textContent || "";
+      if (text.includes("__NUXT__")) {
+        const match = text.match(/window\.__NUXT__\s*=\s*(\{[\s\S]*?\})\s*[;]/);
+        if (match) {
+          try {
+            const nuxt = JSON.parse(match[1]);
+            const job = findJobInJson(nuxt);
+            if (job) return normalizeJobData(job);
+          } catch {}
+        }
+      }
+      if (text.includes("job") && (text.includes("description") || text.includes("budget"))) {
+        try {
+          const json = JSON.parse(text);
+          const job = findJobInJson(json);
+          if (job) return normalizeJobData(job);
+        } catch {}
+      }
+    }
+    return null;
+  }
+
+  function extractJobFromSelectors() {
+    try {
+      // SUIT2 job details container hierarchy:
+      // .job-details-content > .job-details-card > .air3-card-sections > section.air3-card-section (x9)
+      const container = document.querySelector(".job-details-content") ||
+                        document.querySelector(".air3-card-sections") ||
+                        document.querySelector("main") ||
+                        document.body;
+      const job = {};
+      const matched = [];
+
+      // ─── Title ───
+      const titleEl = container.querySelector('section.air3-card-section h4 span.flex-1');
+      if (titleEl) { job.title = titleEl.textContent?.trim(); matched.push("title"); }
+
+      // ─── Posted time ───
+      const postedEl = container.querySelector('.posted-on-line .text-light-on-muted.text-body-sm div');
+      if (postedEl) {
+        const postedText = postedEl.textContent?.trim() || "";
+        const span = postedEl.querySelector("span");
+        job.posted_at = span?.textContent?.trim() || postedText;
+        matched.push("posted_at");
+      }
+
+      // ─── Location ───
+      const locEl = container.querySelector(".d-inline-flex.align-items-center.text-base-sm p");
+      if (locEl) { job.client_country = locEl.textContent?.trim(); matched.push("location"); }
+
+      // ─── Description ───
+      const descEl = container.querySelector('.break[data-test="Description"] .multiline-text');
+      if (descEl) { job.description = descEl.textContent?.trim(); matched.push("description"); }
+
+      // ─── Budget ───
+      const budgetIcon = container.querySelector('[data-cy="fixed-price"]');
+      if (budgetIcon) {
+        const budgetLi = budgetIcon.closest('li');
+        if (budgetLi) {
+          const amountEl = budgetLi.querySelector("strong");
+          const typeEl = budgetLi.querySelector(".description");
+          if (amountEl) job.budget = amountEl.textContent?.trim();
+          if (typeEl) job.budget_type = typeEl.textContent?.trim();
+        }
+        matched.push("budget");
+      }
+
+      // ─── Experience Level ───
+      const expIcon = container.querySelector('[data-cy="expertise"]');
+      if (expIcon) {
+        const expLi = expIcon.closest('li');
+        if (expLi) {
+          const strongEl = expLi.querySelector("strong");
+          if (strongEl) job.experience_level = strongEl.textContent?.trim();
+        }
+        matched.push("experience_level");
+      }
+
+      // ─── Project Type ───
+      const projTypeEl = container.querySelector(".segmentations li strong");
+      if (projTypeEl && projTypeEl.textContent?.trim() === "Project Type:") {
+        const span = projTypeEl.closest("li")?.querySelector("span");
+        if (span) job.project_type = span.textContent?.trim();
+        matched.push("project_type");
+      }
+
+      // ─── Skills ───
+      const skillLinks = container.querySelectorAll(".skills-list a.badge");
+      if (skillLinks.length > 0) {
+        job.skills = Array.from(skillLinks).map(a =>
+          a.querySelector(".air3-line-clamp")?.textContent?.trim() || a.textContent?.trim()
+        ).filter(Boolean);
+        matched.push("skills:" + job.skills.length);
+      }
+
+      // ─── Client Activity ───
+      const activityItems = container.querySelectorAll(".client-activity-items .ca-item");
+      activityItems.forEach((item) => {
+        const titleEl = item.querySelector(".title");
+        const valueEl = item.querySelector(".value");
+        if (!titleEl || !valueEl) return;
+        const title = titleEl.textContent?.trim().toLowerCase() || "";
+        const value = valueEl.textContent?.trim();
+        if (title.includes("proposal")) job.proposals_count = value;
+        else if (title.includes("last viewed") || title.includes("viewed")) job.client_last_viewed = value;
+        else if (title.includes("interviewing") || title.includes("interview")) job.interviewing_count = value;
+        else if (title.includes("invite")) job.invites_sent = value;
+        else if (title.includes("unanswered")) job.unanswered_invites = value;
+      });
+      if (activityItems.length > 0) matched.push("activity:" + activityItems.length);
+
+      // ─── Connects Required ───
+      const connectsEl = container.querySelector('[data-v-8889f6f7]');
+      if (connectsEl) {
+        const text = connectsEl.textContent || "";
+        const match = text.match(/Required Connects[^:]*:\s*(\d+)/) || text.match(/(\d+)\s+connects/i);
+        if (match) { job.connects_required = parseInt(match[1], 10); matched.push("connects"); }
+      }
+
+      // ─── Client Info Section ───
+      const clientSection = container.querySelector('.cfe-ui-job-about-client, [data-test="about-client-container"]');
+      if (clientSection) {
+        matched.push("clientSection");
+
+        // Payment verified
+        const payVerified = clientSection.querySelector(".payment-verified");
+        if (payVerified) {
+          const parentText = payVerified.closest("div, li")?.textContent || "";
+          job.client_payment_verified = parentText.toLowerCase().includes("payment method verified");
+        }
+
+        // Rating
+        const ratingEl = clientSection.querySelector(".air3-rating-value-text");
+        if (ratingEl) {
+          job.client_rating = parseFloat(ratingEl.textContent?.trim()) || undefined;
+        }
+
+        // Reviews count
+        const reviewsText = clientSection.querySelector('[data-testid="buyer-rating"]')?.textContent || "";
+        const revMatch = reviewsText.match(/of\s+(\d+)\s+reviews/) || reviewsText.match(/(\d+)\s+review/);
+        if (revMatch) job.client_reviews_count = parseInt(revMatch[1], 10);
+
+        // Location
+        const locLi = clientSection.querySelector('[data-qa="client-location"]');
+        if (locLi) {
+          const strong = locLi.querySelector("strong");
+          const allText = locLi.textContent || "";
+          if (strong) job.client_country = strong.textContent?.trim();
+          const cityMatch = allText.match(/([A-Za-z\s]+)\d+:\d+/);
+          if (cityMatch) job.client_city = cityMatch[1].trim();
+        }
+
+        // Job posting stats
+        const statsLi = clientSection.querySelector('[data-qa="client-job-posting-stats"]');
+        if (statsLi) {
+          const txt = statsLi.textContent || "";
+          const jobsMatch = txt.match(/(\d+)\s+jobs?\s+posted/i);
+          const hireMatch = txt.match(/(\d+)%\s*hire/i);
+          const openMatch = txt.match(/(\d+)\s+open/i);
+          if (jobsMatch) job.client_jobs_posted = parseInt(jobsMatch[1], 10);
+          if (hireMatch) job.client_hire_rate_pct = parseInt(hireMatch[1], 10);
+          if (openMatch) job.client_open_jobs = parseInt(openMatch[1], 10);
+        }
+
+        // Spend
+        const spendLi = clientSection.querySelector('[data-qa="client-spend"]');
+        if (spendLi) {
+          const txt = spendLi.textContent || "";
+          const amountMatch = txt.match(/\$([\d,]+(?:\.\d+)?)/);
+          if (amountMatch) job.client_total_spend = amountMatch[1].replace(",", "");
+        }
+
+        // Hires
+        const hiresEl = clientSection.querySelector('[data-qa="client-hires"]');
+        if (hiresEl) {
+          const txt = hiresEl.textContent || "";
+          const hiresMatch = txt.match(/(\d+)\s+hires/i);
+          const activeMatch = txt.match(/(\d+)\s+active/i);
+          if (hiresMatch) job.client_total_hires = parseInt(hiresMatch[1], 10);
+          if (activeMatch) job.client_active_hires = parseInt(activeMatch[1], 10);
+        }
+
+        // Member since
+        const memberLi = clientSection.querySelector('[data-qa="client-contract-date"]');
+        if (memberLi) {
+          const txt = memberLi.textContent || "";
+          const dateMatch = txt.match(/Member since\s+(.+)/i);
+          if (dateMatch) job.client_member_since = dateMatch[1].trim();
+        }
+
+        // Company profile
+        const industryEl = clientSection.querySelector('[data-qa="client-company-profile-industry"]');
+        if (industryEl) job.client_industry = industryEl.textContent?.trim();
+        const sizeEl = clientSection.querySelector('[data-qa="client-company-profile-size"]');
+        if (sizeEl) job.client_company_size = sizeEl.textContent?.trim();
+      }
+
+      // ─── Job Link ───
+      const jobLinkInput = container.querySelector('input[aria-label="Job link"]');
+      if (jobLinkInput) job.url = jobLinkInput.value?.trim() || window.location.href;
+      if (!job.url) job.url = window.location.href;
+
+      // ─── Client's Recent History ───
+      const historyItems = container.querySelectorAll('[data-cy="job"]');
+      if (historyItems.length > 0) {
+        job.client_recent_history = Array.from(historyItems).map((item) => {
+          const titleLink = item.querySelector('[data-cy="job-title"]');
+          const ratingEl = item.querySelector(".air3-rating-value-text");
+          const dateEl = item.querySelector('[data-cy="date"]');
+          // All truncation elements: client short feedback + freelancer full review
+          // (DOM already has full text after "more" buttons auto-clicked in retry loop)
+          const truncEls = item.querySelectorAll(".air3-truncation");
+          const allFeedback = Array.from(truncEls || [])
+            .map(el => el.firstElementChild?.textContent?.trim() || "")
+            .filter(Boolean);
+          // Freelancer name
+          const freelncEl = item.querySelector('.text-body-sm a[href*="/freelancers/"]');
+          return {
+            title: titleLink?.textContent?.trim() || "",
+            url: titleLink?.getAttribute("href") || "",
+            rating: ratingEl ? parseFloat(ratingEl.textContent?.trim()) : undefined,
+            date: dateEl?.textContent?.trim() || "",
+            feedback: allFeedback.join(" | ").slice(0, 500),
+            freelancerName: freelncEl?.textContent?.trim() || undefined,
+          };
+        }).filter(h => h.title);
+        matched.push("history:" + job.client_recent_history.length);
+      }
+
+      console.log("[UpScore Main] DOM selectors matched:", matched.join(", "));
+      if (job.title) {
+        console.log("[UpScore Main] Extracted job from DOM selectors (detailed)");
+        return job;
+      }
+      return null;
+    } catch (e) {
+      console.log("[UpScore Main] extractJobFromSelectors error:", e);
+      return null;
+    }
+  }
+
+  function findJobInJson(json) {
+    if (!json || typeof json !== "object") return null;
+    // SUIT2 common patterns
+    if (json.jobViewer?.job) return json.jobViewer.job;
+    if (json.job && typeof json.job.title === "string") return json.job;
+    if (json.opening?.info?.title) return json; // VisitorJobDetails top-level opening
+    if (json.jobDetails?.title) return json.jobDetails;
+    if (json.data?.jobViewer?.job) return json.data.jobViewer.job;
+    if (json.data?.jobPubDetails?.opening) return json.data.jobPubDetails; // SUIT2 VisitorJobDetails
+    if (json.data?.opening?.info?.title) return json.data;
+    if (json.data?.jobDetails?.title) return json.data.jobDetails;
+
+    // Try any key in data that looks like a job
+    if (json.data && typeof json.data === "object") {
+      for (const key of Object.keys(json.data)) {
+        const val = json.data[key];
+        if (val && typeof val === "object") {
+          if (val.info?.ciphertext || val.opening?.info?.ciphertext) {
+            return val.opening || val;
+          }
+          if (val.title && (val.description || val.budget)) {
+            return val;
+          }
+        }
+      }
+    }
+
+    if (json.props?.pageProps?.job) return json.props.pageProps.job;
+
+    if (isJobShape(json)) return json;
+
+    for (const key of Object.keys(json)) {
+      if (typeof json[key] === "object" && json[key] !== null) {
+        const found = findJobInJson(json[key]);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  function isJobShape(obj) {
+    if (!obj || typeof obj !== "object") return false;
+    const hasTitle = typeof obj.title === "string" && obj.title.length > 0;
+    const hasDesc = typeof obj.description === "string" && obj.description.length > 20;
+    const hasBudget = obj.budget !== undefined || obj.hourlyMin !== undefined;
+    return hasTitle && (hasDesc || hasBudget);
+  }
+
+  function normalizeJobData(job) {
+    if (!job || typeof job !== "object") return null;
+
+    // Handle VisitorJobDetails shape: { opening: {...}, buyer: {...}, buyerExtra: {...} }
+    const opening = job.opening || job;
+    const buyer = job.buyer || {};
+    const buyerExtra = job.buyerExtra || {};
+    const location = buyer.location || {};
+    const stats = buyer.stats || {};
+    const company = buyer.company || {};
+    const companyProfile = company.profile || {};
+    const sandsData = opening.sandsData || {};
+
+    // Skills from various locations
+    let skills = [];
+    if (Array.isArray(job.skills)) {
+      skills = job.skills;
+    } else if (Array.isArray(opening.skills)) {
+      skills = opening.skills;
+    } else {
+      const ontologySkills = (sandsData.ontologySkills || []).map(s => s.prefLabel).filter(Boolean);
+      const additionalSkills = (sandsData.additionalSkills || []).map(s => s.prefLabel).filter(Boolean);
+      skills = [...new Set([...ontologySkills, ...additionalSkills])];
+    }
+    skills = skills.map((s) => {
+      if (typeof s === "string") return s;
+      if (s?.prettyName) return s.prettyName;
+      if (s?.name) return s.name;
+      if (s?.node?.prettyName) return s.node.prettyName;
+      return "";
+    }).filter(Boolean);
+
+    // Budget
+    let budgetStr = undefined;
+    if (opening.budget?.amount) {
+      budgetStr = String(opening.budget.amount);
+    } else if (job.budget) {
+      budgetStr = String(job.budget);
+    } else if (job.hourlyMin || job.hourlyMax) {
+      budgetStr = `$${job.hourlyMin}-$${job.hourlyMax}/hr`;
+    } else {
+      const eb = opening.extendedBudgetInfo || {};
+      if (eb.hourlyBudgetMin || eb.hourlyBudgetMax) {
+        budgetStr = `$${eb.hourlyBudgetMin}-$${eb.hourlyBudgetMax}/hr`;
+      }
+    }
+
+    // Client activity
+    const activity = opening.clientActivity || {};
+
+    // Compute hire rate
+    let hireRate = job.clientHireRate || job.client_hire_rate || undefined;
+    if (hireRate === undefined && stats.totalJobsWithHires !== undefined && stats.totalAssignments > 0) {
+      hireRate = Math.round((stats.totalJobsWithHires / stats.totalAssignments) * 100);
+    }
+
+    const info = opening.info || {};
+
+    return {
+      title: info.title || opening.title || job.title || "",
+      description: (opening.description || job.description || "").slice(0, 10000),
+      url: window.location.href,
+      budget: budgetStr,
+      skills,
+      clientCountry: location.country || job.clientCountry || job.client_country || "",
+      clientRating: stats.score || job.clientRating || job.client_rating || undefined,
+      clientTotalSpend: job.clientTotalSpend || job.client_spend || (stats.totalCharges || {}).amount || undefined,
+      clientHireRate: hireRate,
+      proposalsCount: activity.totalApplicants || job.proposalsCount || job.proposals_count || undefined,
+      postedAt: opening.postedOn || job.postedAt || job.posted_at || undefined,
+      paymentVerified: buyerExtra.isPaymentMethodVerified || undefined,
+      companyIndustry: companyProfile.industry || undefined,
+      companySize: companyProfile.size || undefined,
+      captured_at: new Date().toISOString(),
+    };
+  }
+
+  // ─── FETCH JOB DETAILS VIA UPWORK GRAPHQL API ───
+
+  function getVisitorGqlToken() {
+    try {
+      const match = document.cookie.match(/(?:^|;\s*)visitor_gql_token=([^;]*)/);
+      return match ? match[1] : null;
+    } catch { return null; }
+  }
+
+  async function fetchJobDetailsFromUpworkApi(ciphertext, providedToken) {
+    if (!ciphertext) {
+      window.postMessage({
+        type: "__upscore_result",
+        operation: "jobDetails",
+        success: false,
+        error: "No ciphertext provided",
+      }, "*");
+      return;
+    }
+
+    try {
+      let token = providedToken || getVisitorGqlToken();
+
+      if (!token) {
+        try {
+          const resp = await fetch("https://www.upwork.com/", { credentials: "include" });
+          token = getVisitorGqlToken();
+        } catch {}
+      }
+
+      const alias = "gql-query-get-visitor-job-details";
+      const url = `https://www.upwork.com/api/graphql/v1?alias=${alias}`;
+
+      const payload = {
+        query: `
+          query VisitorJobDetails($jobCiphertext: String!) {
+            jobPubDetails {
+              opening {
+                status
+                postedOn
+                workload
+                contractorTier
+                description
+                info { ciphertext id type access title hideBudget createdOn premium }
+                segmentationData { label name type value }
+                sandsData {
+                  occupation { uid prefLabel }
+                  ontologySkills { uid prefLabel relevance }
+                  additionalSkills { uid prefLabel relevance }
+                }
+                category { name urlSlug }
+                budget { amount currencyCode }
+                engagementDuration { label weeks }
+                extendedBudgetInfo {
+                  hourlyBudgetMin
+                  hourlyBudgetMax
+                  hourlyBudgetType
+                }
+                clientActivity {
+                  totalApplicants
+                  totalHired
+                  totalInvitedToInterview
+                  unansweredInvites
+                  invitationsSent
+                  numberOfPositionsToHire
+                  lastBuyerActivity
+                }
+              }
+              qualifications { countries timezones prefEnglishSkill minHoursWeek locationCheckRequired }
+              buyer {
+                location { city country }
+                stats {
+                  totalAssignments activeAssignmentsCount hoursCount
+                  feedbackCount score totalJobsWithHires
+                  totalCharges { amount }
+                }
+                company { contractDate profile { industry size } }
+              }
+              buyerExtra { isPaymentMethodVerified }
+            }
+          }
+        `,
+        variables: { jobCiphertext: ciphertext },
+      };
+
+      const headers = {
+        "Accept": "*/*",
+        "Content-Type": "application/json",
+        "X-Upwork-Accept-Language": "en-US",
+        "Referer": `https://www.upwork.com/jobs/~${ciphertext}`,
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const gqlResp = await fetch(url, {
+        method: "POST",
+        credentials: "include",
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      if (!gqlResp.ok) {
+        throw new Error(`GraphQL returned ${gqlResp.status}`);
+      }
+
+      const data = await gqlResp.json();
+      if (data.errors) {
+        throw new Error(data.errors[0]?.message || JSON.stringify(data.errors));
+      }
+
+      const details = data?.data?.jobPubDetails || {};
+      const opening = details.opening || {};
+      const info = opening.info || {};
+      const sandsData = opening.sandsData || {};
+      const budgetInfo = opening.extendedBudgetInfo || {};
+      const activity = opening.clientActivity || {};
+      const buyer = details.buyer || {};
+      const location = buyer.location || {};
+      const stats = buyer.stats || {};
+      const company = buyer.company || {};
+      const companyProfile = company.profile || {};
+
+      const ontologySkills = (sandsData.ontologySkills || []).map(s => s.prefLabel).filter(Boolean);
+      const additionalSkills = (sandsData.additionalSkills || []).map(s => s.prefLabel).filter(Boolean);
+      const allSkills = [...new Set([...ontologySkills, ...additionalSkills])];
+
+      let budgetStr = undefined;
+      const b = opening.budget || {};
+      if (b.amount) {
+        budgetStr = `${b.amount}`;
+      } else if (budgetInfo.hourlyBudgetMin || budgetInfo.hourlyBudgetMax) {
+        const min = budgetInfo.hourlyBudgetMin || "";
+        const max = budgetInfo.hourlyBudgetMax || "";
+        budgetStr = `$${min}-$${max}/hr`;
+      }
+
+      const job = {
+        title: info.title || "",
+        description: (opening.description || "").slice(0, 10000),
+        url: `https://www.upwork.com/jobs/~${ciphertext}`,
+        budget: budgetStr,
+        skills: allSkills,
+        clientCountry: location.country || "",
+        clientRating: stats.score || undefined,
+        clientTotalSpend: (stats.totalCharges || {}).amount || undefined,
+        clientHireRate: stats.totalJobsWithHires !== undefined ? Math.round((stats.totalJobsWithHires / stats.totalAssignments) * 100) : undefined,
+        proposalsCount: activity.totalApplicants || undefined,
+        postedAt: opening.postedOn || undefined,
+        captured_at: new Date().toISOString(),
+        companyIndustry: companyProfile.industry || undefined,
+        companySize: companyProfile.size || undefined,
+        paymentVerified: details.buyerExtra?.isPaymentMethodVerified || undefined,
+        ciphertext,
+      };
+
+      window.postMessage({
+        type: "__upscore_result",
+        operation: "jobDetails",
+        success: true,
+        data: job,
+      }, "*");
+    } catch (err) {
+      console.log("[UpScore Main] fetchJobDetailsFromUpworkApi error:", err.message);
+      window.postMessage({
+        type: "__upscore_result",
+        operation: "jobDetails",
+        success: false,
+        error: err.message,
+      }, "*");
+    }
+  }
+
+  window.__upscoreExplore = function () {
+    const results = {};
+    const all = document.querySelectorAll("[data-test], [data-qa], [data-cy]");
+    all.forEach(el => {
+      const test = el.getAttribute("data-test") || "";
+      const qa = el.getAttribute("data-qa") || "";
+      const cy = el.getAttribute("data-cy") || "";
+      const tag = el.tagName;
+      const text = (el.textContent || "").trim().slice(0, 100);
+      const key = test || qa || cy;
+      if (key && text && !key.includes("-ff") && !key.includes("smf")) {
+        if (!results[key]) results[key] = [];
+        if (results[key].length < 3) results[key].push({ tag, text, dataTest: test, dataQa: qa, dataCy: cy });
+      }
+    });
+    console.log("[UpScore Explore] Found", Object.keys(results).length, "unique selectors");
+    for (const [key, items] of Object.entries(results).slice(0, 60)) {
+      console.log("  " + key + ":", items.map(i => i.text).join(" | "));
+    }
+    console.log("Total entries:", Object.keys(results).length);
+    return results;
+  };
+
+  function insertPortfolioOnApplyPage(portfolioItems) {
+    if (!Array.isArray(portfolioItems) || portfolioItems.length === 0) return;
+
+    const textarea = document.querySelector("textarea[name='cover_letter']") ||
+                     document.querySelector('[data-qa="cover-letter-textarea"]') ||
+                     document.querySelector("textarea");
+    if (!textarea) return;
+
+    const portfolioText = portfolioItems.slice(0, 3).map((item) => {
+      return `- ${item.title}: ${(item.description || "").slice(0, 200)}`;
+    }).join("\n");
+
+    const insertText = `\n\nRelevant portfolio work:\n${portfolioText}\n`;
+    const pos = textarea.selectionStart || textarea.value.length;
+    textarea.value = textarea.value.slice(0, pos) + insertText + textarea.value.slice(pos);
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    console.log("[UpScore Main] Inserted portfolio into apply form");
+  }
 })();

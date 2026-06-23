@@ -54,8 +54,11 @@ export const env = {
   TELEGRAM_BOT_TOKEN: getEnv("TELEGRAM_BOT_TOKEN"),
 
   // Job Fetching
-  JOB_FETCHER_PROVIDER: getEnv("JOB_FETCHER_PROVIDER", "mock"),
+  JOB_FETCHER_PROVIDER: getEnv("JOB_FETCHER_PROVIDER", "upalerts"),
   APIFY_API_KEY: getEnv("APIFY_API_KEY"),
+
+  // UpAlerts
+  UPALERTS_API_URL: getEnv("UPALERTS_API_URL", "https://upalerts.app/api/public/jobs"),
 
   // Cron
   CRON_SECRET: getEnv("CRON_SECRET"),

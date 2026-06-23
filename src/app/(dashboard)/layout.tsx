@@ -11,8 +11,15 @@ const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/filters": "Job Filters",
   "/jobs": "Jobs",
+  "/saved": "Saved Jobs",
   "/channels": "Notification Channels",
+  "/rules": "Notification Rules",
+  "/notifications": "Notifications",
   "/proposals": "Proposals",
+  "/upwork-profile": "Upwork Profile",
+  "/contracts": "Contracts",
+  "/work-diary": "Work Diary",
+  "/extension": "Extension",
   "/settings": "Settings",
 };
 

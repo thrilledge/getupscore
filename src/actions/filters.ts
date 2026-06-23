@@ -37,21 +37,28 @@ export async function createFilter(
     return { success: false, error: firstError };
   }
 
-  const { name, min_budget, max_budget, min_client_spend, max_proposals, keywords, client_countries } = parsed.data;
+  const { name, keywords, job_type, contractor_tier, category, subcategory, min_budget, max_budget, hourly_min, hourly_max, skills, client_countries, min_client_spend, max_proposals } = parsed.data;
 
   const { data: filter, error } = await supabase
     .from("job_filters")
     .insert({
       user_id: user.id,
       name,
+      keywords: parseKeywords(keywords),
+      job_type: job_type || null,
+      contractor_tier: contractor_tier || null,
+      category: category || null,
+      subcategory: subcategory || null,
       min_budget: min_budget ?? null,
       max_budget: max_budget ?? null,
-      min_client_spend: min_client_spend ?? null,
-      max_proposals: max_proposals ?? null,
-      keywords: parseKeywords(keywords),
+      hourly_min: hourly_min ?? null,
+      hourly_max: hourly_max ?? null,
+      skills: skills ? parseKeywords(skills) : [],
       client_countries: client_countries
         ? parseKeywords(client_countries)
         : [],
+      min_client_spend: min_client_spend ?? null,
+      max_proposals: max_proposals ?? null,
     })
     .select()
     .single();
@@ -89,20 +96,27 @@ export async function updateFilter(
     return { success: false, error: firstError };
   }
 
-  const { name, min_budget, max_budget, min_client_spend, max_proposals, keywords, client_countries } = parsed.data;
+  const { name, keywords, job_type, contractor_tier, category, subcategory, min_budget, max_budget, hourly_min, hourly_max, skills, client_countries, min_client_spend, max_proposals } = parsed.data;
 
   const { data: filter, error } = await supabase
     .from("job_filters")
     .update({
       name,
+      keywords: parseKeywords(keywords),
+      job_type: job_type || null,
+      contractor_tier: contractor_tier || null,
+      category: category || null,
+      subcategory: subcategory || null,
       min_budget: min_budget ?? null,
       max_budget: max_budget ?? null,
-      min_client_spend: min_client_spend ?? null,
-      max_proposals: max_proposals ?? null,
-      keywords: parseKeywords(keywords),
+      hourly_min: hourly_min ?? null,
+      hourly_max: hourly_max ?? null,
+      skills: skills ? parseKeywords(skills) : [],
       client_countries: client_countries
         ? parseKeywords(client_countries)
         : [],
+      min_client_spend: min_client_spend ?? null,
+      max_proposals: max_proposals ?? null,
     })
     .eq("id", filterId)
     .eq("user_id", user.id) // security check

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUser } from "@/hooks/use-user";
-import { DashboardCronStatus } from "@/components/dashboard-cron-status";
+
 import {
   Filter,
   Briefcase,
@@ -16,7 +16,10 @@ import {
   Target,
   BarChart3,
   Zap,
+  Heart,
+  Brain,
 } from "lucide-react";
+import Link from "next/link";
 
 interface StatusData {
   ok: boolean;
@@ -28,6 +31,15 @@ interface StatusData {
     active_filters: number;
     active_rules: number;
   };
+}
+
+interface MyStats {
+  savedJobs: number;
+  totalAnalyses: number;
+  activeFilters: number;
+  activeRules: number;
+  totalProposals: number;
+  totalNotifications: number;
 }
 
 const defaultStats = [
@@ -108,6 +120,8 @@ export default function DashboardPage() {
   const displayName = user?.email?.split("@")[0] ?? "freelancer";
   const [statusData, setStatusData] = useState<StatusData | null>(null);
   const [statusLoading, setStatusLoading] = useState(true);
+  const [myStats, setMyStats] = useState<MyStats | null>(null);
+  const [myStatsLoading, setMyStatsLoading] = useState(true);
 
   // Fetch status for live stats
   useEffect(() => {
@@ -127,6 +141,14 @@ export default function DashboardPage() {
     fetchStatus();
     const interval = setInterval(fetchStatus, 60000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Fetch user-specific stats
+  useEffect(() => {
+    fetch("/api/analytics")
+      .then((r) => r.json())
+      .then((d) => { setMyStats(d); setMyStatsLoading(false); })
+      .catch(() => setMyStatsLoading(false));
   }, []);
 
   return (
@@ -166,7 +188,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Stats Grid — live data */}
+      {/* Stats Grid — global */}
       <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
         {defaultStats.map((stat) => {
           const Icon = stat.icon;
@@ -203,6 +225,37 @@ export default function DashboardPage() {
             </Card>
           );
         })}
+      </div>
+
+      {/* My Activity — user-specific */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Activity className="size-4 text-muted-foreground" />
+          <h2 className="text-sm font-medium text-muted-foreground font-heading tracking-wide uppercase">My Activity</h2>
+        </div>
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+          {[
+            { label: "Saved Jobs", value: myStats?.savedJobs ?? 0, icon: Heart, color: "text-red-500" },
+            { label: "Analyses", value: myStats?.totalAnalyses ?? 0, icon: Brain, color: "text-accent-purple" },
+            { label: "Filters", value: myStats?.activeFilters ?? 0, icon: Filter, color: "text-accent-blue" },
+            { label: "Rules", value: myStats?.activeRules ?? 0, icon: Bell, color: "text-accent-green" },
+            { label: "Proposals", value: myStats?.totalProposals ?? 0, icon: FileText, color: "text-accent-amber" },
+            { label: "Notifications", value: myStats?.totalNotifications ?? 0, icon: Activity, color: "text-accent-purple" },
+          ].map((s) => {
+            const Icon = s.icon;
+            return (
+              <Card key={s.label} className="border-border/60">
+                <CardContent className="py-3 px-4 flex items-center gap-3">
+                  <Icon className={`size-5 shrink-0 ${s.color}`} />
+                  <div>
+                    <p className="text-lg font-bold">{myStatsLoading ? "..." : s.value}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
 
       {/* Two-column layout: Getting Started + Cron Status */}
@@ -273,8 +326,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Cron Status Widget (replaces Recent Activity) */}
-        <DashboardCronStatus />
+
       </div>
 
       {/* Quick Actions */}

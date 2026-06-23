@@ -1,36 +1,32 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Autocomplete } from "@/components/ui/autocomplete";
+import { FavoriteButton } from "@/components/favorite-button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Briefcase,
   ExternalLink,
-  TrendingUp,
-  Target,
   AlertTriangle,
-  Lightbulb,
-  ChevronDown,
-  ChevronUp,
   RefreshCw,
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  X,
+  Download,
 } from "lucide-react";
-
-type Analysis = {
-  match_score: number;
-  opportunity_score: number;
-  win_probability: number | null;
-  skills_match: Record<string, boolean> | null;
-  budget_fit: string | null;
-  client_analysis: string | null;
-  competition_analysis: string | null;
-  recommendation: string | null;
-  reasoning: string | null;
-  proposal_tips: string[] | null;
-  red_flags: string[] | null;
-  model_used: string;
-};
 
 type JobItem = {
   id: string;
@@ -42,11 +38,32 @@ type JobItem = {
   budget: number | null;
   hourly_min: number | null;
   hourly_max: number | null;
+  job_type: string | null;
+  contractor_tier: string | null;
+  duration_label: string | null;
+  duration_weeks: number | null;
+  weekly_retainer: number | null;
+  hours_per_week: string | null;
+  skills: string[] | null;
   client_country: string | null;
+  client_name: string | null;
+  client_rating: number | null;
+  client_total_assignments: number | null;
+  client_total_hires: number | null;
+  client_total_spend: number | null;
+  client_member_since: string | null;
+  client_industry: string | null;
   proposals_count: number | null;
+  total_invited: number | null;
+  total_hired: number | null;
+  payment_verified: boolean | null;
+  category: string | null;
   created_at: string;
-  job_analyses: Analysis[];
-  job_scores: Array<{ match_score: number; opportunity_score: number }>;
+  job_analyses: Array<{
+    match_score: number;
+    opportunity_score: number;
+    model_used: string;
+  }>;
 };
 
 export default function JobsPage() {
@@ -56,21 +73,95 @@ export default function JobsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const [sort, setSort] = useState<"newest" | "score">("newest");
-  const [scoreMin, setScoreMin] = useState(0);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [jobTypeFilter, setJobTypeFilter] = useState("");
+  const [tierFilter, setTierFilter] = useState("");
+  const [budgetMin, setBudgetMin] = useState("");
+  const [budgetMax, setBudgetMax] = useState("");
+  const [hourlyMin, setHourlyMin] = useState("");
+  const [hourlyMax, setHourlyMax] = useState("");
+  const [skillFilter, setSkillFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [subcategoryFilter, setSubcategoryFilter] = useState("");
+  const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
+  const [newJobsCount, setNewJobsCount] = useState(0);
+  const prevTotalRef = useRef(0);
+  const autoRefreshRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    autoRefreshRef.current = setInterval(() => {
+      fetch(`/api/jobs?limit=1`)
+        .then((r) => r.json())
+        .then((data) => {
+          const currentTotal = data.pagination?.total ?? 0;
+          if (prevTotalRef.current > 0 && currentTotal > prevTotalRef.current) {
+            setNewJobsCount((c) => c + (currentTotal - prevTotalRef.current));
+          }
+          prevTotalRef.current = currentTotal;
+        })
+        .catch(() => {});
+    }, 30000);
+    return () => { if (autoRefreshRef.current) clearInterval(autoRefreshRef.current); };
+  }, []);
+
+  // Load active saved filters on mount and apply them as defaults
+  useEffect(() => {
+    supabase
+      .from("job_filters")
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .then(({ data: filters, error }) => {
+        if (error || !filters || filters.length === 0) {
+          setInitialFiltersLoaded(true);
+          return;
+        }
+        const f = filters[0];
+        if (f.keywords?.length) setSearchQuery(f.keywords.join(", "));
+        if (f.job_type) setJobTypeFilter(f.job_type);
+        if (f.contractor_tier) setTierFilter(f.contractor_tier);
+        if (f.min_budget != null) setBudgetMin(String(f.min_budget));
+        if (f.max_budget != null) setBudgetMax(String(f.max_budget));
+        if (f.hourly_min != null) setHourlyMin(String(f.hourly_min));
+        if (f.hourly_max != null) setHourlyMax(String(f.hourly_max));
+        if (f.skills?.length) setSkillFilter(f.skills.join(", "));
+        if (f.category) setCategoryFilter(f.category);
+        if (f.subcategory) setSubcategoryFilter(f.subcategory);
+        setInitialFiltersLoaded(true);
+      });
+  }, []);
+
+  function buildSearchParams(p: number): string {
+    const params = new URLSearchParams();
+    params.set("page", String(p));
+    params.set("limit", "20");
+    if (searchQuery.trim()) params.set("q", searchQuery.trim());
+    if (jobTypeFilter) params.set("job_type", jobTypeFilter);
+    if (tierFilter) params.set("contractor_tier", tierFilter);
+    if (budgetMin) params.set("budget_min", budgetMin);
+    if (budgetMax) params.set("budget_max", budgetMax);
+    if (hourlyMin) params.set("hourly_min", hourlyMin);
+    if (hourlyMax) params.set("hourly_max", hourlyMax);
+    if (skillFilter.trim()) params.set("skill", skillFilter.trim());
+    if (categoryFilter) params.set("category", categoryFilter);
+    if (subcategoryFilter) params.set("subcategory", subcategoryFilter);
+    return params.toString();
+  }
 
   const fetchJobs = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ page: String(page), limit: "20", sort });
-      if (scoreMin > 0) params.set("score_min", String(scoreMin));
-
-      const res = await fetch(`/api/jobs?${params}`);
+      const qs = buildSearchParams(page);
+      const res = await fetch(`/api/jobs?${qs}`);
       if (!res.ok) {
         if (res.status === 401) throw new Error("Not logged in");
-        throw new Error(`HTTP ${res.status}`);
+        let detail = `HTTP ${res.status}`;
+        try { const body = await res.json(); if (body?.error) detail += `: ${body.error}`; } catch {}
+        throw new Error(detail);
       }
       const data = await res.json();
       setJobs(data.jobs || []);
@@ -81,279 +172,313 @@ export default function JobsPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, sort, scoreMin]);
+  }, [page, searchQuery, jobTypeFilter, tierFilter, budgetMin, budgetMax, hourlyMin, hourlyMax, skillFilter, categoryFilter, subcategoryFilter]);
 
-  useEffect(() => { fetchJobs(); }, [fetchJobs]);
+  useEffect(() => { setPage(1); }, [searchQuery, jobTypeFilter, tierFilter, budgetMin, budgetMax, hourlyMin, hourlyMax, skillFilter, categoryFilter, subcategoryFilter]);
 
-  function scoreColor(score: number): string {
-    if (score >= 80) return "text-green-500";
-    if (score >= 60) return "text-yellow-500";
-    return "text-red-500";
-  }
-
-  function scoreBg(score: number): string {
-    if (score >= 80) return "bg-green-500/10 border-green-500/30";
-    if (score >= 60) return "bg-yellow-500/10 border-yellow-500/30";
-    return "bg-red-500/10 border-red-500/30";
-  }
+  useEffect(() => { if (initialFiltersLoaded) fetchJobs(); }, [fetchJobs, initialFiltersLoaded]);
 
   function daysAgo(dateStr: string | null): string {
     if (!dateStr) return "";
     const diff = Date.now() - new Date(dateStr).getTime();
-    const days = Math.floor(diff / 86400000);
-    if (days === 0) return "Today";
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
     if (days === 1) return "Yesterday";
     return `${days}d ago`;
   }
+
+  function clearFilters() {
+    setSearchQuery("");
+    setJobTypeFilter("");
+    setTierFilter("");
+    setBudgetMin("");
+    setBudgetMax("");
+    setHourlyMin("");
+    setHourlyMax("");
+    setSkillFilter("");
+    setCategoryFilter("");
+    setSubcategoryFilter("");
+  }
+
+  function downloadCSV() {
+    const headers = ["Title", "Job Type", "Experience", "Budget", "Workload", "Duration", "Skills", "Client Country", "Client Rating", "Proposals", "Payment Verified", "Posted", "URL"];
+    const rows = jobs.map((j) => [
+      `"${(j.title || "").replace(/"/g, '""')}"`,
+      j.job_type || "",
+      j.contractor_tier || "",
+      j.budget ? `$${j.budget}` : j.hourly_min ? `$${j.hourly_min}-${j.hourly_max}/hr` : "",
+      j.hours_per_week || "",
+      j.duration_label || "",
+      `"${(j.skills || []).join(", ")}"`,
+      `"${j.client_country || ""}"`,
+      j.client_rating?.toString() || "",
+      j.proposals_count?.toString() || "",
+      j.payment_verified ? "Yes" : "No",
+      j.posted_at ? new Date(j.posted_at).toLocaleDateString() : "",
+      j.url || "",
+    ]);
+    const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `upwork-jobs-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  const hasActiveFilters = searchQuery || jobTypeFilter || tierFilter || budgetMin || budgetMax || hourlyMin || hourlyMax || skillFilter || categoryFilter || subcategoryFilter;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Jobs</h1>
-          <p className="text-muted-foreground mt-1">AI-scored job opportunities from Upwork</p>
+          <p className="text-muted-foreground mt-1">
+            {hasActiveFilters ? "Filtered" : "Latest"} jobs from Upwork
+          </p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchJobs} disabled={loading}>
-          <RefreshCw className={"size-4 mr-2" + (loading ? " animate-spin" : "")} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">{total} job{total !== 1 ? "s" : ""}</span>
+          {newJobsCount > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => { setNewJobsCount(0); fetchJobs(); }}
+            >
+              {newJobsCount} new — Load
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={downloadCSV} disabled={jobs.length === 0}>
+            <Download className="size-4 mr-2" />
+            CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchJobs} disabled={loading}>
+            <RefreshCw className={"size-4 mr-2" + (loading ? " animate-spin" : "")} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {/* Filters & Sort Bar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Sort:</span>
-          {(["newest", "score"] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => { setSort(s); setPage(1); }}
-              className={
-                "text-sm px-3 py-1.5 rounded-md border transition-colors " +
-                (sort === s
-                  ? "bg-accent-blue/10 border-accent-blue/40 text-accent-blue"
-                  : "border-border/60 text-muted-foreground hover:bg-muted/50")
-              }
-            >
-              {s === "newest" ? "Newest" : "Best Match"}
-            </button>
-          ))}
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border/60 bg-muted/20 p-4">
+        <div className="flex-1 min-w-[200px]">
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Search</label>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <Input
+              placeholder="Title or keyword..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Min score:</span>
-          {[0, 50, 70, 90].map((s) => (
-            <button
-              key={s}
-              onClick={() => { setScoreMin(s); setPage(1); }}
-              className={
-                "text-sm px-2.5 py-1.5 rounded-md border transition-colors " +
-                (scoreMin === s
-                  ? "bg-accent-purple/10 border-accent-purple/40 text-accent-purple"
-                  : "border-border/60 text-muted-foreground hover:bg-muted/50")
-              }
-            >
-              {s === 0 ? "All" : `${s}+`}
-            </button>
-          ))}
+        <div className="w-[140px]">
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Job Type</label>
+          <Select value={jobTypeFilter || null} onValueChange={(v) => setJobTypeFilter(v ?? "")}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All types</SelectItem>
+              <SelectItem value="HOURLY">Hourly</SelectItem>
+              <SelectItem value="FIXED_PRICE">Fixed Price</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <span className="text-xs text-muted-foreground ml-auto">{total} job{total !== 1 ? "s" : ""} found</span>
+        <div className="w-[150px]">
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Experience</label>
+          <Select value={tierFilter || null} onValueChange={(v) => setTierFilter(v ?? "")}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue placeholder="Any level" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Any level</SelectItem>
+              <SelectItem value="EntryLevel">Entry</SelectItem>
+              <SelectItem value="IntermediateLevel">Intermediate</SelectItem>
+              <SelectItem value="ExpertLevel">Expert</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-[130px]">
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Budget Min</label>
+          <Input
+            type="number"
+            placeholder="$0"
+            value={budgetMin}
+            onChange={(e) => setBudgetMin(e.target.value)}
+            className="h-9 text-sm"
+          />
+        </div>
+        <div className="w-[130px]">
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Budget Max</label>
+          <Input
+            type="number"
+            placeholder="$9999"
+            value={budgetMax}
+            onChange={(e) => setBudgetMax(e.target.value)}
+            className="h-9 text-sm"
+          />
+        </div>
+        <div className="w-[180px]">
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">Skill</label>
+          <Autocomplete
+            placeholder="e.g. React"
+            value={skillFilter}
+            onChange={setSkillFilter}
+            type="skills"
+          />
+        </div>
+        {hasActiveFilters && (
+          <div className="flex items-end">
+            <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 text-xs">
+              <X className="size-3 mr-1" /> Clear filters
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Error State */}
       {error && (
-        <Card className="border-red-500/30 bg-red-500/5">
-          <CardContent className="py-6 text-center">
-            <AlertTriangle className="size-8 mx-auto mb-2 text-red-500" />
-            <p className="text-red-500 font-medium">{error}</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={fetchJobs}>Retry</Button>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-6 text-center">
+          <AlertTriangle className="size-6 mx-auto mb-2 text-red-500" />
+          <p className="text-red-500 font-medium text-sm">{error}</p>
+          <Button variant="outline" size="sm" className="mt-3" onClick={fetchJobs}>Retry</Button>
+        </div>
       )}
 
-      {/* Loading Skeleton */}
       {loading && !error && (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="py-5">
-                <Skeleton className="h-5 w-3/4 mb-3" />
-                <Skeleton className="h-4 w-1/4 mb-2" />
-                <Skeleton className="h-3 w-1/2" />
-              </CardContent>
-            </Card>
+        <div className="space-y-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-14 w-full" />
           ))}
         </div>
       )}
 
-      {/* Empty State */}
       {!loading && !error && jobs.length === 0 && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Briefcase className="size-10 mx-auto mb-3 text-muted-foreground" />
-            <h3 className="font-semibold text-lg mb-1">No jobs found</h3>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              {scoreMin > 0
-                ? `No jobs with match score >= ${scoreMin}. Try lowering the minimum score.`
-                : "Jobs will appear here once the extension captures them and AI analysis completes."}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-border/60 p-12 text-center">
+          <p className="text-muted-foreground">
+            {hasActiveFilters
+              ? "No jobs match your filters. Try different keywords."
+              : "No jobs yet. The system fetches jobs every 5 minutes — check back soon."}
+          </p>
+        </div>
       )}
 
-      {/* Job List */}
       {!loading && !error && jobs.length > 0 && (
-        <div className="space-y-3">
-          {jobs.map((job) => {
-            const a = job.job_analyses?.[0];
-            const isExpanded = expandedId === job.id;
-            return (
-              <Card key={job.id} className={"transition-all duration-200 hover:shadow-sm" + (isExpanded ? " ring-1 ring-accent-blue/30" : "")}>
-                <CardContent className="py-4">
-                  {/* Header Row */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-heading font-semibold text-base truncate">{job.title}</h3>
-                        {job.url && (
-                          <a href={job.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-muted-foreground hover:text-accent-blue transition-colors">
-                            <ExternalLink className="size-3.5" />
-                          </a>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                        {job.posted_at && <span>{daysAgo(job.posted_at)}</span>}
-                        {job.client_country && <span>{job.client_country}</span>}
-                        {job.budget != null && <span className="font-medium">${job.budget}</span>}
-                        {job.hourly_min != null && <span className="font-medium">${job.hourly_min}–${job.hourly_max}/hr</span>}
-                        {job.proposals_count != null && <span>{job.proposals_count} proposals</span>}
-                      </div>
-                    </div>
-                    {a && (
-                      <div className={"shrink-0 flex flex-col items-center rounded-lg border px-3 py-1.5 " + scoreBg(a.match_score)}>
-                        <span className={"text-lg font-bold leading-tight " + scoreColor(a.match_score)}>{a.match_score}</span>
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Match</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Expand/Collapse Toggle */}
-                  <button
-                    onClick={() => setExpandedId(isExpanded ? null : job.id)}
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary mt-3 transition-colors"
-                  >
-                    {isExpanded ? <><ChevronUp className="size-3.5" /> Show less</> : <><ChevronDown className="size-3.5" /> Show AI analysis</>}
-                  </button>
-
-                  {/* Expanded Analysis */}
-                  {isExpanded && a && (
-                    <div className="mt-4 space-y-4 border-t pt-4">
-                      {/* Score Grid */}
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
-                          <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                            <Target className="size-4" />
-                            <span className="text-[10px] uppercase tracking-wider font-semibold">Match Score</span>
-                          </div>
-                          <span className={"text-xl font-bold " + scoreColor(a.match_score)}>{a.match_score}</span>
+        <>
+          <div className="overflow-x-auto rounded-lg border border-border/60">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/60 bg-muted/30">
+                  <th className="text-left font-semibold text-muted-foreground px-4 py-3 w-[30%]">Title</th>
+                  <th className="w-8"></th>
+                  <th className="text-left font-semibold text-muted-foreground px-4 py-3">Type</th>
+                  <th className="text-left font-semibold text-muted-foreground px-4 py-3">Experience</th>
+                  <th className="text-right font-semibold text-muted-foreground px-4 py-3">Budget</th>
+                  <th className="text-left font-semibold text-muted-foreground px-4 py-3">Duration</th>
+                  <th className="text-right font-semibold text-muted-foreground px-4 py-3">Posted</th>
+                  <th className="text-center font-semibold text-muted-foreground px-4 py-3">AI</th>
+                  <th className="text-right px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {jobs.map((job) => {
+                  const a = job.job_analyses?.[0];
+                  return (
+                    <tr key={job.id} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3">
+                        <FavoriteButton jobId={job.id} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <Link href={`/jobs/${job.id}`} className="font-medium text-foreground hover:text-accent-blue transition-colors truncate block max-w-xs">
+                            {job.title}
+                          </Link>
+                          {job.url && (
+                            <a href={job.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-muted-foreground hover:text-accent-blue transition-colors">
+                              <ExternalLink className="size-3.5" />
+                            </a>
+                          )}
                         </div>
-                        <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
-                          <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                            <TrendingUp className="size-4" />
-                            <span className="text-[10px] uppercase tracking-wider font-semibold">Opportunity</span>
-                          </div>
-                          <span className={"text-xl font-bold " + scoreColor(a.opportunity_score)}>{a.opportunity_score}</span>
-                        </div>
-                        {a.win_probability != null && (
-                          <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
-                            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                              <Briefcase className="size-4" />
-                              <span className="text-[10px] uppercase tracking-wider font-semibold">Win Probability</span>
-                            </div>
-                            <span className={"text-xl font-bold " + scoreColor(a.win_probability)}>{a.win_probability}%</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Skills Match */}
-                      {a.skills_match && (
-                        <div>
-                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Skills Match</h4>
-                          <div className="flex flex-wrap gap-1.5">
-                            {Object.entries(a.skills_match).map(([skill, matched]) => (
-                              <Badge key={skill} variant={matched ? "default" : "secondary"} className={"text-xs" + (matched ? " bg-green-500/15 text-green-600 hover:bg-green-500/20" : "")}>
-                                {skill}
+                        {job.skills && job.skills.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {job.skills.slice(0, 3).map((s) => (
+                              <Badge key={s} variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                                {s}
                               </Badge>
                             ))}
+                            {job.skills.length > 3 && (
+                              <span className="text-[10px] text-muted-foreground">+{job.skills.length - 3}</span>
+                            )}
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                          {job.job_type === "HOURLY" ? "Hourly" : job.job_type === "FIXED_PRICE" ? "Fixed" : "—"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                        {job.contractor_tier ? job.contractor_tier.replace(/([A-Z])/g, " $1").trim() : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium tabular-nums whitespace-nowrap">
+                        {job.budget != null
+                          ? `$${job.budget}`
+                          : job.hourly_min != null
+                            ? `$${job.hourly_min}–${job.hourly_max}/hr`
+                            : "—"
+                        }
+                      </td>
+                      
+                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                        {job.duration_label || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right text-muted-foreground whitespace-nowrap text-xs">{daysAgo(job.posted_at)}</td>
+                      <td className="px-4 py-3 text-center">
+                        {a ? (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {a.match_score}
+                          </Badge>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/jobs/${job.id}`}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-accent-blue hover:underline"
+                        >
+                          {a ? "Details" : <><Sparkles className="size-3" /> Analyze</>}
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-                      {/* Recommendation & Reasoning */}
-                      {a.recommendation && (
-                        <div>
-                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Recommendation</h4>
-                          <p className="text-sm">{a.recommendation}</p>
-                        </div>
-                      )}
-                      {a.reasoning && (
-                        <div>
-                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Reasoning</h4>
-                          <p className="text-sm text-muted-foreground">{a.reasoning}</p>
-                        </div>
-                      )}
-
-                      {/* Proposal Tips */}
-                      {a.proposal_tips && a.proposal_tips.length > 0 && (
-                        <div>
-                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                            <Lightbulb className="size-3.5 text-yellow-500" />
-                            Proposal Tips
-                          </h4>
-                          <ul className="space-y-1">
-                            {a.proposal_tips.map((tip, i) => (
-                              <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                                <span className="text-yellow-500 mt-0.5">&bull;</span>
-                                {tip}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {/* Red Flags */}
-                      {a.red_flags && a.red_flags.length > 0 && (
-                        <div>
-                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                            <AlertTriangle className="size-3.5 text-red-500" />
-                            Red Flags
-                          </h4>
-                          <ul className="space-y-1">
-                            {a.red_flags.map((flag, i) => (
-                              <li key={i} className="text-sm text-red-500/80 flex items-start gap-2">
-                                <span className="text-red-500 mt-0.5">&bull;</span>
-                                {flag}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      <div className="text-[10px] text-muted-foreground">Analyzed via {a.model_used || "GroqCloud AI"}</div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 pt-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</Button>
-          <span className="text-sm text-muted-foreground px-3">Page {page} of {totalPages}</span>
-          <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
-        </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-4 pt-2">
+              <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                <ChevronLeft className="size-4 mr-1" /> Previous
+              </Button>
+              <span className="text-sm text-muted-foreground tabular-nums">Page {page} of {totalPages}</span>
+              <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+                Next <ChevronRight className="size-4 ml-1" />
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

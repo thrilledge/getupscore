@@ -8,8 +8,11 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public files (public/*)
-     * - api/webhooks (webhook endpoints that need public access)
+     * - api/webhooks
+     * - api/jobs/cron (authenticated via Bearer token)
+     * - api/extension/* (extension API routes authenticated via Bearer token)
+     * - api/notifications/send (authenticated via Bearer token)
      */
-    "/((?!_next/static|_next/image|favicon.ico|public|api/webhooks).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public|api/webhooks|api/jobs/cron|api/extension/|api/notifications/send|api/proposals/generate).*)",
   ],
 };

@@ -1,4 +1,3 @@
-/* ─── Base ─── */
 *, *::before, *::after {
   margin: 0;
   padding: 0;
@@ -15,8 +14,6 @@
   --text-muted: #6b6b80;
   --accent-blue: #3b82f6;
   --accent-green: #22c55e;
-  --accent-purple: #8b5cf6;
-  --accent-amber: #f59e0b;
   --radius: 10px;
   --radius-sm: 6px;
 }
@@ -35,7 +32,6 @@ body {
   padding: 32px 20px 64px;
 }
 
-/* ─── Header ─── */
 .header {
   display: flex;
   align-items: center;
@@ -43,10 +39,7 @@ body {
   margin-bottom: 28px;
 }
 
-.header h1 {
-  font-size: 22px;
-  font-weight: 700;
-}
+.header h1 { font-size: 22px; font-weight: 700; }
 
 .subtitle {
   color: var(--text-muted);
@@ -54,7 +47,6 @@ body {
   margin-top: 2px;
 }
 
-/* ─── Cards ─── */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -75,7 +67,6 @@ body {
   margin-bottom: 16px;
 }
 
-/* ─── Fields ─── */
 .field {
   margin-bottom: 14px;
 }
@@ -90,8 +81,7 @@ body {
   margin-bottom: 6px;
 }
 
-.field input,
-.field select {
+.field input {
   width: 100%;
   padding: 8px 12px;
   background: var(--bg);
@@ -103,29 +93,16 @@ body {
   transition: border-color 0.15s;
 }
 
-.field input:focus,
-.field select:focus {
-  border-color: var(--accent-blue);
-}
+.field input:focus { border-color: var(--accent-blue); }
 
-.field input::placeholder {
-  color: var(--text-muted);
-}
-
-.field-hint {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 4px;
-}
+.field input::placeholder { color: var(--text-muted); }
 
 .token-input {
   display: flex;
   gap: 6px;
 }
 
-.token-input input {
-  flex: 1;
-}
+.token-input input { flex: 1; }
 
 .btn-icon {
   background: var(--surface);
@@ -137,12 +114,8 @@ body {
   transition: all 0.15s;
 }
 
-.btn-icon:hover {
-  color: var(--text);
-  background: var(--surface-hover);
-}
+.btn-icon:hover { color: var(--text); background: var(--surface-hover); }
 
-/* ─── Buttons ─── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -157,29 +130,14 @@ body {
   margin-right: 8px;
 }
 
-.btn:active {
-  transform: scale(0.98);
-}
+.btn:active { transform: scale(0.98); }
 
-.btn-primary {
-  background: var(--accent-blue);
-  color: white;
-}
+.btn-primary { background: var(--accent-blue); color: white; }
+.btn-primary:hover { background: #2563eb; }
 
-.btn-primary:hover {
-  background: #2563eb;
-}
+.btn-success { background: var(--accent-green); color: black; }
+.btn-success:hover { background: #16a34a; }
 
-.btn-success {
-  background: var(--accent-green);
-  color: black;
-}
-
-.btn-success:hover {
-  background: #16a34a;
-}
-
-/* ─── Connection Status ─── */
 .connection-status {
   display: flex;
   align-items: center;
@@ -196,78 +154,9 @@ body {
   flex-shrink: 0;
 }
 
-.dot.connected {
-  background: var(--accent-green);
-  box-shadow: 0 0 6px var(--accent-green);
-}
+.dot.connected { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+.dot.disconnected { background: #f59e0b; }
+.dot.error { background: #ef4444; }
+.dot.idle { background: var(--text-muted); }
 
-.dot.disconnected {
-  background: var(--accent-amber);
-}
-
-.dot.error {
-  background: #ef4444;
-}
-
-.dot.idle {
-  background: var(--text-muted);
-}
-
-/* ─── Status Indicator ─── */
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--bg);
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-/* ─── Filters List ─── */
-#filtersList {
-  margin-top: 8px;
-}
-
-.filter-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--bg);
-  border-radius: var(--radius-sm);
-  margin-bottom: 6px;
-  font-size: 13px;
-}
-
-.filter-name {
-  font-weight: 500;
-}
-
-.filter-keywords {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.filter-badge {
-  font-size: 10px;
-  padding: 2px 6px;
-  background: var(--accent-blue);
-  color: white;
-  border-radius: 10px;
-}
-
-.empty-filters {
-  text-align: center;
-  padding: 20px;
-  color: var(--text-muted);
-  font-size: 13px;
-  background: var(--bg);
-  border-radius: var(--radius-sm);
-}
-
-/* ─── About ─── */
-.about {
-  opacity: 0.7;
-}
+.about { opacity: 0.7; }

@@ -40,6 +40,10 @@ import {
   Globe,
   DollarSign,
   Users,
+  Clock,
+  Briefcase,
+  Wrench,
+  LayoutGrid,
   Loader2,
   Filter,
 } from "lucide-react";
@@ -84,7 +88,9 @@ export function FilterCard({ filter }: FilterCardProps) {
   }
 
   const hasBudget = filter.min_budget != null || filter.max_budget != null;
+  const hasHourly = filter.hourly_min != null || filter.hourly_max != null;
   const hasCountries = filter.client_countries.length > 0;
+  const hasSkills = filter.skills.length > 0;
 
   return (
     <>
@@ -206,6 +212,24 @@ export function FilterCard({ filter }: FilterCardProps) {
 
           {/* Details */}
           <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+            {filter.job_type && (
+              <span className="flex items-center gap-1">
+                <Briefcase className="size-3" />
+                {filter.job_type === "HOURLY" ? "Hourly" : "Fixed"}
+              </span>
+            )}
+            {filter.contractor_tier && (
+              <span className="flex items-center gap-1">
+                {filter.contractor_tier.replace(/([A-Z])/g, " $1").trim()}
+              </span>
+            )}
+            {filter.category && (
+              <span className="flex items-center gap-1">
+                <LayoutGrid className="size-3" />
+                {filter.category}
+                {filter.subcategory && ` / ${filter.subcategory}`}
+              </span>
+            )}
             {hasBudget && (
               <span className="flex items-center gap-1">
                 <DollarSign className="size-3" />
@@ -216,6 +240,26 @@ export function FilterCard({ filter }: FilterCardProps) {
                 {filter.max_budget != null
                   ? `$${filter.max_budget}`
                   : "∞"}
+              </span>
+            )}
+            {hasHourly && (
+              <span className="flex items-center gap-1">
+                <Clock className="size-3" />
+                {filter.hourly_min != null
+                  ? `$${filter.hourly_min}`
+                  : "$0"}
+                {" — "}
+                {filter.hourly_max != null
+                  ? `$${filter.hourly_max}`
+                  : "∞"}
+                /hr
+              </span>
+            )}
+            {hasSkills && (
+              <span className="flex items-center gap-1">
+                <Wrench className="size-3" />
+                {filter.skills.slice(0, 3).join(", ")}
+                {filter.skills.length > 3 && ` (+${filter.skills.length - 3})`}
               </span>
             )}
             {hasCountries && (

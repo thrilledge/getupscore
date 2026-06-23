@@ -10,8 +10,11 @@ import {
   generateApiToken,
   revokeApiToken,
   getApiTokens,
+  getPreferences,
+  savePreferences,
   type ApiTokenData,
 } from "@/actions/settings";
+import type { UserPreferenceInsert } from "@/lib/supabase/database-types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,6 +50,11 @@ export default function SettingsPage() {
   const [savingName, setSavingName] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
 
+  // Preferences state
+  const [prefs, setPrefs] = useState<UserPreferenceInsert | null>(null);
+  const [prefsLoading, setPrefsLoading] = useState(true);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+
   // API Token state
   const [tokens, setTokens] = useState<ApiTokenData[]>([]);
   const [tokensLoading, setTokensLoading] = useState(true);
@@ -55,6 +63,34 @@ export default function SettingsPage() {
   const [newTokenName, setNewTokenName] = useState("");
   const [generatingToken, setGeneratingToken] = useState(false);
   const [tokenVisible, setTokenVisible] = useState(false);
+
+  // Load preferences on mount
+  useEffect(() => {
+    if (!loading && user) {
+      loadPrefs();
+    }
+  }, [loading, user]);
+
+  async function loadPrefs() {
+    setPrefsLoading(true);
+    const result = await getPreferences();
+    if (result.success && result.preferences) {
+      setPrefs(result.preferences);
+    }
+    setPrefsLoading(false);
+  }
+
+  const handleSavePrefs = useCallback(async () => {
+    if (!prefs) return;
+    setSavingPrefs(true);
+    const result = await savePreferences(prefs);
+    setSavingPrefs(false);
+    if (result.success) {
+      toast.success("Preferences saved.");
+    } else {
+      toast.error(result.error ?? "Failed to save preferences.");
+    }
+  }, [prefs]);
 
   // Load tokens on mount
   useEffect(() => {
@@ -263,57 +299,101 @@ export default function SettingsPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
-          {/* Theme */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Globe className="size-4 text-muted-foreground" />
-                Theme
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Coming soon — light/dark mode toggle.
-              </p>
+          {prefsLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
             </div>
-            <Button variant="outline" size="sm" disabled>
-              Dark
-            </Button>
-          </div>
-
-          <Separator />
-
-          {/* Timezone */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Clock className="size-4 text-muted-foreground" />
-                Timezone
+          ) : !prefs ? (
+            <p className="text-sm text-muted-foreground">Could not load preferences.</p>
+          ) : (
+            <>
+              {/* Theme (visual only — no dark mode) */}
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Globe className="size-4 text-muted-foreground" />
+                    Theme
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Light mode only (dark mode not available).
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" disabled>
+                  Light
+                </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Coming soon — set your local timezone for scheduling.
-              </p>
-            </div>
-            <Button variant="outline" size="sm" disabled>
-              UTC
-            </Button>
-          </div>
 
-          <Separator />
+              <Separator />
 
-          {/* Notifications */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <Bell className="size-4 text-muted-foreground" />
-                Default Notification Settings
+              {/* Timezone */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="space-y-0.5 shrink-0">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Clock className="size-4 text-muted-foreground" />
+                    Timezone
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Used for scheduling and notifications.
+                  </p>
+                </div>
+                <select
+                  value={prefs.timezone}
+                  onChange={(e) => setPrefs({ ...prefs, timezone: e.target.value })}
+                  className="rounded-lg border border-border/60 bg-background px-3 py-1.5 text-sm max-w-[220px]"
+                >
+                  {["UTC", "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+                    "Europe/London", "Europe/Berlin", "Europe/Paris", "Europe/Moscow",
+                    "Asia/Dubai", "Asia/Kolkata", "Asia/Shanghai", "Asia/Tokyo",
+                    "Australia/Sydney", "Pacific/Auckland",
+                  ].map((tz) => (
+                    <option key={tz} value={tz}>{tz.replace(/_/g, " ")}</option>
+                  ))}
+                </select>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Coming soon — set default alert preferences.
-              </p>
-            </div>
-            <Button variant="outline" size="sm" disabled>
-              Configure
-            </Button>
-          </div>
+
+              <Separator />
+
+              {/* Notification Defaults */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Bell className="size-4 text-muted-foreground" />
+                  Default Notification Settings
+                </div>
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Choose which notifications you receive by default.
+                </p>
+                <div className="space-y-2 pt-1">
+                  {[
+                    { key: "notify_on_match", label: "New job matches" },
+                    { key: "notify_on_proposal_status", label: "Proposal status changes" },
+                    { key: "notify_on_contract_updates", label: "Contract updates" },
+                    { key: "daily_digest", label: "Daily digest email" },
+                  ].map(({ key, label }) => (
+                    <label key={key} className="flex items-center gap-3 cursor-pointer py-1">
+                      <input
+                        type="checkbox"
+                        className="size-3.5 rounded border-border/60 accent-primary"
+                        checked={(prefs as Record<string, unknown>)[key] === true}
+                        onChange={(e) => setPrefs({ ...prefs, [key]: e.target.checked })}
+                      />
+                      <span className="text-sm">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Button onClick={handleSavePrefs} disabled={savingPrefs}>
+                  {savingPrefs ? (
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="size-4 mr-2" />
+                  )}
+                  Save Preferences
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

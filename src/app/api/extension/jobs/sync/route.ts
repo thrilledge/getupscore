@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest } from "@/app/api/extension/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { analyzeJob } from "@/lib/jobs/analyze";
 
 const MAX_JOBS_PER_REQUEST = 20; // Reduced to accommodate analysis data
 
@@ -51,28 +52,49 @@ export async function POST(request: Request) {
           .match(/~([a-f0-9]{16,})/)?.[1] ||
         `ext_${simpleHash(title + (job.url || ""))}`;
 
-      // Map fields to jobs table columns
+      // Map fields to jobs table columns — rich data from DOM extraction
+      const budgetVal = parseBudget(job.budget);
+      let hourlyMin = null;
+      let hourlyMax = null;
+      if (job.budget && typeof job.budget === "string") {
+        const hourlyMatch = job.budget.match(/\$(\d+)\s*[-–]\s*\$(\d+)/);
+        if (hourlyMatch) {
+          hourlyMin = parseFloat(hourlyMatch[1]);
+          hourlyMax = parseFloat(hourlyMatch[2]);
+        }
+      }
+
       const jobRecord: Record<string, unknown> = {
         upwork_job_id: upworkJobId,
         title,
         description: job.description ? String(job.description).slice(0, 10000) : null,
         url: String(job.url || "").slice(0, 1000),
         posted_at: job.posted_at ? new Date(job.posted_at).toISOString() : null,
-        budget: parseBudget(job.budget),
-        hourly_min: null,
-        hourly_max: null,
-        client_country: String(job.country || job.client_country || "").slice(0, 100) || null,
+        budget: budgetVal,
+        hourly_min: hourlyMin,
+        hourly_max: hourlyMax,
+        client_country: String(job.client_country || "").slice(0, 100) || null,
         proposals_count: parseInt(job.proposals_count, 10) || null,
+        // Rich fields from detailed DOM extraction
+        skills: Array.isArray(job.skills) ? job.skills.slice(0, 50) : null,
+        client_rating: parseFloat(job.client_rating) || null,
+        client_name: String(job.client_name || "").slice(0, 200) || null,
+        client_total_spend: parseFloat(job.client_total_spend) || null,
+        client_spend: parseFloat(job.client_total_spend) || null,
+        client_total_hires: parseInt(job.client_total_hires, 10) || null,
+        client_hire_rate: parseInt(job.client_hire_rate_pct || job.client_hire_rate, 10) || null,
+        client_total_assignments: parseInt(job.client_jobs_posted, 10) || null,
+        client_member_since: job.client_member_since ? new Date(job.client_member_since).toISOString() : null,
+        client_industry: String(job.company_industry || job.client_industry || "").slice(0, 200) || null,
+        payment_verified: job.client_payment_verified === true || job.payment_verified === true,
+        job_type: String(job.budget_type || job.job_type || "").slice(0, 50) || null,
+        contractor_tier: String(job.experience_level || "").slice(0, 50) || null,
+        total_invited: parseInt(job.invites_sent, 10) || null,
+        total_hired: parseInt(job.interviewing_count, 10) || null,
+        hours_per_week: String(job.hours_per_week || "").slice(0, 50) || null,
+        category: String(job.category || "").slice(0, 200) || null,
+        source: "extension_dom",
       };
-
-      // Try to parse hourly rate
-      if (job.budget && typeof job.budget === "string") {
-        const hourlyMatch = job.budget.match(/\$(\d+)\s*[-–]\s*\$(\d+)/);
-        if (hourlyMatch) {
-          jobRecord.hourly_min = parseFloat(hourlyMatch[1]);
-          jobRecord.hourly_max = parseFloat(hourlyMatch[2]);
-        }
-      }
 
       // Upsert into jobs table
       const { data: jobData, error: jobError } = await supabase
@@ -90,6 +112,13 @@ export async function POST(request: Request) {
       }
 
       const dbJobId = jobData.id;
+
+      // Run server-side AI analysis using the rich DOM data
+      try {
+        await analyzeJob(supabase, jobRecord, dbJobId, userId);
+      } catch (analyzeErr: any) {
+        console.warn("[Extension Jobs] Analysis error:", analyzeErr.message);
+      }
 
       // If AI analysis is provided, store it in job_analyses
       if (job.analysis && typeof job.analysis === "object") {

@@ -1,145 +1,123 @@
-/**
- * UpScore Extension Side Panel — monitoring dashboard in the Chrome sidebar.
- *
- * Communicates with the background service worker to show:
- *  - Connection status & API health
- *  - Job capture stats & latest jobs
- *  - Active filters
- *  - Server session cookie status
- *  - Monitoring controls (check now, interval info)
- */
-import { getToken } from "../lib/upscore-api.js";
-
-// ─── DOM refs ───
 const $ = (id) => document.getElementById(id);
 
+// ─── Views ───
+const VIEWS = ["dashboard", "savedjobs", "proposal", "clients", "settings"];
+const viewEls = {};
+for (const v of VIEWS) viewEls[v] = $(`view-${v}`);
+
+let currentView = "dashboard";
+let savedJobsCache = [];
+let token = null;
+let apiUrl = null;
+let proposalRules = "";
+
+function showView(name) {
+  currentView = name;
+  for (const v of VIEWS) {
+    viewEls[v].style.display = v === name ? "" : "none";
+  }
+  // Show back button for sub-views
+  const backBtn = $("btnBack");
+  backBtn.style.display = name === "dashboard" || name === "settings" ? "none" : "";
+  // Update title
+  $("appTitle").textContent =
+    name === "dashboard" ? "UpScore" :
+    name === "savedjobs" ? "Saved Jobs" :
+    name === "proposal" ? "Write Proposal" :
+    name === "clients" ? "Client History" :
+    name === "settings" ? "Settings" : "UpScore";
+}
+
+// ─── Status refs ───
 const statusText = $("statusText");
 const statusDot = $("statusDot");
-const lastCheckEl = $("lastCheck");
 
-const statJobs = $("statJobs");
-const statSynced = $("statSynced");
-const statFilters = $("statFilters");
-const statPending = $("statPending");
+// ─── Settings refs ───
+const apiUrlInput = $("apiUrl");
+const apiTokenInput = $("apiToken");
+const btnToggleToken = $("btnToggleToken");
+const btnTestConnection = $("btnTestConnection");
+const btnSave = $("btnSave");
+const connectionStatus = $("connectionStatus");
 
-const displayApiUrl = $("displayApiUrl");
-const displayApiToken = $("displayApiToken");
-const displayGroq = $("displayGroq");
-const displayCookies = $("displayCookies");
-const displayInterval = $("displayInterval");
-const displayLastCheck = $("displayLastCheck");
-const displayFiltersCount = $("displayFiltersCount");
-const displayCookieTime = $("displayCookieTime");
-const displayCookieDomain = $("displayCookieDomain");
-
-const filtersBody = $("filtersBody");
-const filtersCount = $("filtersCount");
-const jobsBody = $("jobsBody");
-const jobsEmpty = $("jobsEmpty");
-const jobsList = $("jobsList");
-const jobsCount = $("jobsCount");
-const monitoringBadge = $("monitoringBadge");
-const cookieBadge = $("cookieBadge");
-const connectionBody = $("connectionBody");
-
-// ─── State ───
-let jobsCache = [];
-let filtersCache = [];
+// ─── API helper ───
+async function apiCall(path, options = {}) {
+  if (!token || !apiUrl) throw new Error("Not connected");
+  const response = await fetch(`${apiUrl}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...options.headers,
+    },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: "HTTP " + response.status }));
+    throw new Error(err.error || "Request failed");
+  }
+  return response.json();
+}
 
 // ─── Init ───
 document.addEventListener("DOMContentLoaded", async () => {
-  // Button handlers
-  $("btnRefresh").addEventListener("click", handleRefresh);
-  $("btnSettings").addEventListener("click", () => chrome.runtime.openOptionsPage());
-  $("btnOpenSettings").addEventListener("click", () => chrome.runtime.openOptionsPage());
-  $("btnOpenOptions").addEventListener("click", () => chrome.runtime.openOptionsPage());
-  $("btnCheckNow").addEventListener("click", handleCheck);
-  $("btnSyncCookies").addEventListener("click", handleSyncCookies);
+  // Load settings from storage
+  const result = await chrome.storage.sync.get(["upscore_api_url", "upscore_api_token", "upscore_proposal_rules"]);
+  apiUrl = result.upscore_api_url || "http://localhost:3000";
+  token = result.upscore_api_token || null;
+  proposalRules = result.upscore_proposal_rules || "";
+  apiUrlInput.value = apiUrl;
+  apiTokenInput.value = token || "";
+  $("proposalRules").value = proposalRules;
+  setConnectionStatus(token ? "connected" : "disconnected", token ? "Configured" : "Not connected");
 
-  // Listen for live updates from background worker
+  // View switching
+  $("btnSettings").addEventListener("click", () => showView("settings"));
+  $("btnBack").addEventListener("click", () => showView("dashboard"));
+
+  // Quick actions
+  $("btnViewSavedJobs").addEventListener("click", () => { showView("savedjobs"); loadSavedJobs(); });
+  $("btnNewProposal").addEventListener("click", () => { showView("proposal"); loadProposalJobs(); });
+  $("btnClientHistory").addEventListener("click", () => { showView("clients"); loadClientHistory(); });
+
+  // Proposal
+  document.querySelectorAll(".source-tab").forEach((tab) => {
+    tab.addEventListener("click", () => switchProposalSource(tab.dataset.tab));
+  });
+  $("btnExtractFromTab").addEventListener("click", extractJobFromCurrentTab);
+  $("btnFetchJobUrl").addEventListener("click", fetchJobFromUrl);
+  $("proposalJobSelect").addEventListener("change", () => onProposalJobSelected());
+  $("btnGenerateProposal").addEventListener("click", generateProposal);
+  $("btnCopyProposal").addEventListener("click", copyProposal);
+  $("btnNewProposalAgain").addEventListener("click", resetProposal);
+
+  // Settings
+  btnToggleToken.addEventListener("click", () => {
+    apiTokenInput.type = apiTokenInput.type === "password" ? "text" : "password";
+  });
+  btnTestConnection.addEventListener("click", testConnection);
+  btnSave.addEventListener("click", saveSettings);
+  $("btnSaveRules").addEventListener("click", saveProposalRules);
+
+  // Listen for background state
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === "JOBS_UPDATED") {
-      jobsCache = msg.jobs || [];
-      filtersCache = msg.filters || [];
-      renderFilters();
-      renderJobs();
-      updateStats();
-    }
     if (msg.type === "STATUS_UPDATE") {
       updateConnectionStatus(msg.connected, msg.message);
-      updateLastCheck(msg.lastCheckAt);
-      if (msg.lastError) {
-        showError(msg.lastError);
-      }
-      // Update cookie badge from real-time status
-      if (msg.upworkCookies !== undefined) {
-        if (msg.upworkCookies) {
-          cookieBadge.textContent = "Captured";
-          cookieBadge.className = "badge active";
-        }
-        displayCookies.textContent = msg.upworkCookies ? "✅ Captured" : "◻️ Not synced";
-      }
     }
   });
 
-  // Request current state from background
-  chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
-    if (!response) return;
-    jobsCache = response.jobs || [];
-    filtersCache = response.filters || [];
-    updateAll(response);
-  });
+  // Initial load
+  requestState();
+  loadAnalytics();
+  setInterval(loadAnalytics, 30000);
 });
 
-// ─── Full State Update ───
-function updateAll(state) {
-  renderFilters();
-  renderJobs();
-  updateStats();
-  updateConnectionStatus(state.connected, state.statusMessage);
-  updateLastCheck(state.lastCheckAt);
-  updateMonitoringSection(state);
-  updateConnectionSection(state);
-  updateCookieSection(state);
+function requestState() {
+  chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
+    if (!response) return;
+    updateConnectionStatus(response.connected, response.statusMessage);
+  });
 }
 
-// ─── Connection Section ───
-function updateConnectionSection(state) {
-  displayApiUrl.textContent = state.apiUrl || "Not set";
-  displayApiToken.textContent = state.apiToken ? "••••••••" : "Not set";
-  displayGroq.textContent = state.groqConfigured ? "✅ Keys configured" : "❌ Not configured";
-  displayCookies.textContent = state.upworkCookies ? "✅ Captured" : "◻️ Not synced";
-}
-
-// ─── Monitoring Section ───
-function updateMonitoringSection(state) {
-  displayInterval.textContent = `${state.checkInterval || 15} min`;
-  displayLastCheck.textContent = state.lastCheckAt
-    ? formatTimestamp(state.lastCheckAt)
-    : "—";
-  displayFiltersCount.textContent = state.filters?.length || 0;
-
-  const isActive = state.connected && state.filters?.length > 0;
-  monitoringBadge.textContent = isActive ? "Active" : "Idle";
-  monitoringBadge.className = "badge " + (isActive ? "active" : "inactive");
-}
-
-// ─── Cookie Section ───
-function updateCookieSection(state) {
-  if (state.upworkCookies) {
-    cookieBadge.textContent = "Captured";
-    cookieBadge.className = "badge active";
-    displayCookieTime.textContent = "Available (auto-synced)";
-    displayCookieDomain.textContent = "www.upwork.com";
-  } else {
-    cookieBadge.textContent = "Waiting";
-    cookieBadge.className = "badge inactive";
-    displayCookieTime.textContent = "Not captured yet";
-    displayCookieDomain.textContent = "—";
-  }
-}
-
-// ─── Status Bar ───
 function updateConnectionStatus(connected, message) {
   statusDot.className = "dot";
   if (connected === true) {
@@ -154,216 +132,515 @@ function updateConnectionStatus(connected, message) {
   }
 }
 
-function updateLastCheck(timestamp) {
-  if (!timestamp) {
-    lastCheckEl.textContent = "";
-    return;
+// ══════════════════════════════════════════════════════════
+// ═══  ANALYTICS  ═══
+// ══════════════════════════════════════════════════════════
+async function loadAnalytics() {
+  if (!token) return;
+  try {
+    const data = await apiCall("/api/extension/analytics");
+    $("statSavedJobs").textContent = data.savedJobs ?? 0;
+    $("statAnalyses").textContent = data.totalAnalyses ?? 0;
+    $("statProposals").textContent = data.totalProposals ?? 0;
+    $("statFilters").textContent = data.activeFilters ?? 0;
+  } catch {
+    // Not connected yet
   }
-  const diff = Math.floor((Date.now() - timestamp) / 1000);
-  let text;
-  if (diff < 60) text = `${diff}s ago`;
-  else if (diff < 3600) text = `${Math.floor(diff / 60)}m ago`;
-  else text = `${Math.floor(diff / 3600)}h ago`;
-  lastCheckEl.textContent = `Last: ${text}`;
 }
 
-function showError(errorMsg) {
-  statusText.textContent = `⚠ ${errorMsg}`;
-  statusText.style.color = "var(--accent-amber)";
-}
+// ══════════════════════════════════════════════════════════
+// ═══  SAVED JOBS  ═══
+// ══════════════════════════════════════════════════════════
+async function loadSavedJobs() {
+  if (!token) return;
+  const list = $("jobsList");
+  const loading = $("jobsLoading");
+  const empty = $("jobsEmpty");
 
-// ─── Stats ───
-function updateStats() {
-  const synced = jobsCache.filter((j) => j.synced).length;
-  const pending = jobsCache.filter((j) => !j.synced).length;
-  statJobs.textContent = jobsCache.length;
-  statSynced.textContent = synced;
-  statFilters.textContent = filtersCache.length || 0;
-  statPending.textContent = pending;
+  loading.style.display = "";
+  list.innerHTML = "";
+  empty.style.display = "none";
 
-  jobsCount.textContent = jobsCache.length;
-  filtersCount.textContent = filtersCache.length;
-}
+  try {
+    const data = await apiCall("/api/extension/saved-jobs");
+    savedJobsCache = data.jobs || [];
+    $("jobsCount").textContent = savedJobsCache.length;
 
-// ─── Filters List ───
-function renderFilters() {
-  if (!filtersCache || filtersCache.length === 0) {
-    filtersBody.innerHTML = `<div class="empty-state">No filters configured. Create filters in the web app.</div>`;
-    return;
-  }
-
-  filtersBody.innerHTML = filtersCache
-    .map(
-      (f) => `
-      <div class="filter-item">
-        <div>
-          <div class="filter-name">${escapeHtml(f.name)}</div>
-          <div class="filter-keywords">${escapeHtml(f.keywords?.join(", ") || "")}</div>
-        </div>
-        <span class="filter-active">✓ Active</span>
-      </div>
-    `
-    )
-    .join("");
-}
-
-// ─── Jobs List ───
-function renderJobs() {
-  if (jobsCache.length === 0) {
-    jobsEmpty.style.display = "flex";
-    jobsList.innerHTML = "";
-    return;
-  }
-
-  jobsEmpty.style.display = "none";
-
-  // Show latest 20
-  const recent = jobsCache.slice().reverse().slice(0, 20);
-
-  jobsList.innerHTML = recent
-    .map(
-      (job) => `
-      <div class="job-item">
-        <div class="job-title">
-          <span class="job-source ${job.source === "graphql" || job.source === "bg_fetch" ? "graphql" : ""}">${job.source || "capture"}</span>
-          ${escapeHtml(job.title || "Untitled")}
-          <span class="sync-badge ${job.synced ? "synced" : "pending"}"></span>
-        </div>
-        <div class="job-meta">
-          ${job.budget ? `<span class="tag">💰 ${escapeHtml(job.budget)}</span>` : ""}
-          ${job.country ? `<span class="tag">🌍 ${escapeHtml(job.country)}</span>` : ""}
-          ${job.skills?.length ? `<span class="tag">🏷 ${escapeHtml(job.skills.slice(0, 2).join(", "))}</span>` : ""}
-          ${job.proposals_count ? `<span class="tag">📋 ${job.proposals_count} props</span>` : ""}
-          ${job.source === "bg_fetch" || job.source === "bg_fetch_regex" ? `<span class="tag">🤖 Auto</span>` : `<span class="tag">👁 Viewed</span>`}
-        </div>
-      </div>
-    `
-    )
-    .join("");
-}
-
-// ─── Actions ───
-async function handleRefresh() {
-  $("btnRefresh").classList.add("loading");
-  chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
-    if (response) {
-      jobsCache = response.jobs || [];
-      filtersCache = response.filters || [];
-      updateAll(response);
+    if (savedJobsCache.length === 0) {
+      loading.style.display = "none";
+      empty.style.display = "";
+      return;
     }
-    $("btnRefresh").classList.remove("loading");
+
+    loading.style.display = "none";
+    list.innerHTML = savedJobsCache.map(renderJobCard).join("");
+  } catch (err) {
+    loading.textContent = "Failed to load: " + err.message;
+  }
+}
+
+function renderJobCard(job) {
+  const analysis = job.analysis || {};
+  const matchScore = analysis.match_score;
+  const oppScore = analysis.opportunity_score;
+  const scoreClass = matchScore >= 70 ? "high" : matchScore >= 40 ? "mid" : "low";
+
+  return `
+    <div class="job-card" data-job-id="${job.id}">
+      <div class="job-card-header">
+        <div class="job-title">${escapeHtml(job.title || "Untitled")}</div>
+        ${matchScore ? `<div class="score-badge ${scoreClass}">${matchScore}</div>` : ""}
+      </div>
+      <div class="job-card-meta">
+        ${job.client_country ? `<span>${escapeHtml(job.client_country)}</span>` : ""}
+        ${job.budget ? `<span>$${job.budget}</span>` : job.hourly_min ? `<span>$${job.hourly_min}-$${job.hourly_max}/hr</span>` : ""}
+        ${job.job_type ? `<span>${job.job_type}</span>` : ""}
+        ${job.posted_at ? `<span>${timeAgo(job.posted_at)}</span>` : ""}
+      </div>
+      ${analysis.recommendation ? `<div class="job-card-rec">${escapeHtml(analysis.recommendation)}</div>` : ""}
+      <div class="job-card-actions">
+        ${job.url ? `<a href="${job.url}" target="_blank" class="btn-small">View on Upwork</a>` : ""}
+        <button class="btn-small btn-primary" data-proposal-job-id="${job.id}" data-proposal-title="${escapeHtml(job.title || "")}">Write Proposal</button>
+      </div>
+    </div>
+  `;
+}
+
+// Delegate click events for job cards
+document.addEventListener("click", (e) => {
+  const proposalBtn = e.target.closest("[data-proposal-job-id]");
+  if (proposalBtn) {
+    const jobId = proposalBtn.dataset.proposalJobId;
+    const title = proposalBtn.dataset.proposalTitle;
+    showView("proposal");
+    loadProposalJobs(jobId);
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+// ═══  PROPOSAL  ═══
+// ══════════════════════════════════════════════════════════
+
+let pendingJobDetails = null;
+let currentSource = "tab";
+
+function switchProposalSource(source) {
+  currentSource = source;
+  document.querySelectorAll(".source-tab").forEach((t) => {
+    t.classList.toggle("active", t.dataset.tab === source);
+  });
+  $("proposalSourceTab").style.display = source === "tab" ? "" : "none";
+  $("proposalSourceUrl").style.display = source === "url" ? "" : "none";
+  $("proposalSourceSaved").style.display = source === "saved" ? "" : "none";
+}
+
+async function loadProposalJobs(selectJobId) {
+  if (!token) return;
+
+  // Check if we have a pending job from background (e.g. "Write with AI" button)
+  const pending = await chrome.runtime.sendMessage({ type: "GET_PENDING_JOB_DETAILS" });
+  if (pending?.success && pending?.data) {
+    pendingJobDetails = pending.data;
+    showJobPreview(pendingJobDetails);
+    return;
+  }
+
+  const select = $("proposalJobSelect");
+
+  if (savedJobsCache.length === 0) {
+    try {
+      const data = await apiCall("/api/extension/saved-jobs");
+      savedJobsCache = data.jobs || [];
+    } catch {}
+  }
+
+  select.innerHTML = '<option value="">— Select a saved job —</option>';
+  for (const job of savedJobsCache) {
+    const option = document.createElement("option");
+    option.value = job.id;
+    option.textContent = job.title || "Untitled";
+    select.appendChild(option);
+  }
+
+  if (selectJobId) {
+    select.value = selectJobId;
+    onProposalJobSelected();
+  }
+}
+
+// Fetch job details from Upwork's API via the content script (GraphQL)
+async function fetchJobViaApi(jobUrl) {
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const activeTab = tabs[0];
+  if (!activeTab?.id) throw new Error("No active tab");
+
+  const result = await chrome.tabs.sendMessage(activeTab.id, {
+    type: "FETCH_JOB_FROM_API",
+    jobUrl: jobUrl,
+  });
+  if (!result?.success) throw new Error(result?.error || "Could not fetch job");
+  return result.data;
+}
+
+async function extractJobFromCurrentTab() {
+  const btn = $("btnExtractFromTab");
+  btn.textContent = "Fetching...";
+  btn.disabled = true;
+
+  try {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const activeTab = tabs[0];
+    if (!activeTab?.url) throw new Error("No active tab URL");
+
+    const ciphertextMatch = activeTab.url.match(/~([a-f0-9]{16,})/);
+    if (!ciphertextMatch) throw new Error("Current tab is not an Upwork job page");
+
+    // Step 1: Try DOM extraction (immediate, basic data)
+    const domResult = await chrome.tabs.sendMessage(activeTab.id, {
+      type: "EXTRACT_JOB_FROM_PAGE",
+    });
+    if (domResult?.success && domResult?.data) {
+      pendingJobDetails = domResult.data;
+      showJobPreview(pendingJobDetails);
+      btn.textContent = "Loading API...";
+    }
+
+    // Step 2: Always try API fetch for rich data (overrides DOM if better)
+    try {
+      const apiResult = await chrome.tabs.sendMessage(activeTab.id, {
+        type: "FETCH_JOB_FROM_API",
+        jobUrl: activeTab.url,
+      });
+      if (apiResult?.success && apiResult?.data) {
+        // Merge: use API data as base, fill gaps from DOM
+        const merged = { ...(domResult?.data || {}), ...apiResult.data };
+        pendingJobDetails = merged;
+        showJobPreview(merged);
+      }
+    } catch (apiErr) {
+      console.log("[Sidepanel] API fetch failed (DOM data used):", apiErr.message);
+    }
+
+    btn.textContent = "Extract from Current Tab";
+    btn.disabled = false;
+  } catch (err) {
+    btn.textContent = "Failed: " + err.message;
+    setTimeout(() => { btn.textContent = "Extract from Current Tab"; btn.disabled = false; }, 2000);
+  }
+}
+
+async function fetchJobFromUrl() {
+  const url = $("jobUrlInput").value.trim();
+  if (!url) return;
+
+  const btn = $("btnFetchJobUrl");
+  btn.textContent = "Fetching...";
+  btn.disabled = true;
+
+  try {
+    const ciphertextMatch = url.match(/~([a-f0-9]{16,})/);
+    if (!ciphertextMatch) throw new Error("Invalid job URL — could not find job ciphertext");
+
+    const data = await fetchJobViaApi(url);
+    pendingJobDetails = data;
+    showJobPreview(pendingJobDetails);
+    btn.textContent = "Fetch Job Details";
+    btn.disabled = false;
+  } catch (err) {
+    btn.textContent = "Failed: " + err.message;
+    setTimeout(() => { btn.textContent = "Fetch Job Details"; btn.disabled = false; }, 2000);
+  }
+}
+
+function onProposalJobSelected() {
+  const select = $("proposalJobSelect");
+  const jobId = select.value;
+  if (!jobId) {
+    $("proposalJobPreview").style.display = "none";
+    $("proposalCustomize").style.display = "none";
+    return;
+  }
+
+  const job = savedJobsCache.find((j) => j.id === jobId);
+  if (job) {
+    pendingJobDetails = { jobId: job.id };
+    showJobPreview(job);
+  }
+}
+
+function showJobPreview(job) {
+  const preview = $("jobPreviewContent");
+  const jobTitle = job.title || "Untitled Job";
+  const budget = job.budget || (job.hourly_min ? `$${job.hourly_min}-$${job.hourly_max}/hr` : "");
+  const skills = Array.isArray(job.skills) ? job.skills.join(", ") : "";
+  const country = job.clientCountry || job.client_country || job.country || "";
+  const proposalsCount = job.proposals_count || job.proposalsCount || "";
+  const clientRating = job.client_rating || job.clientRating || "";
+  const clientSpend = job.client_total_spend || job.clientTotalSpend || "";
+  const clientHireRate = job.client_hire_rate_pct || job.client_hire_rate || job.clientHireRate || "";
+  const clientMemberSince = job.client_member_since || "";
+  const paymentVerified = job.client_payment_verified || job.payment_verified || "";
+  const experienceLevel = job.experience_level || "";
+  const budgetType = job.budget_type || "";
+  const connectsRequired = job.connects_required || "";
+
+  preview.innerHTML = `
+    <div class="preview-title">${escapeHtml(jobTitle)}</div>
+    <div class="preview-meta">
+      ${budget ? `${escapeHtml(budget)}` : ""}${budget && country ? " · " : ""}${country ? escapeHtml(country) : ""}
+      ${budgetType ? ` · ${escapeHtml(budgetType)}` : ""}
+      ${experienceLevel ? ` · ${escapeHtml(experienceLevel)}` : ""}
+    </div>
+    ${skills ? `<div class="preview-skills">${escapeHtml(skills)}</div>` : ""}
+    <div class="preview-details" style="font-size:12px;color:#666;margin-top:4px;">
+      ${proposalsCount ? `Proposals: ${proposalsCount} | ` : ""}
+      ${clientRating ? `Rating: ${clientRating} | ` : ""}
+      ${clientSpend ? `Spent: $${clientSpend} | ` : ""}
+      ${clientHireRate ? `Hire Rate: ${clientHireRate}% | ` : ""}
+      ${connectsRequired ? `Connects: ${connectsRequired} | ` : ""}
+      ${paymentVerified ? "✓ Payment Verified" : ""}
+    </div>
+    ${clientMemberSince ? `<div class="preview-member" style="font-size:12px;color:#666;">Client since: ${escapeHtml(clientMemberSince)}</div>` : ""}
+    ${job.description ? `<div class="preview-desc" style="margin-top:8px;">${escapeHtml(job.description.slice(0, 500))}${job.description.length > 500 ? "..." : ""}</div>` : ""}
+    ${job.url ? `<div class="preview-url" style="margin-top:4px;"><a href="${job.url}" target="_blank">View on Upwork →</a></div>` : ""}
+    ${job.client_recent_history?.length ? `<div class="preview-history" style="margin-top:8px;font-size:12px;">
+      <strong>Client's Recent Jobs:</strong>
+      ${job.client_recent_history.slice(0, 3).map(h =>
+        `<div style="margin:2px 0;">• ${escapeHtml(h.title)}${h.rating ? ` (${h.rating}★)` : ""}</div>`
+      ).join("")}
+      ${job.client_recent_history.length > 3 ? `<div>+${job.client_recent_history.length - 3} more</div>` : ""}
+    </div>` : ""}
+  `;
+
+  $("proposalSource").style.display = "none";
+  $("proposalJobPreview").style.display = "";
+  $("proposalCustomize").style.display = "";
+}
+
+async function generateProposal() {
+  if (!pendingJobDetails) return;
+
+  const inlineInstructions = $("proposalInstructions").value.trim();
+  const instructions = [proposalRules, inlineInstructions].filter(Boolean).join("\n\n") || undefined;
+  const loading = $("proposalLoading");
+  const result = $("proposalResult");
+
+  $("proposalSource").style.display = "none";
+  $("proposalJobPreview").style.display = "none";
+  $("proposalCustomize").style.display = "none";
+  loading.style.display = "";
+  result.style.display = "none";
+
+  let body;
+  if (pendingJobDetails.jobId) {
+    body = JSON.stringify({ jobId: pendingJobDetails.jobId, customInstructions: instructions });
+  } else {
+    body = JSON.stringify({ jobDetails: pendingJobDetails, customInstructions: instructions });
+  }
+
+  try {
+    const data = await apiCall("/api/proposals/generate", {
+      method: "POST",
+      body,
+    });
+
+    loading.style.display = "none";
+
+    if (data.ok) {
+      result.style.display = "";
+      $("proposalScore").innerHTML = data.score ? `<span class="score-badge ${data.score >= 70 ? "high" : data.score >= 40 ? "mid" : "low"}">Score: ${data.score}</span>` : "";
+      $("proposalText").textContent = data.proposal;
+    } else {
+      loading.textContent = "Generation failed: " + (data.error || "Unknown error");
+    }
+  } catch (err) {
+    loading.textContent = "Error: " + err.message;
+  }
+}
+
+function copyProposal() {
+  const text = $("proposalText").textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = $("btnCopyProposal");
+    btn.textContent = "Copied!";
+    setTimeout(() => { btn.textContent = "Copy to Clipboard"; }, 2000);
   });
 }
 
-async function handleCheck() {
-  $("btnCheckNow").disabled = true;
-  $("btnCheckNow").innerHTML = '<span class="spinner"></span> Checking...';
+function resetProposal() {
+  pendingJobDetails = null;
+  $("proposalResult").style.display = "none";
+  $("proposalLoading").style.display = "none";
+  $("proposalSource").style.display = "";
+  $("proposalJobPreview").style.display = "none";
+  $("proposalCustomize").style.display = "none";
+  $("proposalInstructions").value = "";
+  $("jobUrlInput").value = "";
+  switchProposalSource("tab");
+}
+
+// ══════════════════════════════════════════════════════════
+// ═══  CLIENT HISTORY  ═══
+// ══════════════════════════════════════════════════════════
+async function loadClientHistory() {
+  if (!token) return;
+  const list = $("clientsList");
+  const loading = $("clientsLoading");
+  const empty = $("clientsEmpty");
+
+  loading.style.display = "";
+  list.innerHTML = "";
+  empty.style.display = "none";
 
   try {
-    chrome.runtime.sendMessage({ type: "FORCE_CHECK" }, () => {
-      if (chrome.runtime.lastError) {
-        statusText.textContent = "Error: " + chrome.runtime.lastError.message;
-      }
-    });
+    let jobs = savedJobsCache;
+    if (jobs.length === 0) {
+      const data = await apiCall("/api/extension/saved-jobs");
+      jobs = data.jobs || [];
+    }
 
-    // Refresh state after a delay
-    setTimeout(() => {
-      chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
-        if (response) {
-          jobsCache = response.jobs || [];
-          filtersCache = response.filters || [];
-          updateAll(response);
+    const clients = jobs
+      .filter(j => j.client_name || j.client_country)
+      .reduce((acc, job) => {
+        const key = job.client_name || job.client_country || "unknown";
+        if (!acc[key]) {
+          acc[key] = {
+            name: job.client_name || "Unknown Client",
+            country: job.client_country || "",
+            rating: job.client_rating,
+            totalSpend: job.client_total_spend,
+            totalHires: job.client_total_hires,
+            totalAssignments: job.client_total_assignments,
+            hireRate: job.client_hire_rate,
+            memberSince: job.client_member_since,
+            jobs: [],
+          };
         }
-        $("btnCheckNow").disabled = false;
-        $("btnCheckNow").innerHTML = `
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="23 4 23 10 17 10"/>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-          </svg>
-          Check Now
-        `;
-      });
-    }, 3000);
+        acc[key].jobs.push({ title: job.title, url: job.url, budget: job.budget });
+        return acc;
+      }, {});
+
+    const clientList = Object.values(clients);
+
+    loading.style.display = "none";
+
+    if (clientList.length === 0) {
+      empty.style.display = "";
+      return;
+    }
+
+    list.innerHTML = clientList.map(renderClientCard).join("");
   } catch (err) {
-    statusText.textContent = `Check failed: ${err.message}`;
-    $("btnCheckNow").disabled = false;
-    $("btnCheckNow").innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="23 4 23 10 17 10"/>
-        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-      </svg>
-      Check Now
-    `;
+    loading.textContent = "Failed to load: " + err.message;
   }
 }
 
-// ─── Cookie Sync from Server ───
-async function handleSyncCookies() {
-  const btn = $("btnSyncCookies");
-  const status = $("cookieSyncStatus");
-  btn.disabled = true;
-  status.textContent = "Syncing...";
-  status.className = "sync-status";
+function renderClientCard(client) {
+  return `
+    <div class="client-card">
+      <div class="client-card-header">
+        <div class="client-name">${escapeHtml(client.name)}</div>
+        ${client.country ? `<span class="client-country">${escapeHtml(client.country)}</span>` : ""}
+      </div>
+      <div class="client-stats">
+        ${client.rating ? `<div class="client-stat"><span class="stat-lbl">Rating</span><span class="stat-val">${client.rating}</span></div>` : ""}
+        ${client.totalSpend ? `<div class="client-stat"><span class="stat-lbl">Total Spent</span><span class="stat-val">$${client.totalSpend}</span></div>` : ""}
+        ${client.totalHires ? `<div class="client-stat"><span class="stat-lbl">Total Hires</span><span class="stat-val">${client.totalHires}</span></div>` : ""}
+        ${client.hireRate ? `<div class="client-stat"><span class="stat-lbl">Hire Rate</span><span class="stat-val">${client.hireRate}%</span></div>` : ""}
+      </div>
+      <div class="client-jobs">
+        ${client.jobs.slice(0, 3).map(j =>
+          `<div class="client-job">${j.url ? `<a href="${j.url}" target="_blank">` : ""}${escapeHtml(j.title)}${j.url ? "</a>" : ""}</div>`
+        ).join("")}
+        ${client.jobs.length > 3 ? `<div class="client-job-more">+${client.jobs.length - 3} more</div>` : ""}
+      </div>
+    </div>
+  `;
+}
 
+// ══════════════════════════════════════════════════════════
+// ═══  SETTINGS  ═══
+// ══════════════════════════════════════════════════════════
+function setConnectionStatus(state, message) {
+  const dot = connectionStatus.querySelector(".dot");
+  dot.className = `dot ${state}`;
+  connectionStatus.querySelector("span:last-child").textContent = message;
+}
+
+async function testConnection() {
+  const t = apiTokenInput.value.trim();
+  const u = apiUrlInput.value.trim() || "http://localhost:3000";
+  if (!t) {
+    setConnectionStatus("disconnected", "Please enter an API token.");
+    return;
+  }
+  setConnectionStatus("idle", "Testing connection...");
   try {
-    const result = await new Promise((resolve) => {
-      chrome.runtime.sendMessage(
-        { type: "SYNC_COOKIES_FROM_SERVER" },
-        (response) => {
-          resolve(response || { ok: false, error: "No response from background" });
-        }
-      );
+    const response = await fetch(`${u}/api/extension/heartbeat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` },
     });
-
-    if (result.ok) {
-      status.textContent = "✅ Synced";
-      status.className = "sync-status success";
-      displayCookieTime.textContent = result.captured_at
-        ? formatTimestamp(result.captured_at)
-        : "Available";
-      displayCookieDomain.textContent = result.domain || "www.upwork.com";
-      cookieBadge.textContent = "Captured";
-      cookieBadge.className = "badge active";
-
-      // Refresh full state so Connection section also updates
-      chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
-        if (response) {
-          jobsCache = response.jobs || [];
-          filtersCache = response.filters || [];
-          updateAll(response);
-        }
-      });
+    if (response.ok) {
+      const data = await response.json();
+      setConnectionStatus("connected", `Connected! Server v${data.version}`);
     } else {
-      status.textContent = "⚠ " + (result.error || "Sync failed");
-      status.className = "sync-status error";
+      const data = await response.json().catch(() => ({}));
+      setConnectionStatus("error", data.error || `Server responded with ${response.status}`);
     }
   } catch (err) {
-    status.textContent = "⚠ Error: " + err.message;
-    status.className = "sync-status error";
+    setConnectionStatus("error", `Cannot reach server: ${err.message}`);
   }
-
-  btn.disabled = false;
-  setTimeout(() => {
-    status.textContent = "";
-    status.className = "sync-status";
-  }, 5000);
 }
 
-// ─── Utils ───
+async function saveSettings() {
+  const t = apiTokenInput.value.trim();
+  const u = apiUrlInput.value.trim() || "http://localhost:3000";
+  await chrome.storage.sync.set({ upscore_api_token: t, upscore_api_url: u });
+  chrome.runtime.sendMessage({
+    type: "SETTINGS_UPDATED",
+    settings: { api_token: t, api_url: u },
+  });
+  token = t;
+  apiUrl = u;
+  setTimeout(() => testConnection(), 500);
+  const originalText = btnSave.textContent;
+  btnSave.textContent = "Saved!";
+  setTimeout(() => { btnSave.textContent = originalText; }, 2000);
+}
+
+async function saveProposalRules() {
+  const rules = $("proposalRules").value.trim();
+  proposalRules = rules;
+  await chrome.storage.sync.set({ upscore_proposal_rules: rules });
+  const btn = $("btnSaveRules");
+  const originalText = btn.textContent;
+  btn.textContent = "Saved!";
+  setTimeout(() => { btn.textContent = originalText; }, 2000);
+}
+
+// ══════════════════════════════════════════════════════════
+// ═══  UTILITIES  ═══
+// ══════════════════════════════════════════════════════════
 function escapeHtml(str) {
+  if (!str) return "";
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
 }
 
-function formatTimestamp(ts) {
-  if (!ts) return "—";
-  const d = new Date(ts);
-  const now = new Date();
-  const diff = Math.floor((now - d) / 1000);
-
-  if (diff < 60) return "Just now";
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return d.toLocaleDateString();
+function timeAgo(dateStr) {
+  if (!dateStr) return "";
+  try {
+    const now = Date.now();
+    const d = new Date(dateStr).getTime();
+    if (isNaN(d)) { return dateStr; }
+    const diff = Math.floor((now - d) / 1000);
+    if (diff < 60) return "just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return new Date(dateStr).toLocaleDateString();
+  } catch {
+    return dateStr;
+  }
 }
