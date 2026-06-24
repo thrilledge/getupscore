@@ -37,8 +37,8 @@ export async function POST(request: Request) {
     const supabase = createSupabaseAdminClient();
 
     // Collect all unique upwork_contract_ids from entries
-    const rawIds = entries.map((e: Record<string, unknown>) => String(e.upwork_contract_id || "").trim());
-    const upworkContractIds: string[] = [...new Set(rawIds)].filter(Boolean);
+    const rawIds: string[] = entries.map((e: any) => String(e.upwork_contract_id || "").trim());
+    const upworkContractIds = [...new Set(rawIds)].filter((s): s is string => s !== "");
 
     // Resolve to local contract UUIDs
     const { data: contractMap } = await supabase
