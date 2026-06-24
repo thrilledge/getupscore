@@ -84,21 +84,21 @@ export async function POST(request: Request) {
         posted_at: d.posted_at || d.postedAt
           ? (() => { try { return new Date(String(d.posted_at || d.postedAt)).toISOString(); } catch { return null; } })()
           : null,
-        budget: parseFloat(d.budget) || null,
+        budget: parseFloat(String(d.budget ?? "")) || null,
         hourly_min: typeof d.hourly_min === "number" ? d.hourly_min : null,
         hourly_max: typeof d.hourly_max === "number" ? d.hourly_max : null,
         client_country: String(d.client_country || d.clientCountry || "").slice(0, 100) || null,
         proposals_count: typeof d.proposals_count === "number" ? d.proposals_count
           : typeof d.proposalsCount === "number" ? d.proposalsCount : null,
         skills: Array.isArray(d.skills) ? d.skills.slice(0, 50) : null,
-        client_rating: parseFloat(d.client_rating || d.clientRating) || null,
-        client_total_spend: parseFloat(d.client_total_spend || d.clientTotalSpend) || null,
-        client_spend: parseFloat(d.client_total_spend || d.clientTotalSpend) || null,
-        client_total_hires: parseInt(d.client_total_hires, 10) || null,
-        client_hire_rate: parseInt(d.client_hire_rate_pct || d.client_hire_rate, 10) || null,
+        client_rating: parseFloat(String(d.client_rating || d.clientRating || "")) || null,
+        client_total_spend: parseFloat(String(d.client_total_spend || d.clientTotalSpend || "")) || null,
+        client_spend: parseFloat(String(d.client_total_spend || d.clientTotalSpend || "")) || null,
+        client_total_hires: parseInt(String(d.client_total_hires ?? ""), 10) || null,
+        client_hire_rate: parseInt(String(d.client_hire_rate_pct || d.client_hire_rate ?? ""), 10) || null,
         client_name: String(d.client_name || "").slice(0, 200) || null,
         client_member_since: d.client_member_since
-          ? (() => { try { return new Date(d.client_member_since).toISOString(); } catch { return null; } })()
+          ? (() => { try { return new Date(String(d.client_member_since)).toISOString(); } catch { return null; } })()
           : null,
         payment_verified: d.client_payment_verified === true || d.payment_verified === true,
         job_type: String(d.budget_type || d.job_type || "").slice(0, 50) || null,
