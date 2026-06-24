@@ -247,12 +247,23 @@ export type Database = {
           category: string | null
           client_country: string | null
           client_hire_rate: number | null
+          client_industry: string | null
+          client_member_since: string | null
+          client_name: string | null
+          client_rating: number | null
           client_spend: number | null
+          client_total_assignments: number | null
+          client_total_hires: number | null
+          contractor_tier: string | null
           created_at: string
           description: string | null
+          duration_label: string | null
+          duration_weeks: number | null
           hourly_max: number | null
           hourly_min: number | null
+          hours_per_week: string | null
           id: string
+          job_type: string | null
           payment_verified: boolean | null
           posted_at: string | null
           proposals_count: number | null
@@ -260,20 +271,34 @@ export type Database = {
           source: string | null
           subcategory: string | null
           title: string
+          total_hired: number | null
+          total_invited: number | null
           upwork_job_id: string
           url: string | null
+          weekly_retainer: number | null
         }
         Insert: {
           budget?: number | null
           category?: string | null
           client_country?: string | null
           client_hire_rate?: number | null
+          client_industry?: string | null
+          client_member_since?: string | null
+          client_name?: string | null
+          client_rating?: number | null
           client_spend?: number | null
+          client_total_assignments?: number | null
+          client_total_hires?: number | null
+          contractor_tier?: string | null
           created_at?: string
           description?: string | null
+          duration_label?: string | null
+          duration_weeks?: number | null
           hourly_max?: number | null
           hourly_min?: number | null
+          hours_per_week?: string | null
           id?: string
+          job_type?: string | null
           payment_verified?: boolean | null
           posted_at?: string | null
           proposals_count?: number | null
@@ -281,20 +306,34 @@ export type Database = {
           source?: string | null
           subcategory?: string | null
           title: string
+          total_hired?: number | null
+          total_invited?: number | null
           upwork_job_id: string
           url?: string | null
+          weekly_retainer?: number | null
         }
         Update: {
           budget?: number | null
           category?: string | null
           client_country?: string | null
           client_hire_rate?: number | null
+          client_industry?: string | null
+          client_member_since?: string | null
+          client_name?: string | null
+          client_rating?: number | null
           client_spend?: number | null
+          client_total_assignments?: number | null
+          client_total_hires?: number | null
+          contractor_tier?: string | null
           created_at?: string
           description?: string | null
+          duration_label?: string | null
+          duration_weeks?: number | null
           hourly_max?: number | null
           hourly_min?: number | null
+          hours_per_week?: string | null
           id?: string
+          job_type?: string | null
           payment_verified?: boolean | null
           posted_at?: string | null
           proposals_count?: number | null
@@ -302,8 +341,11 @@ export type Database = {
           source?: string | null
           subcategory?: string | null
           title?: string
+          total_hired?: number | null
+          total_invited?: number | null
           upwork_job_id?: string
           url?: string | null
+          weekly_retainer?: number | null
         }
         Relationships: []
       }
