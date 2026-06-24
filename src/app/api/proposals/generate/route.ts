@@ -245,10 +245,10 @@ export async function POST(request: Request) {
       clientTotalSpend: job.client_spend || undefined,
       clientRating: job.client_rating || undefined,
       proposalTips: (analysisData?.proposal_tips as string[]) || [],
-      matchScore: analysisData?.match_score || undefined,
-      opportunityScore: analysisData?.opportunity_score || undefined,
-      winProbability: analysisData?.win_probability || undefined,
-      recommendation: analysisData?.recommendation || undefined,
+      matchScore: analysisData?.match_score as number | undefined,
+      opportunityScore: analysisData?.opportunity_score as number | undefined,
+      winProbability: analysisData?.win_probability as number | undefined,
+      recommendation: analysisData?.recommendation as string | undefined,
     };
 
     const result = await generateProposal(proposalInput);
