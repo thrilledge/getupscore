@@ -95,7 +95,7 @@ export async function POST(request: Request) {
         client_total_spend: parseFloat(String(d.client_total_spend || d.clientTotalSpend || "")) || null,
         client_spend: parseFloat(String(d.client_total_spend || d.clientTotalSpend || "")) || null,
         client_total_hires: parseInt(String(d.client_total_hires ?? ""), 10) || null,
-        client_hire_rate: parseInt(String(d.client_hire_rate_pct || d.client_hire_rate ?? ""), 10) || null,
+        client_hire_rate: parseInt(String(d.client_hire_rate_pct || d.client_hire_rate || ""), 10) || null,
         client_name: String(d.client_name || "").slice(0, 200) || null,
         client_member_since: d.client_member_since
           ? (() => { try { return new Date(String(d.client_member_since)).toISOString(); } catch { return null; } })()
