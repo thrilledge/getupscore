@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -88,26 +88,6 @@ export default function JobsPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [subcategoryFilter, setSubcategoryFilter] = useState("");
   const [initialFiltersLoaded, setInitialFiltersLoaded] = useState(false);
-  const [newJobsCount, setNewJobsCount] = useState(0);
-  const prevTotalRef = useRef(0);
-  const autoRefreshRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    autoRefreshRef.current = setInterval(() => {
-      fetch(`/api/jobs?limit=1`)
-        .then((r) => r.json())
-        .then((data) => {
-          const currentTotal = data.pagination?.total ?? 0;
-          if (prevTotalRef.current > 0 && currentTotal > prevTotalRef.current) {
-            setNewJobsCount((c) => c + (currentTotal - prevTotalRef.current));
-          }
-          prevTotalRef.current = currentTotal;
-        })
-        .catch(() => {});
-    }, 30000);
-    return () => { if (autoRefreshRef.current) clearInterval(autoRefreshRef.current); };
-  }, []);
 
   // Load active saved filters on mount and apply them as defaults
   useEffect(() => {
@@ -181,6 +161,12 @@ export default function JobsPage() {
 
   useEffect(() => { if (initialFiltersLoaded) fetchJobs(); }, [fetchJobs, initialFiltersLoaded]);
 
+  // Auto-refresh every 30 seconds
+  useEffect(() => {
+    const id = setInterval(() => fetchJobs(), 30000);
+    return () => clearInterval(id);
+  }, [fetchJobs]);
+
   function daysAgo(dateStr: string | null): string {
     if (!dateStr) return "";
     const diff = Date.now() - new Date(dateStr).getTime();
@@ -246,15 +232,6 @@ export default function JobsPage() {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-muted-foreground">{total} job{total !== 1 ? "s" : ""}</span>
-          {newJobsCount > 0 && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => { setNewJobsCount(0); fetchJobs(); }}
-            >
-              {newJobsCount} new — Load
-            </Button>
-          )}
           <Button variant="outline" size="sm" onClick={downloadCSV} disabled={jobs.length === 0}>
             <Download className="size-4 mr-2" />
             CSV
