@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     const baseInput = {
       userName: metadata?.display_name || metadata?.full_name || undefined,
       userTitle: profile?.title || undefined,
-      userSkills: (profile?.skills as string[])?.length ? (profile.skills as string[]) : userKeywords,
+      userSkills: profile?.skills?.length ? (profile.skills as string[]) : userKeywords,
       userExperience: profile?.bio || undefined,
       portfolioItems: portfolioPreview,
       customInstructions: customInstructions || undefined,
