@@ -82,7 +82,7 @@ export async function POST(request: Request) {
         description: d.description || d.jobDescription ? String(d.description || d.jobDescription).slice(0, 10000) : null,
         url: String(d.url || "").slice(0, 1000),
         posted_at: d.posted_at || d.postedAt
-          ? (() => { try { return new Date(d.posted_at || d.postedAt).toISOString(); } catch { return null; } })()
+          ? (() => { try { return new Date(String(d.posted_at || d.postedAt)).toISOString(); } catch { return null; } })()
           : null,
         budget: parseFloat(d.budget) || null,
         hourly_min: typeof d.hourly_min === "number" ? d.hourly_min : null,
