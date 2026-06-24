@@ -536,6 +536,38 @@ export type Database = {
         }
         Relationships: []
       }
+      search_queries: {
+        Row: {
+          created_at: string
+          id: string
+          job_filter_id: string
+          query: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_filter_id: string
+          query: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_filter_id?: string
+          query?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_queries_job_filter_id_fkey"
+            columns: ["job_filter_id"]
+            isOneToOne: false
+            referencedRelation: "job_filters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_preferences: {
         Row: {
           created_at: string
