@@ -45,14 +45,14 @@ export async function POST(request: Request) {
     if (existing) {
       result = await supabase
         .from("upwork_profiles")
-        .update(profile)
+        .update(profile as any)
         .eq("id", existing.id)
         .select()
         .single();
     } else {
       result = await supabase
         .from("upwork_profiles")
-        .insert(profile)
+        .insert(profile as any)
         .select()
         .single();
     }

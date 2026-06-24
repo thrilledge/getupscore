@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest } from "@/app/api/extension/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import type { WorkDiaryEntryInsert } from "@/lib/supabase/database-types";
 
 const MAX_ENTRIES = 100;
 
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
       const hoursWorked = parseFloat(entry.hours_worked);
       if (!hoursWorked || hoursWorked <= 0) continue;
 
-      const record: Record<string, unknown> = {
+      const record = {
         user_id: userId,
         contract_id: localContractId,
         date,
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
         notes: entry.notes ? String(entry.notes).slice(0, 2000) : null,
         screenshot_count: entry.screenshot_count ? parseInt(entry.screenshot_count, 10) : null,
         activity_level: entry.activity_level ? Math.max(0, Math.min(100, parseInt(entry.activity_level, 10))) : null,
-      };
+      } satisfies WorkDiaryEntryInsert;
 
       const { error } = await supabase
         .from("work_diary_entries")

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authenticateRequest } from "@/app/api/extension/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import type { ContractInsert } from "@/lib/supabase/database-types";
 
 const MAX_CONTRACTS = 50;
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
       const upworkContractId = String(contract.upwork_contract_id || "").trim();
       if (!upworkContractId || !contract.title) continue;
 
-      const record: Record<string, unknown> = {
+      const record = {
         user_id: userId,
         upwork_contract_id: upworkContractId,
         title: String(contract.title).slice(0, 500),
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
         total_earned: contract.total_earned ? parseFloat(contract.total_earned) : null,
         started_at: contract.started_at ? new Date(contract.started_at).toISOString() : null,
         ended_at: contract.ended_at ? new Date(contract.ended_at).toISOString() : null,
-      };
+      } satisfies ContractInsert;
 
       const { error } = await supabase
         .from("contracts")
