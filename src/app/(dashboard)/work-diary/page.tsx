@@ -93,7 +93,7 @@ export default function WorkDiaryPage() {
               <CardContent className="py-3 px-4 flex items-center gap-3">
                 <Icon className="size-5 text-accent-blue shrink-0" />
                 <div>
-                  <p className="text-lg font-bold">{s.value}</p>
+                  <p className="text-lg font-bold">{String(s.value)}</p>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
                 </div>
               </CardContent>

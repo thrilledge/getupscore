@@ -125,7 +125,7 @@ export default function UpworkProfilePage() {
                   return (
                     <div key={s.label} className="rounded-lg border border-border/60 bg-background/50 p-3 text-center">
                       <Icon className="size-4 mx-auto text-muted-foreground mb-1" />
-                      <p className="text-lg font-bold">{s.value}</p>
+                      <p className="text-lg font-bold">{String(s.value)}</p>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
                     </div>
                   );

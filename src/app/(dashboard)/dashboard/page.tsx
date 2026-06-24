@@ -248,7 +248,7 @@ export default function DashboardPage() {
                 <CardContent className="py-3 px-4 flex items-center gap-3">
                   <Icon className={`size-5 shrink-0 ${s.color}`} />
                   <div>
-                    <p className="text-lg font-bold">{myStatsLoading ? "..." : s.value}</p>
+                    <p className="text-lg font-bold">{myStatsLoading ? "..." : String(s.value)}</p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{s.label}</p>
                   </div>
                 </CardContent>
