@@ -3,7 +3,7 @@
   "name": "UpScore",
   "version": "1.0.0",
   "description": "AI-powered Upwork opportunity finder — job alerts, scoring, and proposals.",
-  "homepage_url": "https://upscore.app",
+  "homepage_url": "https://getupscore.vercel.app",
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
@@ -17,6 +17,7 @@
   ],
   "host_permissions": [
     "http://localhost:3000/*",
+    "https://getupscore.vercel.app/*",
     "https://*.upscore.app/*",
     "https://www.upwork.com/*"
   ],

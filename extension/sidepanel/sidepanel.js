@@ -62,7 +62,7 @@ async function apiCall(path, options = {}) {
 document.addEventListener("DOMContentLoaded", async () => {
   // Load settings from storage
   const result = await chrome.storage.sync.get(["upscore_api_url", "upscore_api_token", "upscore_proposal_rules"]);
-  apiUrl = result.upscore_api_url || "http://localhost:3000";
+  apiUrl = result.upscore_api_url || "https://getupscore.vercel.app";
   token = result.upscore_api_token || null;
   proposalRules = result.upscore_proposal_rules || "";
   apiUrlInput.value = apiUrl;
@@ -640,7 +640,7 @@ function setConnectionStatus(state, message) {
 
 async function testConnection() {
   const t = apiTokenInput.value.trim();
-  const u = apiUrlInput.value.trim() || "http://localhost:3000";
+  const u = apiUrlInput.value.trim() || "https://getupscore.vercel.app";
   if (!t) {
     setConnectionStatus("disconnected", "Please enter an API token.");
     return;
@@ -665,7 +665,7 @@ async function testConnection() {
 
 async function saveSettings() {
   const t = apiTokenInput.value.trim();
-  const u = apiUrlInput.value.trim() || "http://localhost:3000";
+  const u = apiUrlInput.value.trim() || "https://getupscore.vercel.app";
   await chrome.storage.sync.set({ upscore_api_token: t, upscore_api_url: u });
   chrome.runtime.sendMessage({
     type: "SETTINGS_UPDATED",

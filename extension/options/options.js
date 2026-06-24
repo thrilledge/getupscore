@@ -38,7 +38,7 @@ function toggleTokenVisibility() {
 
 async function testConnection() {
   const token = apiTokenInput.value.trim();
-  const url = apiUrlInput.value.trim() || "http://localhost:3000";
+  const url = apiUrlInput.value.trim() || "https://getupscore.vercel.app";
 
   if (!token) {
     setConnectionStatus("disconnected", "Please enter an API token.");
@@ -70,7 +70,7 @@ async function testConnection() {
 
 async function saveSettings() {
   const token = apiTokenInput.value.trim();
-  const url = apiUrlInput.value.trim() || "http://localhost:3000";
+  const url = apiUrlInput.value.trim() || "https://getupscore.vercel.app";
 
   await chrome.storage.sync.set({
     upscore_api_token: token,

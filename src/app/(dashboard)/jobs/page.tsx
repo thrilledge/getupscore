@@ -26,6 +26,9 @@ import {
   Search,
   X,
   Download,
+  Clock,
+  DollarSign,
+  Briefcase,
 } from "lucide-react";
 
 type JobItem = {
@@ -295,20 +298,7 @@ export default function JobsPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="w-[150px]">
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">Experience</label>
-          <Select value={tierFilter || null} onValueChange={(v) => setTierFilter(v ?? "")}>
-            <SelectTrigger className="h-9 text-sm">
-              <SelectValue placeholder="Any level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Any level</SelectItem>
-              <SelectItem value="EntryLevel">Entry</SelectItem>
-              <SelectItem value="IntermediateLevel">Intermediate</SelectItem>
-              <SelectItem value="ExpertLevel">Expert</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+
         <div className="w-[130px]">
           <label className="text-xs font-medium text-muted-foreground mb-1 block">Budget Min</label>
           <Input
@@ -375,90 +365,125 @@ export default function JobsPage() {
 
       {!loading && !error && jobs.length > 0 && (
         <>
-          <div className="overflow-x-auto rounded-lg border border-border/60">
+          <div className="overflow-x-auto rounded-xl border border-border/60 bg-card shadow-sm">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/60 bg-muted/30">
-                  <th className="text-left font-semibold text-muted-foreground px-4 py-3 w-[30%]">Title</th>
-                  <th className="w-8"></th>
-                  <th className="text-left font-semibold text-muted-foreground px-4 py-3">Type</th>
-                  <th className="text-left font-semibold text-muted-foreground px-4 py-3">Experience</th>
-                  <th className="text-right font-semibold text-muted-foreground px-4 py-3">Budget</th>
-                  <th className="text-left font-semibold text-muted-foreground px-4 py-3">Duration</th>
-                  <th className="text-right font-semibold text-muted-foreground px-4 py-3">Posted</th>
-                  <th className="text-center font-semibold text-muted-foreground px-4 py-3">AI</th>
-                  <th className="text-right px-4 py-3"></th>
+                <tr className="border-b border-border/60 bg-muted/40">
+                  <th className="text-left font-semibold text-muted-foreground px-5 py-3.5 w-[38%]">Job</th>
+                  <th className="text-left font-semibold text-muted-foreground px-5 py-3.5 w-[13%]">Type</th>
+                  <th className="text-left font-semibold text-muted-foreground px-5 py-3.5 w-[28%]">Budget & Workload</th>
+                  <th className="text-right font-semibold text-muted-foreground px-5 py-3.5 w-[13%]">Posted</th>
+                  <th className="w-[8%] px-5 py-3.5"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/40">
                 {jobs.map((job) => {
                   const a = job.job_analyses?.[0];
                   return (
-                    <tr key={job.id} className="hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-3">
-                        <FavoriteButton jobId={job.id} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <Link href={`/jobs/${job.id}`} className="font-medium text-foreground hover:text-accent-blue transition-colors truncate block max-w-xs">
-                            {job.title}
-                          </Link>
-                          {job.url && (
-                            <a href={job.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-muted-foreground hover:text-accent-blue transition-colors">
-                              <ExternalLink className="size-3.5" />
-                            </a>
-                          )}
-                        </div>
-                        {job.skills && job.skills.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {job.skills.slice(0, 3).map((s) => (
-                              <Badge key={s} variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
-                                {s}
-                              </Badge>
-                            ))}
-                            {job.skills.length > 3 && (
-                              <span className="text-[10px] text-muted-foreground">+{job.skills.length - 3}</span>
+                    <tr
+                      key={job.id}
+                      className="group hover:bg-muted/20 transition-colors"
+                    >
+                      <td className="px-5 py-4">
+                        <div className="flex items-start gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={`/jobs/${job.id}`}
+                                className="font-semibold text-foreground hover:text-accent-blue transition-colors line-clamp-1"
+                              >
+                                {job.title}
+                              </Link>
+                              {job.url && (
+                                <a
+                                  href={job.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="shrink-0 text-muted-foreground/50 hover:text-accent-blue transition-colors"
+                                >
+                                  <ExternalLink className="size-3.5" />
+                                </a>
+                              )}
+                            </div>
+                            {job.skills && job.skills.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {job.skills.slice(0, 4).map((s) => (
+                                  <Badge
+                                    key={s}
+                                    variant="outline"
+                                    className="text-[10px] px-2 py-0.5 font-normal rounded-full border-border/50 bg-muted/10"
+                                  >
+                                    {s}
+                                  </Badge>
+                                ))}
+                                {job.skills.length > 4 && (
+                                  <span className="text-[10px] text-muted-foreground self-center ml-0.5">
+                                    +{job.skills.length - 4}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
-                        )}
+                        </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                          {job.job_type === "HOURLY" ? "Hourly" : job.job_type === "FIXED_PRICE" ? "Fixed" : "—"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">
-                        {job.contractor_tier ? job.contractor_tier.replace(/([A-Z])/g, " $1").trim() : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right font-medium tabular-nums whitespace-nowrap">
-                        {job.budget != null
-                          ? `$${job.budget}`
-                          : job.hourly_min != null
-                            ? `$${job.hourly_min}–${job.hourly_max}/hr`
-                            : "—"
-                        }
-                      </td>
-                      
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {job.duration_label || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right text-muted-foreground whitespace-nowrap text-xs">{daysAgo(job.posted_at)}</td>
-                      <td className="px-4 py-3 text-center">
-                        {a ? (
-                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                            {a.match_score}
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <Briefcase className="size-3 text-muted-foreground/60" />
+                          <Badge
+                            variant="secondary"
+                            className="text-[11px] px-2 py-0.5 font-medium rounded-full"
+                          >
+                            {job.job_type === "HOURLY" ? "Hourly" : job.job_type === "FIXED" ? "Fixed" : "—"}
                           </Badge>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground">—</span>
-                        )}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <Link
-                          href={`/jobs/${job.id}`}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-accent-blue hover:underline"
-                        >
-                          {a ? "Details" : <><Sparkles className="size-3" /> Analyze</>}
-                        </Link>
+                      <td className="px-5 py-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5">
+                            <DollarSign className="size-3.5 text-muted-foreground/60 shrink-0" />
+                            <span className="font-semibold tabular-nums text-sm">
+                              {job.budget != null
+                                ? `$${job.budget}`
+                                : job.hourly_min != null
+                                  ? `$${job.hourly_min}–${job.hourly_max}/hr`
+                                  : "—"}
+                            </span>
+                          </div>
+                          {job.hours_per_week && (
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="size-3 text-muted-foreground/60 shrink-0" />
+                              <span className="text-xs text-muted-foreground">
+                                {job.hours_per_week}
+                                {job.duration_label ? ` · ${job.duration_label}` : ""}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <span className="text-sm text-muted-foreground whitespace-nowrap">
+                          {daysAgo(job.posted_at)}
+                        </span>
+                        <div className="mt-1">
+                          {a ? (
+                            <Link
+                              href={`/jobs/${job.id}`}
+                              className="text-[11px] font-medium text-accent-blue hover:underline"
+                            >
+                              View analysis
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/jobs/${job.id}`}
+                              className="inline-flex items-center gap-1 text-[11px] font-medium text-accent-blue hover:underline"
+                            >
+                              <Sparkles className="size-3" /> Analyze
+                            </Link>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-center">
+                        <FavoriteButton jobId={job.id} size="md" />
                       </td>
                     </tr>
                   );

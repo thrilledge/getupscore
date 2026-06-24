@@ -1,4 +1,4 @@
-const UPSCORE_API_BASE = "http://localhost:3000";
+const UPSCORE_API_BASE = "https://getupscore.vercel.app";
 const API_BASE = UPSCORE_API_BASE;
 
 async function getToken() {
