@@ -536,6 +536,209 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          created_at: string
+          daily_digest: boolean
+          id: string
+          notify_on_contract_updates: boolean
+          notify_on_match: boolean
+          notify_on_proposal_status: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_digest?: boolean
+          id?: string
+          notify_on_contract_updates?: boolean
+          notify_on_match?: boolean
+          notify_on_proposal_status?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_digest?: boolean
+          id?: string
+          notify_on_contract_updates?: boolean
+          notify_on_match?: boolean
+          notify_on_proposal_status?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      upwork_profiles: {
+        Row: {
+          bio: string | null
+          client_rating: number | null
+          created_at: string
+          hourly_rate: number | null
+          id: string
+          member_since: string | null
+          portfolio: Json | null
+          skills: string[]
+          title: string | null
+          total_earnings: number | null
+          total_hours: number | null
+          total_jobs_done: number | null
+          updated_at: string
+          upwork_url: string | null
+          user_id: string
+        }
+        Insert: {
+          bio?: string | null
+          client_rating?: number | null
+          created_at?: string
+          hourly_rate?: number | null
+          id?: string
+          member_since?: string | null
+          portfolio?: Json | null
+          skills?: string[]
+          title?: string | null
+          total_earnings?: number | null
+          total_hours?: number | null
+          total_jobs_done?: number | null
+          updated_at?: string
+          upwork_url?: string | null
+          user_id: string
+        }
+        Update: {
+          bio?: string | null
+          client_rating?: number | null
+          created_at?: string
+          hourly_rate?: number | null
+          id?: string
+          member_since?: string | null
+          portfolio?: Json | null
+          skills?: string[]
+          title?: string | null
+          total_earnings?: number | null
+          total_hours?: number | null
+          total_jobs_done?: number | null
+          updated_at?: string
+          upwork_url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      contracts: {
+        Row: {
+          client_name: string | null
+          client_rating: number | null
+          client_url: string | null
+          created_at: string
+          ended_at: string | null
+          fixed_price: number | null
+          hourly_rate: number | null
+          id: string
+          started_at: string | null
+          status: string
+          title: string
+          total_earned: number | null
+          total_hours: number | null
+          type: string
+          updated_at: string
+          upwork_contract_id: string
+          user_id: string
+        }
+        Insert: {
+          client_name?: string | null
+          client_rating?: number | null
+          client_url?: string | null
+          created_at?: string
+          ended_at?: string | null
+          fixed_price?: number | null
+          hourly_rate?: number | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          title: string
+          total_earned?: number | null
+          total_hours?: number | null
+          type?: string
+          updated_at?: string
+          upwork_contract_id: string
+          user_id: string
+        }
+        Update: {
+          client_name?: string | null
+          client_rating?: number | null
+          client_url?: string | null
+          created_at?: string
+          ended_at?: string | null
+          fixed_price?: number | null
+          hourly_rate?: number | null
+          id?: string
+          started_at?: string | null
+          status?: string
+          title?: string
+          total_earned?: number | null
+          total_hours?: number | null
+          type?: string
+          updated_at?: string
+          upwork_contract_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      work_diary_entries: {
+        Row: {
+          activity_level: number | null
+          contract_id: string
+          created_at: string
+          date: string
+          hours_worked: number
+          id: string
+          notes: string | null
+          screenshot_count: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_level?: number | null
+          contract_id: string
+          created_at?: string
+          date: string
+          hours_worked: number
+          id?: string
+          notes?: string | null
+          screenshot_count?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_level?: number | null
+          contract_id?: string
+          created_at?: string
+          date?: string
+          hours_worked?: number
+          id?: string
+          notes?: string | null
+          screenshot_count?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "work_diary_entries_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
