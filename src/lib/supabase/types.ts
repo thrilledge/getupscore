@@ -256,6 +256,7 @@ export type Database = {
           payment_verified: boolean | null
           posted_at: string | null
           proposals_count: number | null
+          skills: string[]
           source: string | null
           subcategory: string | null
           title: string
@@ -276,6 +277,7 @@ export type Database = {
           payment_verified?: boolean | null
           posted_at?: string | null
           proposals_count?: number | null
+          skills?: string[]
           source?: string | null
           subcategory?: string | null
           title: string
@@ -296,6 +298,7 @@ export type Database = {
           payment_verified?: boolean | null
           posted_at?: string | null
           proposals_count?: number | null
+          skills?: string[]
           source?: string | null
           subcategory?: string | null
           title?: string
