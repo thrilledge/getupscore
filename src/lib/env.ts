@@ -12,11 +12,8 @@ function getEnv(name: string, fallback = ""): string {
 }
 
 function getSupabaseUrl(): string {
-  // Use static dot notation so Next.js inlines the value at compile time
-  // (bracket notation process.env["..."] is NOT replaced by DefinePlugin in browser bundles)
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (url && url !== "your_supabase_url_here") return url;
-  // Return a dummy for build/SSR — actual usage will fail gracefully
   return "https://placeholder.supabase.co";
 }
 
