@@ -334,6 +334,38 @@ body {
   margin-top: 8px;
 }
 
+/* ─── REASONING SECTION ─── */
+.proposal-reasoning { margin-bottom: 8px; }
+.reasoning-details {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.reasoning-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+.reasoning-summary:hover { background: var(--surface-hover); }
+.reasoning-summary svg { opacity: 0.5; flex-shrink: 0; }
+.reasoning-content {
+  padding: 6px 10px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  border-top: 1px solid var(--border);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 /* ─── FORM ELEMENTS ─── */
 .field { margin-bottom: 10px; }
 .field label {

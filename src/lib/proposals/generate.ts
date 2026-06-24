@@ -28,6 +28,11 @@ export interface ProposalResult {
   score?: number;
 }
 
+export type StreamEvent =
+  | { type: "reasoning"; content: string }
+  | { type: "proposal"; content: string }
+  | { type: "done"; score: number };
+
 export async function generateProposal(
   input: ProposalInput,
   groqApiKey?: string,
@@ -50,9 +55,141 @@ export async function generateProposal(
       body: JSON.stringify({
         model,
         messages: [
-          {
-            role: "system",
-            content: `You are a senior Upwork Business Development strategist and proposal writer with 10+ years of experience winning competitive contracts. Your mission is to write proposals that cut through the noise, neutralize the competition, and position the freelancer as the obvious choice — not just a good option.
+          { role: "system", content: buildSystemPrompt("json") },
+          { role: "user", content: buildPrompt(input) },
+        ],
+        temperature: 0.7,
+        max_tokens: 4000,
+        response_format: { type: "json_object" },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text().catch(() => "Unknown error");
+      console.warn("[Proposal] GroqCloud error:", response.status, errText);
+      return generateFallbackProposal(input);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return generateFallbackProposal(input);
+
+    const parsed = JSON.parse(content);
+
+    return {
+      generated_text: parsed.proposal || content,
+      score: parsed.score || 75,
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.warn("[Proposal] Generation error:", message);
+    return generateFallbackProposal(input);
+  }
+}
+
+export async function streamProposal(
+  input: ProposalInput,
+  groqApiKey?: string,
+  groqModel?: string
+): Promise<ReadableStream<Uint8Array>> {
+  const apiKey = groqApiKey || process.env.GROQ_API_KEY;
+  const model = groqModel || process.env.GROQ_MODEL || "deepseek-r1-distill-llama-70b";
+
+  return new ReadableStream({
+    async start(controller) {
+      const encoder = new TextEncoder();
+      const send = (event: string, data: unknown) => {
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      };
+
+      if (!apiKey) {
+        const fallback = generateFallbackProposal(input);
+        send("proposal", { text: fallback.generated_text });
+        send("done", { score: fallback.score || 70 });
+        controller.close();
+        return;
+      }
+
+      try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: buildSystemPrompt("stream") },
+              { role: "user", content: buildPrompt(input) },
+            ],
+            stream: true,
+            reasoning_format: "parsed",
+            temperature: 0.7,
+            max_tokens: 4000,
+          }),
+        });
+
+        if (!response.ok) {
+          const errText = await response.text().catch(() => "Unknown error");
+          console.warn("[Proposal Stream] GroqCloud error:", response.status, errText);
+          const fallback = generateFallbackProposal(input);
+          send("proposal", { text: fallback.generated_text });
+          send("done", { score: fallback.score || 70 });
+          controller.close();
+          return;
+        }
+
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let fullProposal = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const json = line.slice(6).trim();
+            if (json === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(json);
+              const delta = parsed.choices?.[0]?.delta;
+              if (delta?.reasoning) {
+                send("reasoning", { text: delta.reasoning });
+              }
+              if (delta?.content) {
+                fullProposal += delta.content;
+                send("proposal", { text: delta.content });
+              }
+            } catch {}
+          }
+        }
+
+        // Calculate a simple score based on word count and content length
+        const wordCount = fullProposal.split(/\s+/).filter(Boolean).length;
+        const score = Math.min(95, Math.max(60, Math.round(60 + wordCount * 0.05)));
+
+        send("done", { score });
+        controller.close();
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.warn("[Proposal Stream] Error:", message);
+        const fallback = generateFallbackProposal(input);
+        send("proposal", { text: fallback.generated_text });
+        send("done", { score: fallback.score || 70 });
+        controller.close();
+      }
+    },
+  });
+}
+
+function buildSystemPrompt(mode: "json" | "stream"): string {
+  const base = `You are a senior Upwork Business Development strategist and proposal writer with 10+ years of experience winning competitive contracts. Your mission is to write proposals that cut through the noise, neutralize the competition, and position the freelancer as the obvious choice — not just a good option.
 
 ════════════════════════════════════════
 SECTION 1 — READ THE BATTLEFIELD
@@ -281,10 +418,13 @@ TARGET: 200–280 words | CEILING: 320 words
 HOOK RULE: First sentence = their goal or their pain — never your name
 PROOF RULE: One real, specific number beats five descriptive adjectives
 QUESTION RULE: One smart question that they haven't already answered
-CTA RULE: Invite the next step — don't beg for it
+CTA RULE: Invite the next step — don't beg for it`;
+
+  if (mode === "json") {
+    return base + `
 
 ════════════════════════════════════════
-OUTPUT FORMAT
+OUTPUT FORMAT — Return ONLY valid JSON
 ════════════════════════════════════════
 
 Return ONLY valid JSON with this exact structure — no markdown, no preamble, no explanation outside the JSON:
@@ -296,40 +436,32 @@ Return ONLY valid JSON with this exact structure — no markdown, no preamble, n
   "smart_question": "<the exact closing question used and why it was chosen>",
   "word_count": <integer count of words in the proposal>,
   "fatal_mistakes_avoided": ["list of specific mistakes from Section 8 that were consciously avoided in this proposal"]
-}`,
-          },
-          {
-            role: "user",
-            content: buildPrompt(input),
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "Unknown error");
-      console.warn("[Proposal] GroqCloud error:", response.status, errText);
-      return generateFallbackProposal(input);
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return generateFallbackProposal(input);
-
-    const parsed = JSON.parse(content);
-
-    return {
-      generated_text: parsed.proposal || content,
-      score: parsed.score || 75,
-    };
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.warn("[Proposal] Generation error:", message);
-    return generateFallbackProposal(input);
+}`;
   }
+
+  return base + `
+
+════════════════════════════════════════
+OUTPUT FORMAT — Show reasoning, then proposal
+════════════════════════════════════════
+
+First, reason step-by-step about the job, client, and strategy. Think through:
+- What is the client's real pain?
+- What do they fear will happen if they hire wrong?
+- Which of the 10 immutable laws apply most to this situation?
+- Which opening type from Section 5 will work best?
+- Which competitive tactics should be deployed?
+
+Then write the proposal following the 5-block architecture (Hook, Proof of Understanding, Micro-Proof, Approach, CTA).
+
+FORMAT:
+[Your reasoning here, thinking through the strategy]
+
+---PROPOSAL---
+
+[The proposal text, plain text only — 200-280 words, no markdown, no bullet points]
+
+---SCORE: [number 1-100]---`;
 }
 
 function buildPrompt(input: ProposalInput): string {

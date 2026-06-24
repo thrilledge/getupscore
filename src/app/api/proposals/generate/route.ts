@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
-import { generateProposal } from "@/lib/proposals/generate";
+import { generateProposal, streamProposal } from "@/lib/proposals/generate";
 import { analyzeJob } from "@/lib/jobs/analyze";
 
 export async function POST(request: Request) {
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { jobId, jobDetails, customInstructions } = body;
+    const { jobId, jobDetails, customInstructions, stream } = body;
 
     if (!jobId && !jobDetails) {
       return NextResponse.json({ error: "Provide either jobId or jobDetails" }, { status: 400 });
@@ -81,7 +81,9 @@ export async function POST(request: Request) {
         title: String(d.title || d.jobTitle || "Untitled").slice(0, 500),
         description: d.description || d.jobDescription ? String(d.description || d.jobDescription).slice(0, 10000) : null,
         url: String(d.url || "").slice(0, 1000),
-        posted_at: d.posted_at || d.postedAt ? new Date(d.posted_at || d.postedAt).toISOString() : null,
+        posted_at: d.posted_at || d.postedAt
+          ? (() => { try { return new Date(d.posted_at || d.postedAt).toISOString(); } catch { return null; } })()
+          : null,
         budget: parseFloat(d.budget) || null,
         hourly_min: typeof d.hourly_min === "number" ? d.hourly_min : null,
         hourly_max: typeof d.hourly_max === "number" ? d.hourly_max : null,
@@ -95,7 +97,9 @@ export async function POST(request: Request) {
         client_total_hires: parseInt(d.client_total_hires, 10) || null,
         client_hire_rate: parseInt(d.client_hire_rate_pct || d.client_hire_rate, 10) || null,
         client_name: String(d.client_name || "").slice(0, 200) || null,
-        client_member_since: d.client_member_since ? new Date(d.client_member_since).toISOString() : null,
+        client_member_since: d.client_member_since
+          ? (() => { try { return new Date(d.client_member_since).toISOString(); } catch { return null; } })()
+          : null,
         payment_verified: d.client_payment_verified === true || d.payment_verified === true,
         job_type: String(d.budget_type || d.job_type || "").slice(0, 50) || null,
         contractor_tier: String(d.experience_level || "").slice(0, 50) || null,
@@ -157,9 +161,45 @@ export async function POST(request: Request) {
         recommendation: analysisData?.recommendation || undefined,
       };
 
-      const result = await generateProposal(proposalInput);
+      const result = stream
+        ? null
+        : await generateProposal(proposalInput);
 
-      if (!result.generated_text || result.generated_text.length < 50) {
+      if (stream) {
+        // ── STREAMING MODE: Return SSE with reasoning + proposal ──
+        const proposalStream = await streamProposal(proposalInput);
+        const encoder = new TextEncoder();
+        const combined = new ReadableStream({
+          async start(controller) {
+            // Send status event before streaming
+            controller.enqueue(encoder.encode(`event: status\ndata: ${JSON.stringify({
+              phase: "generating",
+              saved: !!dbJobId,
+              jobId: dbJobId,
+            })}\n\n`));
+
+            // Pipe the proposal stream
+            const reader = proposalStream.getReader();
+            const decoder = new TextDecoder();
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              controller.enqueue(value);
+            }
+            controller.close();
+          },
+        });
+
+        return new Response(combined, {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          },
+        });
+      }
+
+      if (!result || !result.generated_text || result.generated_text.length < 50) {
         return NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 });
       }
 

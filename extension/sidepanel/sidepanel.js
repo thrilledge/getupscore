@@ -424,34 +424,105 @@ async function generateProposal() {
   const instructions = [proposalRules, inlineInstructions].filter(Boolean).join("\n\n") || undefined;
   const loading = $("proposalLoading");
   const result = $("proposalResult");
+  const reasoningEl = $("proposalReasoning");
+  const reasoningContent = $("reasoningContent");
 
   $("proposalSource").style.display = "none";
   $("proposalJobPreview").style.display = "none";
   $("proposalCustomize").style.display = "none";
   loading.style.display = "";
+  loading.textContent = "Generating proposal with AI...";
   result.style.display = "none";
+  reasoningEl.style.display = "none";
 
   let body;
   if (pendingJobDetails.jobId) {
-    body = JSON.stringify({ jobId: pendingJobDetails.jobId, customInstructions: instructions });
+    body = JSON.stringify({ jobId: pendingJobDetails.jobId, customInstructions: instructions, stream: true });
   } else {
-    body = JSON.stringify({ jobDetails: pendingJobDetails, customInstructions: instructions });
+    body = JSON.stringify({ jobDetails: pendingJobDetails, customInstructions: instructions, stream: true });
   }
 
   try {
-    const data = await apiCall("/api/proposals/generate", {
+    const response = await fetch(`${apiUrl}/api/proposals/generate`, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body,
     });
 
-    loading.style.display = "none";
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ error: "HTTP " + response.status }));
+      throw new Error(err.error || "Request failed");
+    }
 
-    if (data.ok) {
-      result.style.display = "";
-      $("proposalScore").innerHTML = data.score ? `<span class="score-badge ${data.score >= 70 ? "high" : data.score >= 40 ? "mid" : "low"}">Score: ${data.score}</span>` : "";
-      $("proposalText").textContent = data.proposal;
-    } else {
-      loading.textContent = "Generation failed: " + (data.error || "Unknown error");
+    loading.style.display = "none";
+    result.style.display = "";
+    reasoningEl.style.display = "none";
+    $("proposalText").textContent = "";
+    $("proposalScore").innerHTML = "";
+    reasoningContent.textContent = "";
+    let fullProposal = "";
+    let reasoningText = "";
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let lastEventType = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("event: ")) {
+          lastEventType = line.slice(7).trim();
+          continue;
+        }
+        if (!line.startsWith("data: ")) continue;
+        const json = line.slice(6).trim();
+        if (!json) continue;
+
+        try {
+          const parsed = JSON.parse(json);
+
+          if (parsed.phase) {
+            loading.textContent = parsed.phase === "generating"
+              ? "Generating proposal..."
+              : `Status: ${parsed.phase}`;
+            continue;
+          }
+
+          if (parsed.score !== undefined) {
+            // 'done' event — show score
+            $("proposalScore").innerHTML = `<span class="score-badge ${parsed.score >= 70 ? "high" : parsed.score >= 40 ? "mid" : "low"}">Score: ${parsed.score}</span>`;
+            continue;
+          }
+
+          if (parsed.text !== undefined) {
+            if (lastEventType === "reasoning") {
+              reasoningText += parsed.text;
+              reasoningContent.textContent = reasoningText;
+              reasoningEl.style.display = "";
+            } else if (lastEventType === "proposal") {
+              fullProposal += parsed.text;
+              $("proposalText").textContent = fullProposal;
+              $("proposalText").scrollTop = $("proposalText").scrollHeight;
+            }
+          }
+        } catch {}
+      }
+    }
+
+    // Final score from 'done' event
+    // (parsed from the last data line during the loop)
+    if (fullProposal.length < 50) {
+      $("proposalText").textContent = "Proposal generation returned empty result. Try again.";
     }
   } catch (err) {
     loading.textContent = "Error: " + err.message;

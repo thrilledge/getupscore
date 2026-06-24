@@ -69,7 +69,9 @@ export async function POST(request: Request) {
         title,
         description: job.description ? String(job.description).slice(0, 10000) : null,
         url: String(job.url || "").slice(0, 1000),
-        posted_at: job.posted_at ? new Date(job.posted_at).toISOString() : null,
+        posted_at: job.posted_at
+          ? (() => { try { return new Date(job.posted_at).toISOString(); } catch { return null; } })()
+          : null,
         budget: budgetVal,
         hourly_min: hourlyMin,
         hourly_max: hourlyMax,
@@ -84,7 +86,9 @@ export async function POST(request: Request) {
         client_total_hires: parseInt(job.client_total_hires, 10) || null,
         client_hire_rate: parseInt(job.client_hire_rate_pct || job.client_hire_rate, 10) || null,
         client_total_assignments: parseInt(job.client_jobs_posted, 10) || null,
-        client_member_since: job.client_member_since ? new Date(job.client_member_since).toISOString() : null,
+        client_member_since: job.client_member_since
+          ? (() => { try { return new Date(job.client_member_since).toISOString(); } catch { return null; } })()
+          : null,
         client_industry: String(job.company_industry || job.client_industry || "").slice(0, 200) || null,
         payment_verified: job.client_payment_verified === true || job.payment_verified === true,
         job_type: String(job.budget_type || job.job_type || "").slice(0, 50) || null,
