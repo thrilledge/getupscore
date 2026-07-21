@@ -1,5 +1,3 @@
-import { getApiUrl, apiRequest } from "../lib/upscore-api.js";
-
 const apiUrlInput = document.getElementById("apiUrl");
 const apiTokenInput = document.getElementById("apiToken");
 const btnToggleToken = document.getElementById("btnToggleToken");

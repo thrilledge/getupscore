@@ -43,18 +43,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     case "GET_UPWORK_COOKIES":
       chrome.cookies.getAll({ url: "https://www.upwork.com" }, (cookies) => {
         if (!chrome.runtime.lastError && cookies && cookies.length > 0) {
-          handleCapturedCookies(cookies);
+          const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join("; ");
+          handleCapturedCookies(cookieStr);
+          sendResponse({ ok: true, cookies: cookieStr });
+        } else {
+          sendResponse({ ok: false, error: "No cookies found" });
         }
       });
-      sendResponse({ ok: true });
-      break;
+      return true;
 
     case "JOBS_CAPTURED":
       handleCapturedJobs(msg.jobs).then(sendResponse);
       return true;
 
     case "PROFILE_CAPTURED":
-      console.log("[UpScore BG] PROFILE_CAPTURED received", msg.profile?.title);
       handleCapturedProfile(msg.profile).then(sendResponse);
       return true;
 
@@ -203,8 +205,6 @@ function broadcastState() {
     connected: state.connected,
     message: state.statusMessage,
     upworkCookies: state.upworkCookies,
-    apiToken: state.apiToken,
-    apiUrl: state.apiUrl,
   }).catch(() => {});
 }
 

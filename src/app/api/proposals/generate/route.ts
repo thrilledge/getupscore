@@ -222,14 +222,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
 
-    const { data: analysis } = await supabase
+    const { data: existingAnalysis } = await supabase
       .from("job_analyses")
       .select("*")
       .eq("job_id", jobId)
       .eq("user_id", userId)
       .single();
 
-    const analysisData = analysis as Record<string, unknown> | null;
+    let analysisData = existingAnalysis as Record<string, unknown> | null;
+
+    // Trigger analysis if none exists yet
+    if (!analysisData) {
+      try {
+        analysisData = await analyzeJob(supabase, job, jobId, userId);
+      } catch (analyzeErr: any) {
+        console.warn("[Proposals] On-demand analysis error:", analyzeErr.message);
+      }
+    }
 
     const proposalInput = {
       ...baseInput,

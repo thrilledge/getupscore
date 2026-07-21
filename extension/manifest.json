@@ -13,10 +13,10 @@
     "storage",
     "alarms",
     "sidePanel",
-    "cookies"
+    "cookies",
+    "clipboardWrite"
   ],
   "host_permissions": [
-    "http://localhost:3000/*",
     "https://getupscore.vercel.app/*",
     "https://*.upscore.app/*",
     "https://www.upwork.com/*"

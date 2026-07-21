@@ -2,21 +2,46 @@
 """
 Upwork Job Ingester — fetches jobs from local FastAPI and inserts into Supabase.
 Runs as a cron job every 5 minutes on EC2.
+Also cleans up jobs older than 10 days.
 """
 import json
 import os
 import sys
+from datetime import datetime, timedelta, timezone
 from urllib.request import Request, urlopen
 from urllib.error import URLError
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 API_URL = "http://localhost:8000/jobs?count=50&offset=0"
+JOB_RETENTION_DAYS = 10
 
 HEADERS = {
     "Content-Type": "application/json",
     "Accept": "application/json",
 }
+
+
+def delete_old_jobs(supabase_url, service_key, days):
+    """Delete jobs older than `days` from Supabase. FK cascades clean related rows."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    url = f"{supabase_url}/rest/v1/jobs?created_at=lt.{cutoff}"
+    req = Request(url, method="DELETE", headers={
+        "apikey": service_key,
+        "Authorization": f"Bearer {service_key}",
+        "Accept": "application/json",
+        "Prefer": "count=exact",
+    })
+    try:
+        with urlopen(req, timeout=30) as resp:
+            body = resp.read()
+            count = int(resp.headers.get("content-range", "0-0/0").split("/")[-1] or 0)
+            if count:
+                print(f"Deleted {count} jobs older than {days} days")
+            return count
+    except Exception as e:
+        print(f"WARN: Cleanup error: {e}")
+        return 0
 
 
 def fetch_jobs():
@@ -59,6 +84,9 @@ def main():
     if not supabase_url or not service_key:
         print("ERROR: SUPABASE_URL and SUPABASE_SERVICE_KEY must be set")
         sys.exit(1)
+
+    # Step 0: Clean up old jobs (10 day retention)
+    delete_old_jobs(supabase_url, service_key, JOB_RETENTION_DAYS)
 
     # Step 1: Fetch jobs from local FastAPI
     print("Fetching jobs from API...")

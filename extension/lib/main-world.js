@@ -2,8 +2,6 @@
   if (window.__upscoreBridgeLoaded) return;
   window.__upscoreBridgeLoaded = true;
 
-  console.log("[UpScore Main] Bridge loaded");
-
   // ─── Intercept fetch to capture Upwork's own GraphQL responses ───
   const originalFetch = window.fetch.bind(window);
   window.fetch = function (...args) {
@@ -12,13 +10,6 @@
 
     return originalFetch.apply(this, args).then(async (response) => {
       if (response.status !== 200) return response;
-
-      // Log ALL non-trivial fetches on job pages to find where job data comes from
-      if (!requestUrl.includes("analytics") && !requestUrl.includes("telemetry") && !requestUrl.includes("favicon") && !requestUrl.includes("cdn-cgi")) {
-        if (requestUrl.includes("api/") || requestUrl.includes("graphql") || requestUrl.includes("gql") || requestUrl.includes("json") || requestUrl.includes("nuxt") || requestUrl.includes("page-data")) {
-          console.log("[UpScore Main] Fetch URL:", requestUrl.slice(0, 250));
-        }
-      }
 
       // Always let through - we only observe, don't block
       if (!requestUrl.includes("api/") && !requestUrl.includes("graphql") && !requestUrl.includes("gql")) return response;
@@ -30,26 +21,8 @@
         try {
           const json = JSON.parse(text);
 
-          // Debug: log graphql response sample for job pages
-          if (requestUrl.includes("graphql") && text.length > 100) {
-            const sample = text.slice(0, 600);
-            const keys = json?.data ? Object.keys(json.data).join(", ") : "no data";
-            console.log("[UpScore Main] GraphQL [" + keys + "] (" + requestUrl.slice(0, 60) + "):", sample);
-            // Log full response structure keys to dev console
-            if (json?.data) {
-              console.log("[UpScore Main] GraphQL data keys:", Object.keys(json.data));
-              for (const k of Object.keys(json.data)) {
-                const v = json.data[k];
-                if (v && typeof v === "object") {
-                  console.log("[UpScore Main]   " + k + " keys:", Object.keys(v).join(", "));
-                }
-              }
-            }
-          }
-
           // Specifically intercept gql-query-get-visitor-job-details
           if (requestUrl.includes("visitor-job-details") || requestUrl.includes("VisitorJobDetails") || requestBody.includes("VisitorJobDetails")) {
-            console.log("[UpScore Main] Intercepted VisitorJobDetails API response");
             if (json?.data?.jobPubDetails) {
               const job = normalizeJobData(json.data.jobPubDetails);
               if (job && job.title) {
@@ -65,9 +38,8 @@
           }
 
           // Look for profile-like data
-          if (text.includes("talentVPDAuthProfile") || text.includes('"profile"') && text.includes("skills")) {
+          if ((text.includes("talentVPDAuthProfile") || text.includes('"profile"')) && text.includes("skills")) {
             if (json?.data?.talentVPDAuthProfile) {
-              console.log("[UpScore Main] Intercepted profile from fetch");
               window.postMessage({
                 type: "__upscore_result",
                 operation: "profileDetail",
@@ -80,7 +52,6 @@
               for (const key of Object.keys(json.data)) {
                 const val = json.data[key];
                 if (val && typeof val === "object" && (val.profile?.title || val.title) && val.skills) {
-                  console.log("[UpScore Main] Intercepted profile-like data from fetch key:", key);
                   window.postMessage({
                     type: "__upscore_result",
                     operation: "profileDetail",
@@ -96,7 +67,6 @@
           if (json?.data) {
             const foundJob = findJobInJson(json);
             if (foundJob) {
-              console.log("[UpScore Main] Intercepted job from fetch (graphql)");
               const job = normalizeJobData(foundJob);
               if (job) {
                 window.postMessage({
@@ -133,7 +103,7 @@
           if (!json || !json.data) return;
 
           // Profile
-          if (text.includes("talentVPDAuthProfile") || (text.includes('"profile"') && text.includes("skills"))) {
+          if ((text.includes("talentVPDAuthProfile") || text.includes('"profile"')) && text.includes("skills")) {
             if (json?.data?.talentVPDAuthProfile) {
               window.postMessage({
                 type: "__upscore_result",
@@ -161,7 +131,6 @@
           if (json?.data) {
             const foundJob = findJobInJson(json);
             if (foundJob) {
-              console.log("[UpScore Main] Intercepted job from XHR");
               const job = normalizeJobData(foundJob);
               if (job) {
                 window.postMessage({
@@ -213,10 +182,6 @@
     );
 
     if (profile && (hasPortfolioItems || attempt >= 10)) {
-      console.log("[UpScore Main] portfolioV2 keys:", portfolio ? Object.keys(portfolio).slice(0, 10) : "null",
-        "isLoading:", portfolio?.isLoading,
-        "published:", portfolio?.publishedCurrentPageProjects?.length ?? 0,
-        "draft:", portfolio?.draftCurrentPageProjects?.length ?? 0);
       window.postMessage({
         type: "__upscore_result",
         operation: "profileDetail",
@@ -240,7 +205,6 @@
 
     // Fallback: send what we have after all retries
     if (profile) {
-      console.log("[UpScore Main] Sending profile without portfolio data (timeout)");
       window.postMessage({
         type: "__upscore_result",
         operation: "profileDetail",
@@ -277,10 +241,8 @@
     try {
       const nuxt = window.__NUXT__;
       if (!nuxt) {
-        console.log("[UpScore Main] window.__NUXT__ is undefined");
         return null;
       }
-      console.log("[UpScore Main] __NUXT__ keys:", Object.keys(nuxt).join(", "));
 
       if (nuxt.state) {
         // Direct extraction from known state keys
@@ -288,12 +250,10 @@
         if (pv) {
           // profileViewer.profile is the freelancer profile
           if (pv.profile) {
-            console.log("[UpScore Main] Found profileViewer.profile");
             return pv.profile;
           }
           // profileViewer.person contains user info
           if (pv.person) {
-            console.log("[UpScore Main] Found profileViewer.person");
             return pv.person;
           }
           // Fallback: deep search profileViewer
@@ -301,7 +261,7 @@
           if (found) return found;
         }
       }
-    } catch (e) { console.log("[UpScore Main] extractFromNuxt error:", e); }
+    } catch { }
     return null;
   }
 
@@ -310,10 +270,7 @@
     try {
       const appRoot = document.getElementById("__nuxt") || document.getElementById("app");
       if (!appRoot) {
-        console.log("[UpScore Main] No #__nuxt or #app element found");
-        // List all id elements as debug
         const allIds = Array.from(document.querySelectorAll("[id]")).map(el => el.id).join(", ");
-        if (allIds) console.log("[UpScore Main] Elements with IDs:", allIds);
         return null;
       }
 
@@ -338,7 +295,6 @@
         } catch { /* ignore */ }
       }
       walk(vue);
-      if (profile) console.log("[UpScore Main] Extracted from Vue app");
       return profile;
     } catch { /* ignore */ }
     return null;
@@ -354,7 +310,6 @@
         if (match) {
           try {
             const profile = JSON.parse(match[1]);
-            console.log("[UpScore Main] Extracted talentVPDAuthProfile from script");
             return profile;
           } catch { /* not plain JSON */ }
         }
@@ -365,13 +320,22 @@
         if (objMatch) {
           try {
             const profile = JSON.parse(objMatch[1]);
-            console.log("[UpScore Main] Extracted talentVPDAuthProfile object from script");
             return profile;
           } catch { /* not plain JSON */ }
         }
       }
       if (text.includes("__NUXT__")) {
-        const nuxtMatch = text.match(/window\.__NUXT__\s*=\s*(\{[\s\S]*?\})\s*[;]/);
+        const nuxtIdx2 = text.indexOf("window.__NUXT__");
+        let nuxtMatch = null;
+        if (nuxtIdx2 !== -1) {
+          const slice = text.slice(nuxtIdx2);
+          let braceCount = 0;
+          let start = -1;
+          for (let i = 0; i < slice.length; i++) {
+            if (slice[i] === '{') { if (start === -1) start = i; braceCount++; }
+            else if (slice[i] === '}') { braceCount--; if (braceCount === 0 && start !== -1) { nuxtMatch = [null, slice.slice(start, i + 1)]; break; } }
+          }
+        }
         if (nuxtMatch) {
           try {
             const nuxt = JSON.parse(nuxtMatch[1]);
@@ -388,7 +352,6 @@
           const json = JSON.parse(text);
           const profile = findProfileInJson(json);
           if (profile) {
-            console.log("[UpScore Main] Extracted profile from JSON script");
             return profile;
           }
         } catch { /* not JSON */ }
@@ -462,15 +425,14 @@
       }
 
       if (profile.title || (profile.description && profile.description.length > 10)) {
-        console.log("[UpScore Main] Extracted from DOM selectors");
         return profile;
       }
     } catch { /* ignore */ }
     return null;
   }
 
-  function findProfileInJson(json) {
-    if (!json || typeof json !== "object") return null;
+  function findProfileInJson(json, _depth = 0) {
+    if (!json || typeof json !== "object" || _depth > 20) return null;
     if (json.talentVPDAuthProfile) return json.talentVPDAuthProfile;
     if (json.profile?.talentVPDAuthProfile) return json.profile.talentVPDAuthProfile;
     if (json.state?.talentVPDAuthProfile) return json.state.talentVPDAuthProfile;
@@ -483,7 +445,7 @@
     // Apollo cache entries
     for (const key of Object.keys(json)) {
       if (typeof json[key] === "object" && json[key] !== null) {
-        const found = findProfileInJson(json[key]);
+        const found = findProfileInJson(json[key], _depth + 1);
         if (found) return found;
       }
     }
@@ -514,15 +476,12 @@
         return;
       }
       const nuxt = window.__NUXT__;
-      console.log("[UpScore Main] __NUXT__ exists:", !!nuxt, "state exists:", !!nuxt?.state);
       if (nuxt?.state) {
-        console.log("[UpScore Main] __NUXT__.state keys:", Object.keys(nuxt.state).slice(0, 20).join(", "));
         for (const key of Object.keys(nuxt.state)) {
           const val = nuxt.state[key];
           if (val && typeof val === "object") {
             const subKeys = Object.keys(val);
             if (subKeys.length > 0 && subKeys.length < 10) {
-              console.log("[UpScore Main]   state." + key + " keys:", subKeys.join(", "));
             }
           }
         }
@@ -541,7 +500,6 @@
           // Merge any fields from partial that might be better
           if (!job.client_recent_history) job.client_recent_history = pendingPartialJob.client_recent_history;
         }
-        console.log("[UpScore Main] Job extracted:", job.title);
         window.__upscoreLastJob = job;
         window.postMessage({
           type: "__upscore_result",
@@ -579,7 +537,6 @@
     }
 
     if (attempt >= 20) {
-      console.log("[UpScore Main] Job extraction failed after", attempt, "attempts");
     }
 
     // Send whatever partial result we have as a last resort
@@ -606,13 +563,11 @@
     // Try detailed DOM extraction first (most data, no normalization)
     const detailed = extractJobFromSelectors();
     if (detailed) {
-      console.log("[UpScore Main] Detailed DOM extraction succeeded");
       return detailed;
     }
     // Try page source extraction (JSON-LD, embedded data)
     const fromSource = extractJobFromPageSource();
     if (fromSource) {
-      console.log("[UpScore Main] Page source extraction succeeded");
       return fromSource;
     }
     // Fall back to Nuxt/Vue/script extraction
@@ -706,10 +661,7 @@
       }
 
       return null;
-    } catch (e) {
-      console.log("[UpScore Main] extractJobFromPageSource error:", e);
-      return null;
-    }
+    } catch { return null; }
   }
 
   function extractJobFromNuxt() {
@@ -719,12 +671,10 @@
 
       const jobViewer = nuxt.state.jobViewer;
       if (jobViewer?.job) {
-        console.log("[UpScore Main] Found jobViewer.job");
         return normalizeJobData(jobViewer.job);
       }
 
       if (nuxt.state.job) {
-        console.log("[UpScore Main] Found state.job");
         return normalizeJobData(nuxt.state.job);
       }
 
@@ -735,7 +685,7 @@
 
       const found = findJobInJson(nuxt.state);
       if (found) return normalizeJobData(found);
-    } catch (e) { console.log("[UpScore Main] extractJobFromNuxt error:", e); }
+    } catch { }
     return null;
   }
 
@@ -800,17 +750,24 @@
       }
 
       return null;
-    } catch (e) {
-      console.log("[UpScore Main] extractJobFromVueApp error:", e);
-      return null;
-    }
+    } catch { return null; }
   }
 
   function extractJobFromScripts() {
     for (const script of document.querySelectorAll("script")) {
       const text = script.textContent || "";
       if (text.includes("__NUXT__")) {
-        const match = text.match(/window\.__NUXT__\s*=\s*(\{[\s\S]*?\})\s*[;]/);
+        const nuxtIdx = text.indexOf("window.__NUXT__");
+        let match = null;
+        if (nuxtIdx !== -1) {
+          const slice = text.slice(nuxtIdx);
+          let braceCount = 0;
+          let start = -1;
+          for (let i = 0; i < slice.length; i++) {
+            if (slice[i] === '{') { if (start === -1) start = i; braceCount++; }
+            else if (slice[i] === '}') { braceCount--; if (braceCount === 0 && start !== -1) { match = [null, slice.slice(start, i + 1)]; break; } }
+          }
+        }
         if (match) {
           try {
             const nuxt = JSON.parse(match[1]);
@@ -1037,20 +994,15 @@
         matched.push("history:" + job.client_recent_history.length);
       }
 
-      console.log("[UpScore Main] DOM selectors matched:", matched.join(", "));
       if (job.title) {
-        console.log("[UpScore Main] Extracted job from DOM selectors (detailed)");
         return job;
       }
       return null;
-    } catch (e) {
-      console.log("[UpScore Main] extractJobFromSelectors error:", e);
-      return null;
-    }
+    } catch { return null; }
   }
 
-  function findJobInJson(json) {
-    if (!json || typeof json !== "object") return null;
+  function findJobInJson(json, _depth = 0) {
+    if (!json || typeof json !== "object" || _depth > 20) return null;
     // SUIT2 common patterns
     if (json.jobViewer?.job) return json.jobViewer.job;
     if (json.job && typeof json.job.title === "string") return json.job;
@@ -1082,7 +1034,7 @@
 
     for (const key of Object.keys(json)) {
       if (typeof json[key] === "object" && json[key] !== null) {
-        const found = findJobInJson(json[key]);
+        const found = findJobInJson(json[key], _depth + 1);
         if (found) return found;
       }
     }
@@ -1337,7 +1289,6 @@
         data: job,
       }, "*");
     } catch (err) {
-      console.log("[UpScore Main] fetchJobDetailsFromUpworkApi error:", err.message);
       window.postMessage({
         type: "__upscore_result",
         operation: "jobDetails",
@@ -1346,29 +1297,6 @@
       }, "*");
     }
   }
-
-  window.__upscoreExplore = function () {
-    const results = {};
-    const all = document.querySelectorAll("[data-test], [data-qa], [data-cy]");
-    all.forEach(el => {
-      const test = el.getAttribute("data-test") || "";
-      const qa = el.getAttribute("data-qa") || "";
-      const cy = el.getAttribute("data-cy") || "";
-      const tag = el.tagName;
-      const text = (el.textContent || "").trim().slice(0, 100);
-      const key = test || qa || cy;
-      if (key && text && !key.includes("-ff") && !key.includes("smf")) {
-        if (!results[key]) results[key] = [];
-        if (results[key].length < 3) results[key].push({ tag, text, dataTest: test, dataQa: qa, dataCy: cy });
-      }
-    });
-    console.log("[UpScore Explore] Found", Object.keys(results).length, "unique selectors");
-    for (const [key, items] of Object.entries(results).slice(0, 60)) {
-      console.log("  " + key + ":", items.map(i => i.text).join(" | "));
-    }
-    console.log("Total entries:", Object.keys(results).length);
-    return results;
-  };
 
   function insertPortfolioOnApplyPage(portfolioItems) {
     if (!Array.isArray(portfolioItems) || portfolioItems.length === 0) return;
@@ -1386,6 +1314,5 @@
     const pos = textarea.selectionStart || textarea.value.length;
     textarea.value = textarea.value.slice(0, pos) + insertText + textarea.value.slice(pos);
     textarea.dispatchEvent(new Event("input", { bubbles: true }));
-    console.log("[UpScore Main] Inserted portfolio into apply form");
   }
 })();

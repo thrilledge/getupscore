@@ -29,40 +29,36 @@ function injectMainWorldBridge() {
 async function injectMainWorld(operation, params = {}) {
   try {
     await injectMainWorldBridge();
-    console.log("[UpScore] posting __upscore_exec", operation);
+
     window.postMessage({ type: "__upscore_exec", operation, params }, "*");
   } catch (err) {
-    console.warn("[UpScore] Main world op failed:", err.message);
+  
   }
 }
 
 injectMainWorldBridge();
 
 let pendingJobResolve = null;
+let pendingJobTimeout = null;
 
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (event.data?.type !== "__upscore_result") return;
 
   const { operation } = event.data;
-  console.log("[UpScore] received __upscore_result", operation, event.data.success);
 
   if (operation === "profileDetail") {
-    if (!event.data.success) {
-      console.error("[UpScore] Profile error:", event.data.error);
-      return;
-    }
+    if (!event.data.success) return;
     const profile = normalizeProfile(event.data.data);
     if (profile.title) {
-      console.log("[UpScore] Profile captured:", profile.title);
       chrome.runtime.sendMessage({ type: "PROFILE_CAPTURED", profile });
-    } else {
-      console.warn("[UpScore] Profile has no title, raw:", event.data.data);
     }
   }
 
   if (operation === "jobDetails") {
     if (pendingJobResolve) {
+      clearTimeout(pendingJobTimeout);
+      pendingJobTimeout = null;
       pendingJobResolve(event.data);
       pendingJobResolve = null;
     }
@@ -74,33 +70,43 @@ window.addEventListener("message", (event) => {
 
 function extractJobFromPage() {
   return new Promise((resolve) => {
+    if (pendingJobResolve) {
+      pendingJobResolve({ success: false, error: "Overridden" });
+    }
+    clearTimeout(pendingJobTimeout);
     pendingJobResolve = resolve;
     injectMainWorld("getJobDetailsFromDom");
-    setTimeout(() => {
+    pendingJobTimeout = setTimeout(() => {
       if (pendingJobResolve) {
         pendingJobResolve({ success: false, error: "Timeout" });
         pendingJobResolve = null;
+        pendingJobTimeout = null;
       }
     }, 15000);
   });
 }
 
 function fetchJobFromApi(jobUrl) {
-  const match = jobUrl.match(/[~/]([a-f0-9]{16,})/);
+  const match = jobUrl.match(/[~/]([a-f0-9]{16,})/i);
   if (!match) {
     return Promise.resolve({ success: false, error: "Could not extract job ID from URL" });
   }
   const ciphertext = "~" + match[1];
   return new Promise((resolve) => {
+    if (pendingJobResolve) {
+      pendingJobResolve({ success: false, error: "Overridden" });
+    }
+    clearTimeout(pendingJobTimeout);
     pendingJobResolve = resolve;
     // Get the visitor_gql_token from background script (can read HttpOnly cookies)
     chrome.runtime.sendMessage({ type: "GET_VISITOR_GQL_TOKEN" }, (response) => {
       const token = response?.token || null;
       injectMainWorld("fetchJobFromApi", { ciphertext, token });
-      setTimeout(() => {
+      pendingJobTimeout = setTimeout(() => {
         if (pendingJobResolve) {
           pendingJobResolve({ success: false, error: "Timeout fetching job from API" });
           pendingJobResolve = null;
+          pendingJobTimeout = null;
         }
       }, 15000);
     });
@@ -208,7 +214,7 @@ function detectProfilePage() {
 }
 
 function detectJobPage() {
-  return window.location.href.match(/\/(?:jobs|job)\/[^/]/) || window.location.href.match(/[~/][a-f0-9]{16,}/);
+  return window.location.href.match(/\/(?:jobs|job)\/[^/]/) || window.location.href.match(/[~/][a-f0-9]{16,}/i);
 }
 
 function detectApplyPage() {
@@ -217,11 +223,9 @@ function detectApplyPage() {
 
 function extractAndSend() {
   if (detectProfilePage()) {
-    console.log("[UpScore] Profile page detected, requesting profile data");
     injectMainWorld("getProfileFromDom");
   }
   if (detectJobPage()) {
-    console.log("[UpScore] Job page detected, extracting job details");
     extractJobFromPage();
   }
 }
@@ -314,8 +318,19 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 function captureCookies() {
   try {
     chrome.runtime.sendMessage({ type: "GET_UPWORK_COOKIES" });
-  } catch (e) { console.warn("[UpScore] captureCookies error:", e); }
+  } catch (e) { /* ignore */ }
 }
+
+window.addEventListener("__upscore_get_cookies", () => {
+  try {
+    chrome.runtime.sendMessage({ type: "GET_UPWORK_COOKIES", debug: true }, (resp) => {
+      window.__upscore_last_cookies = resp?.cookies || "none";
+      if (resp?.cookies) {
+        navigator.clipboard.writeText(resp.cookies).catch(() => {});
+      }
+    });
+  } catch (e) {}
+});
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {

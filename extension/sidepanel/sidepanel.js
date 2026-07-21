@@ -199,8 +199,8 @@ function renderJobCard(job) {
       </div>
       ${analysis.recommendation ? `<div class="job-card-rec">${escapeHtml(analysis.recommendation)}</div>` : ""}
       <div class="job-card-actions">
-        ${job.url ? `<a href="${job.url}" target="_blank" class="btn-small">View on Upwork</a>` : ""}
-        <button class="btn-small btn-primary" data-proposal-job-id="${job.id}" data-proposal-title="${escapeHtml(job.title || "")}">Write Proposal</button>
+        ${job.url ? `<a href="${escapeAttr(job.url)}" target="_blank" rel="noopener noreferrer" class="btn-small">View on Upwork</a>` : ""}
+        <button class="btn-small btn-primary" data-proposal-job-id="${job.id}" data-proposal-title="${escapeAttr(job.title || "")}">Write Proposal</button>
       </div>
     </div>
   `;
@@ -402,19 +402,66 @@ function showJobPreview(job) {
     </div>
     ${clientMemberSince ? `<div class="preview-member" style="font-size:12px;color:#666;">Client since: ${escapeHtml(clientMemberSince)}</div>` : ""}
     ${job.description ? `<div class="preview-desc" style="margin-top:8px;">${escapeHtml(job.description.slice(0, 500))}${job.description.length > 500 ? "..." : ""}</div>` : ""}
-    ${job.url ? `<div class="preview-url" style="margin-top:4px;"><a href="${job.url}" target="_blank">View on Upwork →</a></div>` : ""}
-    ${job.client_recent_history?.length ? `<div class="preview-history" style="margin-top:8px;font-size:12px;">
-      <strong>Client's Recent Jobs:</strong>
-      ${job.client_recent_history.slice(0, 3).map(h =>
-        `<div style="margin:2px 0;">• ${escapeHtml(h.title)}${h.rating ? ` (${h.rating}★)` : ""}</div>`
-      ).join("")}
-      ${job.client_recent_history.length > 3 ? `<div>+${job.client_recent_history.length - 3} more</div>` : ""}
-    </div>` : ""}
+    ${job.url ? `<div class="preview-url" style="margin-top:4px;"><a href="${escapeAttr(job.url)}" target="_blank" rel="noopener noreferrer">View on Upwork →</a></div>` : ""}
+    <div id="clientHistoryContainer"></div>
   `;
 
   $("proposalSource").style.display = "none";
   $("proposalJobPreview").style.display = "";
   $("proposalCustomize").style.display = "";
+
+  // If client history is available in the job data, render it immediately
+  if (job.client_recent_history?.length) {
+    renderClientHistory(job.client_recent_history);
+  } else {
+    // Otherwise try to fetch it from the EC2 proxy
+    fetchClientHistoryFromEc2(job);
+  }
+}
+
+function renderClientHistory(history) {
+  const container = $("clientHistoryContainer");
+  if (!container) return;
+  if (!history?.length) {
+    container.innerHTML = "";
+    return;
+  }
+  container.innerHTML = `
+    <div class="preview-history" style="margin-top:8px;font-size:12px;">
+      <strong>Client's Recent Jobs:</strong>
+      ${history.slice(0, 3).map(h =>
+        `<div style="margin:2px 0;">• ${escapeHtml(h.title)}${h.rating ? ` (${h.rating}★)` : ""}</div>`
+      ).join("")}
+      ${history.length > 3 ? `<div>+${history.length - 3} more</div>` : ""}
+    </div>
+  `;
+}
+
+async function fetchClientHistoryFromEc2(job) {
+  if (!token || !apiUrl) return;
+  // Extract ciphertext from the job URL
+  const url = job.url || "";
+  const ciphertextMatch = url.match(/~([a-f0-9]{16,})/);
+  if (!ciphertextMatch) return;
+  const ciphertext = ciphertextMatch[1];
+
+  try {
+    const response = await fetch(`${apiUrl}/api/jobs/full-details`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ciphertext }),
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    if (data.client_recent_history?.length) {
+      renderClientHistory(data.client_recent_history);
+    }
+  } catch {
+    // Silently fail — client history is best-effort
+  }
 }
 
 async function generateProposal() {
@@ -535,6 +582,10 @@ function copyProposal() {
     const btn = $("btnCopyProposal");
     btn.textContent = "Copied!";
     setTimeout(() => { btn.textContent = "Copy to Clipboard"; }, 2000);
+  }).catch(() => {
+    const btn = $("btnCopyProposal");
+    btn.textContent = "Copy failed";
+    setTimeout(() => { btn.textContent = "Copy to Clipboard"; }, 2000);
   });
 }
 
@@ -621,7 +672,7 @@ function renderClientCard(client) {
       </div>
       <div class="client-jobs">
         ${client.jobs.slice(0, 3).map(j =>
-          `<div class="client-job">${j.url ? `<a href="${j.url}" target="_blank">` : ""}${escapeHtml(j.title)}${j.url ? "</a>" : ""}</div>`
+          `<div class="client-job">${j.url ? `<a href="${escapeAttr(j.url)}" target="_blank" rel="noopener noreferrer">` : ""}${escapeHtml(j.title)}${j.url ? "</a>" : ""}</div>`
         ).join("")}
         ${client.jobs.length > 3 ? `<div class="client-job-more">+${client.jobs.length - 3} more</div>` : ""}
       </div>
@@ -692,6 +743,11 @@ async function saveProposalRules() {
 // ══════════════════════════════════════════════════════════
 // ═══  UTILITIES  ═══
 // ══════════════════════════════════════════════════════════
+function escapeAttr(str) {
+  if (!str) return "";
+  return String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#39;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 function escapeHtml(str) {
   if (!str) return "";
   const div = document.createElement("div");
