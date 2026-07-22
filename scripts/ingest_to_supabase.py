@@ -177,7 +177,7 @@ def main():
                 "proposals_count": _int(j.get("proposals_count")),
                 "category": (j.get("category") or "")[:200] or None,
             })
-            new_ciphertexts.append(j.get("upwork_job_id", ""))
+            new_ciphertexts.append((j.get("url") or "").split("~")[-1].split("/")[0].split("?")[0])
 
         print(f"  Page {page+1}: {len(raw_jobs)} fetched, {page_new} new")
 
