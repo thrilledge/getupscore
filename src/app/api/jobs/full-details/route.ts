@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const EC2_API = process.env.UPWORK_API_URL || "http://13.48.204.110";
+const EC2_API = "http://13.48.204.110";
 
 export async function POST(request: Request) {
   try {

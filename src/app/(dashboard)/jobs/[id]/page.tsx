@@ -68,6 +68,15 @@ type Job = {
   client_total_spend: number | null;
   client_member_since: string | null;
   client_industry: string | null;
+  client_score: number | null;
+  client_hours_count: number | null;
+  client_feedback_count: number | null;
+  client_payment_verified: boolean | null;
+  client_city: string | null;
+  client_company_size: number | null;
+  client_total_jobs_with_hires: number | null;
+  client_active_assignments: number | null;
+  client_location_country: string | null;
   proposals_count: number | null;
   total_invited: number | null;
   total_hired: number | null;
@@ -294,7 +303,15 @@ export default function JobDetailPage() {
             {metaItem(
               <User className="size-4" />,
               "Client",
-              job.client_country || job.client_name || "Unavailable"
+              job.client_city
+                ? (job.client_location_country ? `${job.client_city}, ${job.client_location_country}` : job.client_city)
+                : job.client_country || job.client_name || "Unavailable"
+            )}
+            {job.client_score != null && job.client_score > 0 && (
+              <p className="text-xs text-muted-foreground mt-0.5 ml-6 flex items-center gap-1">
+                <Star className="size-3 fill-yellow-500 text-yellow-500" />
+                {job.client_score.toFixed(1)} client score
+              </p>
             )}
             {job.client_rating != null && (
               <p className="text-xs text-muted-foreground mt-0.5 ml-6 flex items-center gap-1">
@@ -302,23 +319,40 @@ export default function JobDetailPage() {
                 {job.client_rating}
               </p>
             )}
+            {job.client_payment_verified && (
+              <p className="text-xs text-green-600 mt-0.5 ml-6">Payment verified</p>
+            )}
           </CardContent>
         </Card>
         <Card>
           <CardContent className="py-3 px-4">
-            {metaItem(<Briefcase className="size-4" />, "Activity", "—")}
+            {metaItem(
+              <Briefcase className="size-4" />,
+              "Activity",
+              job.client_active_assignments != null
+                ? `${job.client_active_assignments} active`
+                : job.client_total_jobs_with_hires != null
+                  ? `${job.client_total_jobs_with_hires} jobs posted`
+                  : "—"
+            )}
+            {job.client_hours_count != null && (
+              <p className="text-xs text-muted-foreground mt-0.5 ml-6">{job.client_hours_count.toLocaleString()} hours logged</p>
+            )}
+            {job.client_feedback_count != null && (
+              <p className="text-xs text-muted-foreground mt-0.5 ml-6">{job.client_feedback_count} reviews</p>
+            )}
+            {job.client_company_size != null && (
+              <p className="text-xs text-muted-foreground mt-0.5 ml-6">{job.client_company_size} employees</p>
+            )}
             {job.proposals_count != null && (
               <p className="text-xs text-muted-foreground mt-0.5 ml-6">{job.proposals_count} proposals</p>
-            )}
-            {job.total_invited != null && (
-              <p className="text-xs text-muted-foreground mt-0.5 ml-6">{job.total_invited} invited</p>
             )}
           </CardContent>
         </Card>
       </div>
 
       {/* Client Details Section */}
-      {(job.client_total_assignments != null || job.client_total_spend != null || job.client_industry || job.client_member_since) && (
+      {(job.client_total_assignments != null || job.client_total_spend != null || job.client_industry || job.client_member_since || job.client_score != null) && (
         <Card>
           <CardContent className="py-3 px-4">
             <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
@@ -326,10 +360,10 @@ export default function JobDetailPage() {
               <span className="text-xs font-semibold uppercase tracking-wider">Client History</span>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {job.client_total_assignments != null && (
+              {job.client_total_hires != null && (
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase">Total Hires</p>
-                  <p className="text-sm font-medium">{job.client_total_hires ?? "—"} / {job.client_total_assignments}</p>
+                  <p className="text-sm font-medium">{job.client_total_hires}</p>
                 </div>
               )}
               {job.client_total_spend != null && (
@@ -348,6 +382,30 @@ export default function JobDetailPage() {
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase">Member Since</p>
                   <p className="text-sm font-medium">{new Date(job.client_member_since).toLocaleDateString()}</p>
+                </div>
+              )}
+              {job.client_total_jobs_with_hires != null && (
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase">Jobs Posted (Hired)</p>
+                  <p className="text-sm font-medium">{job.client_total_jobs_with_hires}</p>
+                </div>
+              )}
+              {job.client_active_assignments != null && (
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase">Active Assignments</p>
+                  <p className="text-sm font-medium">{job.client_active_assignments}</p>
+                </div>
+              )}
+              {job.client_hours_count != null && (
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase">Hours Logged</p>
+                  <p className="text-sm font-medium">{job.client_hours_count.toLocaleString()}</p>
+                </div>
+              )}
+              {job.client_company_size != null && (
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase">Company Size</p>
+                  <p className="text-sm font-medium">{job.client_company_size} employees</p>
                 </div>
               )}
             </div>

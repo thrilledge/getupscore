@@ -508,7 +508,7 @@ interface UpworkApiResponse {
 }
 
 async function fetchUpworkApi(query?: string): Promise<FetchResult> {
-  const apiUrl = process.env.UPWORK_API_URL || "http://3.95.244.126/api/upwork-jobs";
+  const apiUrl = process.env.UPWORK_API_URL || "http://13.48.204.110/jobs";
   const count = 50;
   const url = `${apiUrl}?count=${count}&offset=0`;
 
