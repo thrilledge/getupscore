@@ -55,13 +55,20 @@ async function serverSideGroqAnalysis(
   const budgetType = job.job_type || job.budget_type || "Not specified";
   const experienceLevel = job.contractor_tier || job.experience_level || "Not specified";
   const hoursPerWeek = job.hours_per_week || "Not specified";
-  const clientCountry = job.client_country || "Unknown";
+  const clientCountry = job.client_country || job.client_location_country || "Unknown";
+  const clientCity = job.client_city || "";
   const clientRating = job.client_rating ? `${job.client_rating}/5` : "No rating";
+  const clientScore = job.client_score != null && job.client_score > 0 ? `${job.client_score}/5` : "No score";
   const clientTotalSpend = job.client_total_spend ? `$${job.client_total_spend}` : "Unknown";
   const clientTotalHires = job.client_total_hires ?? "Unknown";
   const clientHireRate = job.client_hire_rate != null ? `${job.client_hire_rate}%` : "Unknown";
   const clientMemberSince = job.client_member_since ? new Date(job.client_member_since).toLocaleDateString() : "Unknown";
-  const paymentVerified = job.payment_verified ? "Yes" : "No";
+  const paymentVerified = job.client_payment_verified === true || job.payment_verified === true;
+  const clientHoursCount = job.client_hours_count ?? "Unknown";
+  const clientFeedbackCount = job.client_feedback_count ?? "Unknown";
+  const clientActiveAssignments = job.client_active_assignments ?? "Unknown";
+  const clientJobsPosted = job.client_total_jobs_with_hires ?? "Unknown";
+  const clientCompanySize = job.client_company_size ?? "Unknown";
   const proposalsCount = job.proposals_count ?? "Unknown";
   const duration = job.duration_label ? `${job.duration_label}${job.duration_weeks ? ` (${job.duration_weeks} weeks)` : ""}` : "Not specified";
 
@@ -79,13 +86,21 @@ Hours/Week: ${hoursPerWeek}
 Proposals Submitted: ${proposalsCount}
 
 === CLIENT DETAILS ===
-Country: ${clientCountry}
+Country: ${clientCountry}${clientCity ? `, City: ${clientCity}` : ""}
+Client Score: ${clientScore}
 Rating: ${clientRating}
 Total Spend: ${clientTotalSpend}
 Total Hires: ${clientTotalHires}
+Jobs Posted: ${clientJobsPosted}
+Active Assignments: ${clientActiveAssignments}
+Hours Logged: ${clientHoursCount}
+Reviews/Feedback: ${clientFeedbackCount}
+Company Size: ${clientCompanySize}
 Hire Rate: ${clientHireRate}
 Member Since: ${clientMemberSince}
-Payment Verified: ${paymentVerified}
+Payment Verified: ${paymentVerified ? "YES (verified)" : "No (not verified)"}
+
+IMPORTANT: If client score is >= 4.0, payment is verified, and client has history of hires/spending, these are strong POSITIVE signals. Do NOT flag them as red flags. Only flag as red flags when data is actually missing or negative.
 
 Return JSON only with these exact fields:
 {
