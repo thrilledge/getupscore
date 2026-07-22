@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 
 // ─── Views ───
-const VIEWS = ["dashboard", "savedjobs", "proposal", "clients", "settings"];
+const VIEWS = ["dashboard", "savedjobs", "proposal", "settings"];
 const viewEls = {};
 for (const v of VIEWS) viewEls[v] = $(`view-${v}`);
 
@@ -24,7 +24,6 @@ function showView(name) {
     name === "dashboard" ? "UpScore" :
     name === "savedjobs" ? "Saved Jobs" :
     name === "proposal" ? "Write Proposal" :
-    name === "clients" ? "Client History" :
     name === "settings" ? "Settings" : "UpScore";
 }
 
@@ -77,15 +76,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Quick actions
   $("btnViewSavedJobs").addEventListener("click", () => { showView("savedjobs"); loadSavedJobs(); });
   $("btnNewProposal").addEventListener("click", () => { showView("proposal"); loadProposalJobs(); });
-  $("btnClientHistory").addEventListener("click", () => { showView("clients"); loadClientHistory(); });
 
   // Proposal
-  document.querySelectorAll(".source-tab").forEach((tab) => {
-    tab.addEventListener("click", () => switchProposalSource(tab.dataset.tab));
-  });
   $("btnExtractFromTab").addEventListener("click", extractJobFromCurrentTab);
-  $("btnFetchJobUrl").addEventListener("click", fetchJobFromUrl);
-  $("proposalJobSelect").addEventListener("change", () => onProposalJobSelected());
   $("btnGenerateProposal").addEventListener("click", generateProposal);
   $("btnCopyProposal").addEventListener("click", copyProposal);
   $("btnNewProposalAgain").addEventListener("click", resetProposal);
@@ -182,8 +175,23 @@ async function loadSavedJobs() {
 function renderJobCard(job) {
   const analysis = job.analysis || {};
   const matchScore = analysis.match_score;
-  const oppScore = analysis.opportunity_score;
   const scoreClass = matchScore >= 70 ? "high" : matchScore >= 40 ? "mid" : "low";
+
+  const clientScore = job.client_score || job.clientRating || "";
+  const clientSpend = job.client_total_spend || job.clientTotalSpend || "";
+  const clientHires = job.client_total_jobs_with_hires || job.client_total_hires || "";
+  const clientAssignments = job.client_total_assignments || "";
+  const clientHours = job.client_hours_count || "";
+  const clientReviews = job.client_feedback_count || "";
+  const paymentVerified = job.client_payment_verified || job.payment_verified || false;
+  const clientCity = job.client_city || "";
+  const clientCountry = job.client_country || job.client_location_country || "";
+  const clientLocation = [clientCity, clientCountry].filter(Boolean).join(", ");
+  const clientIndustry = job.client_industry || "";
+  const activeAssignments = job.client_active_assignments || "";
+
+  const budget = job.budget ? `$${job.budget}` : (job.hourly_min ? `$${job.hourly_min}-$${job.hourly_max}/hr` : "");
+  const duration = job.duration_label || "";
 
   return `
     <div class="job-card" data-job-id="${job.id}">
@@ -192,10 +200,23 @@ function renderJobCard(job) {
         ${matchScore ? `<div class="score-badge ${scoreClass}">${matchScore}</div>` : ""}
       </div>
       <div class="job-card-meta">
-        ${job.client_country ? `<span>${escapeHtml(job.client_country)}</span>` : ""}
-        ${job.budget ? `<span>$${job.budget}</span>` : job.hourly_min ? `<span>$${job.hourly_min}-$${job.hourly_max}/hr</span>` : ""}
+        ${budget ? `<span>${escapeHtml(budget)}</span>` : ""}
         ${job.job_type ? `<span>${job.job_type}</span>` : ""}
+        ${duration ? `<span>${escapeHtml(duration)}</span>` : ""}
         ${job.posted_at ? `<span>${timeAgo(job.posted_at)}</span>` : ""}
+      </div>
+      ${clientLocation ? `<div class="job-card-client-row">
+        <span class="client-label">Client:</span> ${escapeHtml(clientLocation)}
+        ${clientScore ? ` · <strong>${clientScore}</strong>★` : ""}
+        ${clientSpend ? ` · $${Number(clientSpend).toLocaleString()} spent` : ""}
+        ${paymentVerified ? ' · <span class="verified-badge">✓ Verified</span>' : ""}
+      </div>` : ""}
+      <div class="job-card-stats">
+        ${clientHires ? `<span>${clientHires} hires</span>` : ""}
+        ${clientAssignments ? `<span>${clientAssignments} jobs</span>` : ""}
+        ${clientHours ? `<span>${Math.round(clientHours)}h logged</span>` : ""}
+        ${clientReviews ? `<span>${clientReviews} reviews</span>` : ""}
+        ${activeAssignments ? `<span>${activeAssignments} active</span>` : ""}
       </div>
       ${analysis.recommendation ? `<div class="job-card-rec">${escapeHtml(analysis.recommendation)}</div>` : ""}
       <div class="job-card-actions">
@@ -213,7 +234,7 @@ document.addEventListener("click", (e) => {
     const jobId = proposalBtn.dataset.proposalJobId;
     const title = proposalBtn.dataset.proposalTitle;
     showView("proposal");
-    loadProposalJobs(jobId);
+    loadProposalJobs();
   }
 });
 
@@ -222,64 +243,15 @@ document.addEventListener("click", (e) => {
 // ══════════════════════════════════════════════════════════
 
 let pendingJobDetails = null;
-let currentSource = "tab";
 
-function switchProposalSource(source) {
-  currentSource = source;
-  document.querySelectorAll(".source-tab").forEach((t) => {
-    t.classList.toggle("active", t.dataset.tab === source);
-  });
-  $("proposalSourceTab").style.display = source === "tab" ? "" : "none";
-  $("proposalSourceUrl").style.display = source === "url" ? "" : "none";
-  $("proposalSourceSaved").style.display = source === "saved" ? "" : "none";
-}
-
-async function loadProposalJobs(selectJobId) {
+async function loadProposalJobs() {
   if (!token) return;
 
-  // Check if we have a pending job from background (e.g. "Write with AI" button)
   const pending = await chrome.runtime.sendMessage({ type: "GET_PENDING_JOB_DETAILS" });
   if (pending?.success && pending?.data) {
     pendingJobDetails = pending.data;
     showJobPreview(pendingJobDetails);
-    return;
   }
-
-  const select = $("proposalJobSelect");
-
-  if (savedJobsCache.length === 0) {
-    try {
-      const data = await apiCall("/api/extension/saved-jobs");
-      savedJobsCache = data.jobs || [];
-    } catch {}
-  }
-
-  select.innerHTML = '<option value="">— Select a saved job —</option>';
-  for (const job of savedJobsCache) {
-    const option = document.createElement("option");
-    option.value = job.id;
-    option.textContent = job.title || "Untitled";
-    select.appendChild(option);
-  }
-
-  if (selectJobId) {
-    select.value = selectJobId;
-    onProposalJobSelected();
-  }
-}
-
-// Fetch job details from Upwork's API via the content script (GraphQL)
-async function fetchJobViaApi(jobUrl) {
-  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  const activeTab = tabs[0];
-  if (!activeTab?.id) throw new Error("No active tab");
-
-  const result = await chrome.tabs.sendMessage(activeTab.id, {
-    type: "FETCH_JOB_FROM_API",
-    jobUrl: jobUrl,
-  });
-  if (!result?.success) throw new Error(result?.error || "Could not fetch job");
-  return result.data;
 }
 
 async function extractJobFromCurrentTab() {
@@ -329,139 +301,63 @@ async function extractJobFromCurrentTab() {
   }
 }
 
-async function fetchJobFromUrl() {
-  const url = $("jobUrlInput").value.trim();
-  if (!url) return;
-
-  const btn = $("btnFetchJobUrl");
-  btn.textContent = "Fetching...";
-  btn.disabled = true;
-
-  try {
-    const ciphertextMatch = url.match(/~([a-f0-9]{16,})/);
-    if (!ciphertextMatch) throw new Error("Invalid job URL — could not find job ciphertext");
-
-    const data = await fetchJobViaApi(url);
-    pendingJobDetails = data;
-    showJobPreview(pendingJobDetails);
-    btn.textContent = "Fetch Job Details";
-    btn.disabled = false;
-  } catch (err) {
-    btn.textContent = "Failed: " + err.message;
-    setTimeout(() => { btn.textContent = "Fetch Job Details"; btn.disabled = false; }, 2000);
-  }
-}
-
-function onProposalJobSelected() {
-  const select = $("proposalJobSelect");
-  const jobId = select.value;
-  if (!jobId) {
-    $("proposalJobPreview").style.display = "none";
-    $("proposalCustomize").style.display = "none";
-    return;
-  }
-
-  const job = savedJobsCache.find((j) => j.id === jobId);
-  if (job) {
-    pendingJobDetails = { jobId: job.id };
-    showJobPreview(job);
-  }
-}
-
 function showJobPreview(job) {
   const preview = $("jobPreviewContent");
   const jobTitle = job.title || "Untitled Job";
-  const budget = job.budget || (job.hourly_min ? `$${job.hourly_min}-$${job.hourly_max}/hr` : "");
+  const budget = job.budget ? `$${job.budget}` : (job.hourly_min ? `$${job.hourly_min}-$${job.hourly_max}/hr` : "");
   const skills = Array.isArray(job.skills) ? job.skills.join(", ") : "";
-  const country = job.clientCountry || job.client_country || job.country || "";
+  const country = job.clientCountry || job.client_country || job.country || job.client_location_country || "";
+  const clientCity = job.client_city || "";
+  const clientLocation = [clientCity, country].filter(Boolean).join(", ");
   const proposalsCount = job.proposals_count || job.proposalsCount || "";
-  const clientRating = job.client_rating || job.clientRating || "";
+  const clientScore = job.client_score || job.client_rating || job.clientRating || "";
   const clientSpend = job.client_total_spend || job.clientTotalSpend || "";
-  const clientHireRate = job.client_hire_rate_pct || job.client_hire_rate || job.clientHireRate || "";
-  const clientMemberSince = job.client_member_since || "";
-  const paymentVerified = job.client_payment_verified || job.payment_verified || "";
+  const clientHires = job.client_total_jobs_with_hires || job.client_total_hires || "";
+  const clientAssignments = job.client_total_assignments || "";
+  const clientHours = job.client_hours_count || "";
+  const clientReviews = job.client_feedback_count || "";
+  const activeAssignments = job.client_active_assignments || "";
+  const paymentVerified = job.client_payment_verified || job.payment_verified || false;
+  const clientIndustry = job.client_industry || "";
+  const companySize = job.client_company_size || "";
   const experienceLevel = job.experience_level || "";
   const budgetType = job.budget_type || "";
-  const connectsRequired = job.connects_required || "";
+  const duration = job.duration_label || "";
+  const durationWeeks = job.duration_weeks || "";
+  const clientMemberSince = job.client_member_since || "";
 
   preview.innerHTML = `
     <div class="preview-title">${escapeHtml(jobTitle)}</div>
     <div class="preview-meta">
-      ${budget ? `${escapeHtml(budget)}` : ""}${budget && country ? " · " : ""}${country ? escapeHtml(country) : ""}
-      ${budgetType ? ` · ${escapeHtml(budgetType)}` : ""}
+      ${budget ? escapeHtml(budget) : ""}${budget && clientLocation ? " · " : ""}${clientLocation ? escapeHtml(clientLocation) : ""}
+      ${duration ? ` · ${escapeHtml(duration)}` : ""}
       ${experienceLevel ? ` · ${escapeHtml(experienceLevel)}` : ""}
     </div>
     ${skills ? `<div class="preview-skills">${escapeHtml(skills)}</div>` : ""}
-    <div class="preview-details" style="font-size:12px;color:#666;margin-top:4px;">
-      ${proposalsCount ? `Proposals: ${proposalsCount} | ` : ""}
-      ${clientRating ? `Rating: ${clientRating} | ` : ""}
-      ${clientSpend ? `Spent: $${clientSpend} | ` : ""}
-      ${clientHireRate ? `Hire Rate: ${clientHireRate}% | ` : ""}
-      ${connectsRequired ? `Connects: ${connectsRequired} | ` : ""}
-      ${paymentVerified ? "✓ Payment Verified" : ""}
+    <div class="preview-client-block" style="margin-top:8px;border:1px solid #e5e7eb;border-radius:8px;padding:10px;background:#fafafa;">
+      <div style="font-weight:600;font-size:12px;color:#374151;margin-bottom:6px;">Client Details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:11px;color:#555;">
+        ${clientScore ? `<div>★ Score: <strong>${clientScore}</strong></div>` : ""}
+        ${clientSpend ? `<div>Spent: <strong>$${Number(clientSpend).toLocaleString()}</strong></div>` : ""}
+        ${clientHires ? `<div>Hires: <strong>${clientHires}</strong></div>` : ""}
+        ${clientAssignments ? `<div>Jobs: <strong>${clientAssignments}</strong></div>` : ""}
+        ${clientHours ? `<div>Hours: <strong>${Math.round(clientHours)}</strong></div>` : ""}
+        ${clientReviews ? `<div>Reviews: <strong>${clientReviews}</strong></div>` : ""}
+        ${activeAssignments ? `<div>Active: <strong>${activeAssignments}</strong></div>` : ""}
+        ${proposalsCount ? `<div>Proposals: <strong>${proposalsCount}</strong></div>` : ""}
+        ${paymentVerified ? '<div style="color:#16a34a;">✓ Payment Verified</div>' : ""}
+        ${clientIndustry ? `<div>Industry: ${escapeHtml(clientIndustry)}</div>` : ""}
+        ${companySize ? `<div>Size: ${escapeHtml(companySize)}</div>` : ""}
+        ${clientMemberSince ? `<div>Member since: ${escapeHtml(clientMemberSince)}</div>` : ""}
+      </div>
     </div>
-    ${clientMemberSince ? `<div class="preview-member" style="font-size:12px;color:#666;">Client since: ${escapeHtml(clientMemberSince)}</div>` : ""}
-    ${job.description ? `<div class="preview-desc" style="margin-top:8px;">${escapeHtml(job.description.slice(0, 500))}${job.description.length > 500 ? "..." : ""}</div>` : ""}
-    ${job.url ? `<div class="preview-url" style="margin-top:4px;"><a href="${escapeAttr(job.url)}" target="_blank" rel="noopener noreferrer">View on Upwork →</a></div>` : ""}
-    <div id="clientHistoryContainer"></div>
+    ${job.description ? `<div class="preview-desc" style="margin-top:8px;font-size:12px;">${escapeHtml(job.description.slice(0, 500))}${job.description.length > 500 ? "..." : ""}</div>` : ""}
+    ${job.url ? `<div class="preview-url" style="margin-top:4px;font-size:12px;"><a href="${escapeAttr(job.url)}" target="_blank" rel="noopener noreferrer">View on Upwork →</a></div>` : ""}
   `;
 
   $("proposalSource").style.display = "none";
   $("proposalJobPreview").style.display = "";
   $("proposalCustomize").style.display = "";
-
-  // If client history is available in the job data, render it immediately
-  if (job.client_recent_history?.length) {
-    renderClientHistory(job.client_recent_history);
-  } else {
-    // Otherwise try to fetch it from the EC2 proxy
-    fetchClientHistoryFromEc2(job);
-  }
-}
-
-function renderClientHistory(history) {
-  const container = $("clientHistoryContainer");
-  if (!container) return;
-  if (!history?.length) {
-    container.innerHTML = "";
-    return;
-  }
-  container.innerHTML = `
-    <div class="preview-history" style="margin-top:8px;font-size:12px;">
-      <strong>Client's Recent Jobs:</strong>
-      ${history.slice(0, 3).map(h =>
-        `<div style="margin:2px 0;">• ${escapeHtml(h.title)}${h.rating ? ` (${h.rating}★)` : ""}</div>`
-      ).join("")}
-      ${history.length > 3 ? `<div>+${history.length - 3} more</div>` : ""}
-    </div>
-  `;
-}
-
-async function fetchClientHistoryFromEc2(job) {
-  if (!token || !apiUrl) return;
-  // Extract ciphertext from the job URL
-  const url = job.url || "";
-  const ciphertextMatch = url.match(/~([a-f0-9]{16,})/);
-  if (!ciphertextMatch) return;
-  const ciphertext = ciphertextMatch[1];
-
-  try {
-    const response = await fetch(`${apiUrl}/api/jobs/full-details`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ ciphertext }),
-    });
-    if (!response.ok) return;
-    const data = await response.json();
-    if (data.client_recent_history?.length) {
-      renderClientHistory(data.client_recent_history);
-    }
-  } catch {
-    // Silently fail — client history is best-effort
-  }
 }
 
 async function generateProposal() {
@@ -597,87 +493,6 @@ function resetProposal() {
   $("proposalJobPreview").style.display = "none";
   $("proposalCustomize").style.display = "none";
   $("proposalInstructions").value = "";
-  $("jobUrlInput").value = "";
-  switchProposalSource("tab");
-}
-
-// ══════════════════════════════════════════════════════════
-// ═══  CLIENT HISTORY  ═══
-// ══════════════════════════════════════════════════════════
-async function loadClientHistory() {
-  if (!token) return;
-  const list = $("clientsList");
-  const loading = $("clientsLoading");
-  const empty = $("clientsEmpty");
-
-  loading.style.display = "";
-  list.innerHTML = "";
-  empty.style.display = "none";
-
-  try {
-    let jobs = savedJobsCache;
-    if (jobs.length === 0) {
-      const data = await apiCall("/api/extension/saved-jobs");
-      jobs = data.jobs || [];
-    }
-
-    const clients = jobs
-      .filter(j => j.client_name || j.client_country)
-      .reduce((acc, job) => {
-        const key = job.client_name || job.client_country || "unknown";
-        if (!acc[key]) {
-          acc[key] = {
-            name: job.client_name || "Unknown Client",
-            country: job.client_country || "",
-            rating: job.client_rating,
-            totalSpend: job.client_total_spend,
-            totalHires: job.client_total_hires,
-            totalAssignments: job.client_total_assignments,
-            hireRate: job.client_hire_rate,
-            memberSince: job.client_member_since,
-            jobs: [],
-          };
-        }
-        acc[key].jobs.push({ title: job.title, url: job.url, budget: job.budget });
-        return acc;
-      }, {});
-
-    const clientList = Object.values(clients);
-
-    loading.style.display = "none";
-
-    if (clientList.length === 0) {
-      empty.style.display = "";
-      return;
-    }
-
-    list.innerHTML = clientList.map(renderClientCard).join("");
-  } catch (err) {
-    loading.textContent = "Failed to load: " + err.message;
-  }
-}
-
-function renderClientCard(client) {
-  return `
-    <div class="client-card">
-      <div class="client-card-header">
-        <div class="client-name">${escapeHtml(client.name)}</div>
-        ${client.country ? `<span class="client-country">${escapeHtml(client.country)}</span>` : ""}
-      </div>
-      <div class="client-stats">
-        ${client.rating ? `<div class="client-stat"><span class="stat-lbl">Rating</span><span class="stat-val">${client.rating}</span></div>` : ""}
-        ${client.totalSpend ? `<div class="client-stat"><span class="stat-lbl">Total Spent</span><span class="stat-val">$${client.totalSpend}</span></div>` : ""}
-        ${client.totalHires ? `<div class="client-stat"><span class="stat-lbl">Total Hires</span><span class="stat-val">${client.totalHires}</span></div>` : ""}
-        ${client.hireRate ? `<div class="client-stat"><span class="stat-lbl">Hire Rate</span><span class="stat-val">${client.hireRate}%</span></div>` : ""}
-      </div>
-      <div class="client-jobs">
-        ${client.jobs.slice(0, 3).map(j =>
-          `<div class="client-job">${j.url ? `<a href="${escapeAttr(j.url)}" target="_blank" rel="noopener noreferrer">` : ""}${escapeHtml(j.title)}${j.url ? "</a>" : ""}</div>`
-        ).join("")}
-        ${client.jobs.length > 3 ? `<div class="client-job-more">+${client.jobs.length - 3} more</div>` : ""}
-      </div>
-    </div>
-  `;
 }
 
 // ══════════════════════════════════════════════════════════

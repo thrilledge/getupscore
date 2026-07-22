@@ -1,28 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>UpScore</title>
   <link rel="stylesheet" href="sidepanel.css">
 </head>
+
 <body>
 
   <!-- ═══ HEADER ═══ -->
   <header class="panel-header">
     <button id="btnBack" class="btn-icon back-btn" title="Back" style="display:none">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12" />
+        <polyline points="12 19 5 12 12 5" />
+      </svg>
     </button>
     <div class="brand">
       <svg width="22" height="22" viewBox="0 0 128 128">
         <defs>
           <linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#2563eb"/>
-            <stop offset="100%" stop-color="#7c3aed"/>
+            <stop offset="0%" stop-color="#2563eb" />
+            <stop offset="100%" stop-color="#7c3aed" />
           </linearGradient>
         </defs>
-        <rect width="128" height="128" rx="24" fill="url(#sg)"/>
-        <text x="64" y="82" text-anchor="middle" font-family="system-ui" font-weight="900" font-size="64" fill="white">U</text>
+        <rect width="128" height="128" rx="24" fill="url(#sg)" />
+        <text x="64" y="82" text-anchor="middle" font-family="system-ui" font-weight="900" font-size="64"
+          fill="white">U</text>
       </svg>
       <div>
         <h1 id="appTitle">UpScore</h1>
@@ -30,7 +37,12 @@
     </div>
     <div class="header-actions">
       <button id="btnSettings" class="btn-icon" title="Settings">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path
+            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
       </button>
     </div>
   </header>
@@ -70,34 +82,42 @@
     <section class="section">
       <div class="section-header">
         <div class="section-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
           <span>Quick Actions</span>
         </div>
       </div>
       <div class="section-body">
         <button class="action-btn" id="btnViewSavedJobs">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+          </svg>
           <div class="action-text">
             <span class="action-title">Saved Jobs</span>
             <span class="action-desc">View & analyze your saved jobs</span>
           </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="action-arrow"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" class="action-arrow">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
         </button>
         <button class="action-btn" id="btnNewProposal">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
           <div class="action-text">
             <span class="action-title">Write Proposal</span>
             <span class="action-desc">AI-powered proposal for a job</span>
           </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="action-arrow"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
-        <button class="action-btn" id="btnClientHistory">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <div class="action-text">
-            <span class="action-title">Client History</span>
-            <span class="action-desc">Clients behind your saved jobs</span>
-          </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="action-arrow"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" class="action-arrow">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
         </button>
       </div>
     </section>
@@ -116,7 +136,10 @@
 
     <div id="jobsLoading" class="loading">Loading...</div>
     <div id="jobsEmpty" class="empty-state" style="display:none">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+        stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3">
+        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+      </svg>
       <p>No saved jobs yet</p>
       <p class="hint">Save jobs on Upwork to see them here</p>
     </div>
@@ -135,35 +158,19 @@
 
     <!-- Step 0: Source selection -->
     <div id="proposalSource">
-      <p class="desc" style="margin-bottom:8px">Choose how to provide the job:</p>
       <div class="source-tabs">
         <button id="btnSourceTab" class="source-tab active" data-tab="tab">Current Tab</button>
-        <button id="btnSourceUrl" class="source-tab" data-tab="url">Job URL</button>
-        <button id="btnSourceSaved" class="source-tab" data-tab="saved">Saved Job</button>
       </div>
 
-      <!-- Tab: Fetch from current tab -->
       <div id="proposalSourceTab" class="source-panel">
-        <p class="desc">Fetch job details from Upwork's API using the job page open in your current tab.</p>
         <button id="btnExtractFromTab" class="btn btn-primary btn-full">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
           Fetch from Current Tab
         </button>
-      </div>
-
-      <!-- Tab: Paste job URL -->
-      <div id="proposalSourceUrl" class="source-panel" style="display:none">
-        <p class="desc">Paste an Upwork job URL to fetch details via API:</p>
-        <input type="url" id="jobUrlInput" class="text-input" placeholder="https://www.upwork.com/jobs/~..." />
-        <button id="btnFetchJobUrl" class="btn btn-primary btn-full">Fetch Job Details</button>
-      </div>
-
-      <!-- Tab: Select saved job -->
-      <div id="proposalSourceSaved" class="source-panel" style="display:none">
-        <p class="desc">Pick a saved job from your library:</p>
-        <select id="proposalJobSelect" class="select-input">
-          <option value="">— Select a job —</option>
-        </select>
       </div>
     </div>
 
@@ -176,7 +183,8 @@
     <div id="proposalCustomize" style="display:none">
       <div class="field">
         <label for="proposalInstructions">Additional Instructions (optional)</label>
-        <textarea id="proposalInstructions" class="textarea-input" placeholder="Emphasize my experience with React and Node.js..." rows="3"></textarea>
+        <textarea id="proposalInstructions" class="textarea-input"
+          placeholder="Emphasize my experience with React and Node.js..." rows="3"></textarea>
       </div>
       <button id="btnGenerateProposal" class="btn btn-primary btn-full">Generate Proposal</button>
     </div>
@@ -189,7 +197,12 @@
       <div class="proposal-reasoning" id="proposalReasoning" style="display:none">
         <details class="reasoning-details">
           <summary class="reasoning-summary">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
             AI Reasoning
           </summary>
           <div class="reasoning-content" id="reasoningContent">Thinking...</div>
@@ -206,24 +219,6 @@
   </div>
 
   <!-- ════════════════════════════════════════════════════ -->
-  <!-- ═══  VIEW: CLIENT HISTORY  ═══ -->
-  <!-- ════════════════════════════════════════════════════ -->
-  <div id="view-clients" class="view" style="display:none">
-
-    <div class="list-header">
-      <h2>Client History</h2>
-    </div>
-
-    <div id="clientsLoading" class="loading">Loading...</div>
-    <div id="clientsEmpty" class="empty-state" style="display:none">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-      <p>No client data yet</p>
-      <p class="hint">Client info appears when jobs have client data</p>
-    </div>
-    <div id="clientsList"></div>
-
-  </div>
-
   <!-- ════════════════════════════════════════════════════ -->
   <!-- ═══  VIEW: SETTINGS  ═══ -->
   <!-- ════════════════════════════════════════════════════ -->
@@ -232,7 +227,12 @@
     <section class="section">
       <div class="section-header">
         <div class="section-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
           <span>API Connection</span>
         </div>
       </div>
@@ -246,7 +246,11 @@
           <div class="token-input">
             <input type="password" id="apiToken" placeholder="Paste your API token" />
             <button id="btnToggleToken" class="btn-icon" title="Show/Hide">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
             </button>
           </div>
         </div>
@@ -264,15 +268,22 @@
     <section class="section">
       <div class="section-header">
         <div class="section-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
           <span>Proposal Rules</span>
         </div>
       </div>
       <div class="section-body">
-        <p class="desc">These rules are applied to every proposal you generate. Examples: "Always mention my React expertise", "Keep proposals under 200 words", "Never mention WordPress".</p>
+        <p class="desc">These rules are applied to every proposal you generate. Examples: "Always mention my React
+          expertise", "Keep proposals under 200 words", "Never mention WordPress".</p>
         <div class="field">
           <label for="proposalRules">Persistent Proposal Instructions</label>
-          <textarea id="proposalRules" class="textarea-input" placeholder="e.g. Always lead with a specific result, mention my Shopify expertise, end with a question about their timeline..." rows="5"></textarea>
+          <textarea id="proposalRules" class="textarea-input"
+            placeholder="e.g. Always lead with a specific result, mention my Shopify expertise, end with a question about their timeline..."
+            rows="5"></textarea>
         </div>
         <button id="btnSaveRules" class="btn btn-secondary btn-full">Save Rules</button>
       </div>
@@ -281,7 +292,12 @@
     <section class="section">
       <div class="section-header">
         <div class="section-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
           <span>About</span>
         </div>
       </div>
@@ -294,4 +310,5 @@
 
   <script src="sidepanel.js"></script>
 </body>
+
 </html>

@@ -100,6 +100,10 @@ export async function POST(request: Request) {
         source: "extension_dom",
       };
 
+      if (job.client_recent_history && Array.isArray(job.client_recent_history) && job.client_recent_history.length > 0) {
+        jobRecord.client_recent_history = job.client_recent_history.slice(0, 20);
+      }
+
       // Upsert into jobs table
       const { data: jobData, error: jobError } = await supabase
         .from("jobs")

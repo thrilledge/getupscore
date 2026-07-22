@@ -93,7 +93,7 @@ export async function streamProposal(
   groqModel?: string
 ): Promise<ReadableStream<Uint8Array>> {
   const apiKey = groqApiKey || process.env.GROQ_API_KEY;
-  const model = groqModel || process.env.GROQ_MODEL || "deepseek-r1-distill-llama-70b";
+  const model = groqModel || process.env.GROQ_MODEL || "openai/gpt-oss-20b";
 
   return new ReadableStream({
     async start(controller) {
@@ -166,7 +166,7 @@ export async function streamProposal(
                 fullProposal += delta.content;
                 send("proposal", { text: delta.content });
               }
-            } catch {}
+            } catch { }
           }
         }
 
@@ -487,10 +487,10 @@ ${input.recommendation ? `AI Recommendation: ${input.recommendation}` : ""}`);
       input.proposalsCount < 5
         ? "LOW — early mover advantage"
         : input.proposalsCount < 20
-        ? "MEDIUM — be specific and fast"
-        : input.proposalsCount < 50
-        ? "HIGH — hook must be razor sharp"
-        : "VERY HIGH — only radical specificity wins";
+          ? "MEDIUM — be specific and fast"
+          : input.proposalsCount < 50
+            ? "HIGH — hook must be razor sharp"
+            : "VERY HIGH — only radical specificity wins";
     signalFields.push(`Proposals already submitted: ${input.proposalsCount} (Competition: ${competitionLevel})`);
   }
   if (input.postedAt) signalFields.push(`Job posted at: ${input.postedAt}`);
@@ -505,8 +505,8 @@ Strategic note: If competition is HIGH or VERY HIGH, lead with the most specific
       input.clientTotalSpend > 10000
         ? "Serious buyer — values quality over price"
         : input.clientTotalSpend > 1000
-        ? "Moderate buyer — balance value and cost"
-        : "New or cautious buyer — reduce perceived risk";
+          ? "Moderate buyer — balance value and cost"
+          : "New or cautious buyer — reduce perceived risk";
     clientFields.push(`Total client spend: $${input.clientTotalSpend} (${spendSignal})`);
   }
   if (input.clientHireRate !== undefined) {
@@ -514,8 +514,8 @@ Strategic note: If competition is HIGH or VERY HIGH, lead with the most specific
       input.clientHireRate >= 75
         ? "High hire rate — client is decisive and serious"
         : input.clientHireRate >= 40
-        ? "Average hire rate — needs more convincing"
-        : "Low hire rate — picky or inexperienced. Minimize friction in your CTA.";
+          ? "Average hire rate — needs more convincing"
+          : "Low hire rate — picky or inexperienced. Minimize friction in your CTA.";
     clientFields.push(`Client hire rate: ${input.clientHireRate}% (${hireSignal})`);
   }
   if (input.clientRating !== undefined) {
@@ -523,8 +523,8 @@ Strategic note: If competition is HIGH or VERY HIGH, lead with the most specific
       input.clientRating >= 4.5
         ? "Great client — has positive history with freelancers"
         : input.clientRating >= 3.5
-        ? "Average client — proceed normally"
-        : "Low client rating — may have had conflict with past freelancers. Emphasize communication and clear deliverables.";
+          ? "Average client — proceed normally"
+          : "Low client rating — may have had conflict with past freelancers. Emphasize communication and clear deliverables.";
     clientFields.push(`Client rating: ${input.clientRating}/5 (${ratingSignal})`);
   }
   sections.push(`\n=== CLIENT INTELLIGENCE ===

@@ -271,6 +271,25 @@ body {
 .btn-small.btn-primary { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
 .btn-small.btn-primary:hover { background: #2563eb; }
 
+.job-card-client-row {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+.job-card-client-row .client-label { color: var(--text-muted); }
+.job-card-client-row strong { color: var(--text); font-weight: 600; }
+.verified-badge { color: var(--accent-green); font-weight: 600; }
+
+.job-card-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 3px;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
 /* ─── CLIENT CARD ─── */
 .client-card {
   background: var(--surface);

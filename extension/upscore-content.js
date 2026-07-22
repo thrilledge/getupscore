@@ -66,6 +66,12 @@ window.addEventListener("message", (event) => {
       chrome.runtime.sendMessage({ type: "JOBS_CAPTURED", jobs: [event.data.data] });
     }
   }
+
+  if (operation === "getCookies") {
+    chrome.runtime.sendMessage({ type: "GET_UPWORK_COOKIES" }, (resp) => {
+      window.postMessage({ type: "__upscore_result", operation: "getCookies", cookies: resp?.cookies || "" }, "*");
+    });
+  }
 });
 
 function extractJobFromPage() {
@@ -321,16 +327,7 @@ function captureCookies() {
   } catch (e) { /* ignore */ }
 }
 
-window.addEventListener("__upscore_get_cookies", () => {
-  try {
-    chrome.runtime.sendMessage({ type: "GET_UPWORK_COOKIES", debug: true }, (resp) => {
-      window.__upscore_last_cookies = resp?.cookies || "none";
-      if (resp?.cookies) {
-        navigator.clipboard.writeText(resp.cookies).catch(() => {});
-      }
-    });
-  } catch (e) {}
-});
+
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
