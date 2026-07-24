@@ -1,49 +1,29 @@
-import fs from "fs/promises";
-import path from "path";
-import { nanoid } from "nanoid";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import crypto from "crypto";
 
 /**
- * Shared: Get current user ID from Supabase auth
+ * Create a signed state token that encodes user_id + channel info.
+ * No server-side storage needed — works on Vercel serverless.
  */
-async function getUserId(): Promise<string> {
-  const supabase = await createSupabaseAdminClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user?.id) {
-    throw new Error("User not authenticated");
-  }
-
-  return user.id;
+function createSignedState(data: Record<string, unknown>): string {
+  const payload = Buffer.from(JSON.stringify(data)).toString("base64url");
+  const secret = env.SLACK_SIGNING_SECRET || env.SLACK_CLIENT_SECRET || "fallback";
+  const signature = crypto.createHmac("sha256", secret).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
 }
 
 /**
- * Shared: Local file system cache for Slack OAuth state
+ * Verify and decode a signed state token.
  */
-async function cacheSlackOAuthState(state: string, data: any): Promise<void> {
+function verifySignedState(state: string): Record<string, unknown> | null {
   try {
-    const cacheDir = path.join(process.cwd(), ".cache", "slack");
-
-    await fs.mkdir(cacheDir, { recursive: true });
-
-    const filePath = path.join(cacheDir, `${state}.json`);
-    await fs.writeFile(filePath, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error("[Slack OAuth Cache] Write error:", error);
-  }
-}
-
-/**
- * Shared: Read Slack OAuth state from cache
- */
-async function getSlackOAuthState(state: string): Promise<any | null> {
-  try {
-    const filePath = path.join(process.cwd(), ".cache", "slack", `${state}.json`);
-    const content = await fs.readFile(filePath, "utf8");
-    return JSON.parse(content);
+    const [payload, signature] = state.split(".");
+    if (!payload || !signature) return null;
+    const secret = env.SLACK_SIGNING_SECRET || env.SLACK_CLIENT_SECRET || "fallback";
+    const expected = crypto.createHmac("sha256", secret).update(payload).digest("base64url");
+    if (signature !== expected) return null;
+    return JSON.parse(Buffer.from(payload, "base64url").toString());
   } catch {
     return null;
   }
@@ -61,45 +41,41 @@ export async function POST(request: Request): Promise<Response> {
     const { channel_type, name, config } = body;
 
     if (!channel_type) {
-      return new Response(
-        JSON.stringify({ error: "channel_type is required" }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
+      return Response.json({ error: "channel_type is required" }, { status: 400 });
     }
 
-    const userId = await getUserId();
+    const supabase = await createSupabaseAdminClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user?.id) {
+      return Response.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
     if (channel_type === "slack") {
-      const state = nanoid();
-      const redirect_uri = env.SITE_URL || "http://localhost:3000";
+      const redirectUri = `${env.SITE_URL}/api/notifications/channels/callback`;
 
-      const oauthData = {
-        user_id: userId,
+      const state = createSignedState({
+        user_id: user.id,
         channel_type,
         name: name || "Slack Notifications",
-        config: { ...config, redirect_uri },
-        state,
-        created_at: Date.now(),
-      };
+        config: config || {},
+      });
 
-      await cacheSlackOAuthState(state, oauthData);
+      const scope = "incoming-webhook,chat:write,channels:read,users:read";
+      const slackAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${env.SLACK_CLIENT_ID}&scope=${scope}&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 
-      const slackAuthUrl = `https://slack.com/oauth/authorize?client_id=${env.SLACK_CLIENT_ID}&scope=incoming-webhook,chat:write,channels:read,users:read&state=${state}&redirect_uri=${redirect_uri}&response_type=code`;
-
-      return new Response(
-        JSON.stringify({ auth_url: slackAuthUrl, state, oauth_data: oauthData }),
-        { headers: { "Content-Type": "application/json" } }
-      );
+      return Response.json({ auth_url: slackAuthUrl, state });
     }
 
     const sanitizedName = name || `${channel_type} Notifications`;
     const sanitizedConfig = config || {};
 
-    const supabase = await createSupabaseAdminClient();
     const { data, error: insertError } = await supabase
       .from("notification_channels")
       .insert({
-        user_id: userId,
+        user_id: user.id,
         name: sanitizedName,
         type: channel_type,
         config: sanitizedConfig,
@@ -110,26 +86,19 @@ export async function POST(request: Request): Promise<Response> {
 
     if (insertError) {
       console.error("[Channels] Insert error:", insertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to create channel" }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
+      return Response.json({ error: "Failed to create channel" }, { status: 500 });
     }
 
-    return new Response(
-      JSON.stringify({
-        id: data.id,
-        message: "Channel created successfully",
-        channel_type,
-        name: sanitizedName,
-      }),
-      { headers: { "Content-Type": "application/json" } }
-    );
+    return Response.json({
+      id: data.id,
+      message: "Channel created successfully",
+      channel_type,
+      name: sanitizedName,
+    });
   } catch (err) {
     console.error("[Channels] Error:", err);
-    return new Response(
-      JSON.stringify({ error: "Invalid request" }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return Response.json({ error: "Invalid request" }, { status: 400 });
   }
 }
+
+export { verifySignedState };

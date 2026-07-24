@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
@@ -15,6 +16,8 @@ import {
   RefreshCw,
   AlertCircle,
 } from "lucide-react";
+import { toast } from "sonner";
+import { useRouter, useSearchParams } from "next/navigation";
 
 async function fetchChannels(userId: string): Promise<NotificationChannel[]> {
   const { data, error } = await supabase
@@ -28,8 +31,52 @@ async function fetchChannels(userId: string): Promise<NotificationChannel[]> {
 }
 
 export default function ChannelsPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-40 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    }>
+      <ChannelsContent />
+    </Suspense>
+  );
+}
+
+function ChannelsContent() {
   const { user } = useUser();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const success = searchParams.get("success");
+    const error = searchParams.get("error");
+    if (success === "slack_connected") {
+      toast.success("Slack connected successfully! Notifications will be delivered to your Slack workspace.");
+      queryClient.invalidateQueries({ queryKey: ["notification_channels"] });
+      router.replace("/channels");
+    } else if (error) {
+      const messages: Record<string, string> = {
+        slack_denied: "Slack authorization was denied.",
+        missing_params: "Missing authorization parameters.",
+        invalid_state: "Invalid or expired state. Please try again.",
+        token_exchange_failed: "Failed to exchange authorization code. Please try again.",
+        no_webhook: "Slack did not return a webhook URL. Make sure you selected a channel.",
+        save_failed: "Failed to save channel. Please try again.",
+        oauth_failed: "Slack connection failed. Please try again.",
+      };
+      toast.error(messages[error] || `Slack error: ${error}`);
+      router.replace("/channels");
+    }
+  }, [searchParams, queryClient, router]);
 
   const {
     data: channels,

@@ -1,44 +1,38 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
-import fs from "fs/promises";
-import path from "path";
+import { verifySignedState } from "../route";
 
-async function getSlackOAuthState(state: string): Promise<any | null> {
-  const cacheDir = path.join(process.cwd(), ".cache", "slack");
-  const filePath = path.join(cacheDir, `${state}.json`);
-  try {
-    const content = await fs.readFile(filePath, "utf8");
-    return JSON.parse(content);
-  } catch {
-    return null;
-  }
-}
-
-async function deleteSlackOAuthState(state: string): Promise<void> {
-  const cacheDir = path.join(process.cwd(), ".cache", "slack");
-  const filePath = path.join(cacheDir, `${state}.json`);
-  try {
-    await fs.unlink(filePath);
-  } catch {
-  }
-}
+const SITE = () => env.SITE_URL || "http://localhost:3000";
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
+  const slackError = searchParams.get("error");
 
-  if (!code || !state) {
+  if (slackError) {
     return NextResponse.redirect(
-      `${env.SITE_URL || "http://localhost:3000"}/notifications?error=missing_params`
+      `${SITE()}/channels?error=slack_denied`
     );
   }
 
-  const oauthData = await getSlackOAuthState(state);
+  if (!code || !state) {
+    return NextResponse.redirect(
+      `${SITE()}/channels?error=missing_params`
+    );
+  }
+
+  const oauthData = verifySignedState(state) as {
+    user_id: string;
+    channel_type: string;
+    name: string;
+    config: Record<string, unknown>;
+  } | null;
+
   if (!oauthData) {
     return NextResponse.redirect(
-      `${env.SITE_URL || "http://localhost:3000"}/notifications?error=invalid_state`
+      `${SITE()}/channels?error=invalid_state`
     );
   }
 
@@ -55,43 +49,49 @@ export async function GET(request: Request): Promise<Response> {
 
     const tokenData = await tokenRes.json();
     if (!tokenData.ok) {
-      throw new Error(`Slack OAuth failed: ${tokenData.error}`);
+      console.error("[Slack Callback] Token exchange failed:", tokenData.error);
+      return NextResponse.redirect(
+        `${SITE()}/channels?error=token_exchange_failed`
+      );
     }
 
-    const webhookUrl = tokenData.incoming_webhook?.url || tokenData.webhook_url || null;
+    const webhookUrl = tokenData.incoming_webhook?.url;
     if (!webhookUrl) {
-      throw new Error("Slack OAuth did not return a webhook URL");
+      console.error("[Slack Callback] No webhook URL in response");
+      return NextResponse.redirect(
+        `${SITE()}/channels?error=no_webhook`
+      );
     }
 
     const supabase = await createSupabaseAdminClient();
     const { error } = await supabase.from("notification_channels").insert({
       user_id: oauthData.user_id,
       name: oauthData.name,
-      type: oauthData.channel_type,
+      type: "slack",
       config: {
         webhook_url: webhookUrl,
         channel_id: tokenData.incoming_webhook?.channel_id || null,
+        channel_name: tokenData.incoming_webhook?.channel_name || null,
         bot_user_id: tokenData.bot_user_id || null,
+        team_name: tokenData.team?.name || null,
       },
       is_active: true,
     });
 
     if (error) {
-      console.error("[Channels Callback] DB insert error:", error);
+      console.error("[Slack Callback] DB insert error:", error);
       return NextResponse.redirect(
-        `${env.SITE_URL || "http://localhost:3000"}/notifications?error=save_failed`
+        `${SITE()}/channels?error=save_failed`
       );
     }
 
-    await deleteSlackOAuthState(state);
-
     return NextResponse.redirect(
-      `${env.SITE_URL || "http://localhost:3000"}/notifications?success=slack_connected`
+      `${SITE()}/channels?success=slack_connected`
     );
   } catch (err) {
-    console.error("[Channels Callback] Error:", err);
+    console.error("[Slack Callback] Error:", err);
     return NextResponse.redirect(
-      `${env.SITE_URL || "http://localhost:3000"}/notifications?error=oauth_failed`
+      `${SITE()}/channels?error=oauth_failed`
     );
   }
 }
