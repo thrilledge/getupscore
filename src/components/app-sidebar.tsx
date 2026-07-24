@@ -34,6 +34,8 @@ import {
   Shield,
   UserCircle,
   BookOpen,
+  Radio,
+  GitBranch,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useUser } from "@/hooks/use-user";
@@ -58,6 +60,8 @@ const iconMap: Record<string, React.ElementType> = {
   Settings,
   UserCircle,
   BookOpen,
+  Radio,
+  GitBranch,
 };
 
 export function AppSidebar() {

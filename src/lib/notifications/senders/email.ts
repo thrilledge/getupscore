@@ -1,8 +1,9 @@
 /**
- * Email notification sender via Resend.
+ * Email notification sender via Nodemailer (SMTP).
  *
  * Config: { to: string }
  */
+import nodemailer from "nodemailer";
 import { env } from "@/lib/env";
 
 export interface EmailConfig {
@@ -15,39 +16,41 @@ export interface EmailPayload {
   html?: string;
 }
 
+let _transporter: nodemailer.Transporter | null = null;
+
+function getTransporter(): nodemailer.Transporter {
+  if (_transporter) return _transporter;
+
+  _transporter = nodemailer.createTransport({
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    secure: env.SMTP_PORT === 465,
+    auth: {
+      user: env.SMTP_EMAIL,
+      pass: env.SMTP_PASSWORD,
+    },
+  });
+
+  return _transporter;
+}
+
 export async function sendEmail(
   config: EmailConfig,
   payload: EmailPayload
 ): Promise<{ ok: boolean; error?: string }> {
-  const apiKey = env.RESEND_API_KEY;
-  if (!apiKey) {
-    return { ok: false, error: "RESEND_API_KEY not configured" };
+  if (!env.SMTP_HOST || !env.SMTP_EMAIL || !env.SMTP_PASSWORD) {
+    return { ok: false, error: "SMTP not configured" };
   }
 
   try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        from: env.RESEND_FROM_EMAIL || "noreply@upscore.app",
-        to: config.to,
-        subject: payload.subject,
-        text: payload.text,
-        html: payload.html || payload.text.replace(/\n/g, "<br>"),
-      }),
+    const transporter = getTransporter();
+    await transporter.sendMail({
+      from: env.SMTP_FROM || env.SMTP_EMAIL,
+      to: config.to,
+      subject: payload.subject,
+      text: payload.text,
+      html: payload.html || payload.text.replace(/\n/g, "<br>"),
     });
-
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      return {
-        ok: false,
-        error: (err as any)?.message || `Resend returned ${response.status}`,
-      };
-    }
-
     return { ok: true };
   } catch (err: any) {
     return { ok: false, error: err.message };

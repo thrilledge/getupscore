@@ -43,7 +43,14 @@ export const env = {
   OPENAI_API_KEY: getEnv("OPENAI_API_KEY"),
   OPENAI_MODEL: getEnv("OPENAI_MODEL", "gpt-4o-mini"),
 
-  // Email
+  // Email (SMTP via Nodemailer)
+  SMTP_HOST: getEnv("SMTP_HOST"),
+  SMTP_PORT: parseInt(getEnv("SMTP_PORT", "465"), 10),
+  SMTP_EMAIL: getEnv("SMTP_EMAIL"),
+  SMTP_PASSWORD: getEnv("SMTP_PASSWORD"),
+  SMTP_FROM: getEnv("SMTP_FROM"),
+
+  // Legacy Resend (kept for backwards compat)
   RESEND_API_KEY: getEnv("RESEND_API_KEY"),
   RESEND_FROM_EMAIL: getEnv("RESEND_FROM_EMAIL", "noreply@upscore.app"),
 
@@ -72,8 +79,8 @@ export const env = {
 
   // Notifications
   isNotificationsConfigured:
-    process.env.RESEND_API_KEY !== "" &&
-    process.env.RESEND_API_KEY !== undefined,
+    (process.env.SMTP_HOST !== "" && process.env.SMTP_HOST !== undefined) ||
+    (process.env.RESEND_API_KEY !== "" && process.env.RESEND_API_KEY !== undefined),
 
   // Build/dev check — static dot notation for browser compatibility
   isSupabaseConfigured:

@@ -14,6 +14,10 @@ import { notifyUser, type JobAlertContext } from "@/lib/notifications";
 
 export async function POST(request: Request) {
   try {
+    // Read body once
+    const body = await request.json();
+    const { channelId, jobId } = body;
+
     // Auth: support both Bearer token and Supabase session
     const authHeader = request.headers.get("authorization") || "";
     let userId: string | null = null;
@@ -23,8 +27,6 @@ export async function POST(request: Request) {
       // Try cron secret first
       const cronSecret = process.env.CRON_SECRET;
       if (cronSecret && token === cronSecret) {
-        // Need user_id in body for cron-secret auth
-        const body = await request.json();
         userId = body.user_id || null;
         if (!userId) {
           return NextResponse.json({ error: "user_id required with cron-secret auth" }, { status: 400 });
@@ -53,9 +55,6 @@ export async function POST(request: Request) {
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    const body = await request.json();
-    const { channelId, jobId } = body;
 
     if (!channelId) {
       return NextResponse.json({ error: "channelId is required" }, { status: 400 });

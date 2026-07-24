@@ -52,7 +52,9 @@ import {
   Bell,
   CheckCircle2,
   XCircle,
+  TestTube,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase/client";
 
 const iconMap: Record<string, React.ElementType> = {
   Mail,
@@ -95,6 +97,7 @@ export function ChannelCard({ channel }: ChannelCardProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   const typeLabel = channelTypeLabels[channel.type as ChannelType] ?? channel.type;
   const Icon = iconMap[channelTypeIcons[channel.type as ChannelType]] ?? Bell;
@@ -124,6 +127,47 @@ export function ChannelCard({ channel }: ChannelCardProps) {
 
     toast.success("Channel deleted.");
     setShowDeleteDialog(false);
+  }
+
+  async function handleSendTest() {
+    setTesting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+
+      const res = await fetch("/api/notifications/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ channelId: channel.id }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error ?? "Failed to send test notification.");
+        return;
+      }
+
+      const results = data.results ?? [];
+      const sent = results.filter((r: any) => r.ok).length;
+      const failed = results.filter((r: any) => !r.ok).length;
+
+      if (sent > 0) {
+        toast.success(`Test notification sent via ${channel.name}!`);
+      } else if (failed > 0) {
+        const firstError = results.find((r: any) => !r.ok)?.error;
+        toast.error(`Failed: ${firstError ?? "No matching rules"}`);
+      } else {
+        toast.info("No matching rules for this channel. Create a rule first.");
+      }
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to send test notification.");
+    } finally {
+      setTesting(false);
+    }
   }
 
   return (
@@ -203,6 +247,18 @@ export function ChannelCard({ channel }: ChannelCardProps) {
                 <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
                   <Pencil className="size-3.5 mr-2" />
                   Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleSendTest}
+                  disabled={testing}
+                  className="cursor-pointer"
+                >
+                  {testing ? (
+                    <Loader2 className="size-3.5 mr-2 animate-spin" />
+                  ) : (
+                    <TestTube className="size-3.5 mr-2" />
+                  )}
+                  Send Test
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleToggle}
