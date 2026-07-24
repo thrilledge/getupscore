@@ -47,6 +47,8 @@ import {
   MessageCircle,
   Webhook,
   Smartphone,
+  ExternalLink,
+  CheckCircle2,
 } from "lucide-react";
 
 // ─── Icon map ──────────────────────────────────────────
@@ -107,6 +109,7 @@ export function ChannelFormDialog({
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [submitting, setSubmitting] = useState(false);
+  const [connectingSlack, setConnectingSlack] = useState(false);
 
   const {
     register,
@@ -125,6 +128,35 @@ export function ChannelFormDialog({
   const selectedType = watch("type") as ChannelType;
   const configFields = getConfigFields(selectedType);
 
+  // Handle Slack OAuth flow
+  const handleSlackConnect = useCallback(async () => {
+    setConnectingSlack(true);
+    try {
+      const channelName = watch("name") || "Slack Notifications";
+      const res = await fetch("/api/notifications/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channel_type: "slack",
+          name: channelName,
+        }),
+      });
+      const data = await res.json();
+      if (data.auth_url) {
+        window.open(data.auth_url, "_blank");
+        toast.info("Slack authorization opened in a new tab. Authorize the app to complete setup.");
+        setOpen(false);
+        onSuccess?.();
+      } else {
+        toast.error(data.error || "Failed to initiate Slack connection.");
+      }
+    } catch {
+      toast.error("Failed to connect to Slack.");
+    } finally {
+      setConnectingSlack(false);
+    }
+  }, [watch, setOpen, onSuccess]);
+
   // Reset form when dialog opens / channel changes
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -138,6 +170,9 @@ export function ChannelFormDialog({
 
   const onSubmit = useCallback(
     async (values: ChannelFormValues) => {
+      if (values.type === "slack" && !isEditing) {
+        return;
+      }
       setSubmitting(true);
       try {
         const formData = new FormData();
@@ -280,7 +315,50 @@ export function ChannelFormDialog({
             </div>
 
             {/* Type-specific config fields */}
-            {configFields.length > 0 && (
+            {selectedType === "slack" && !isEditing ? (
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
+                <div className="flex items-center gap-2 pb-1">
+                  <MessageSquare className="size-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Slack Configuration
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Connect your Slack workspace with one click. We&apos;ll request permission to post notifications to your chosen channel.
+                </p>
+                <Button
+                  type="button"
+                  variant="default"
+                  className="w-full bg-[#4A154B] hover:bg-[#350d36] text-white"
+                  onClick={handleSlackConnect}
+                  disabled={connectingSlack}
+                >
+                  {connectingSlack ? (
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                  ) : (
+                    <MessageSquare className="size-4 mr-2" />
+                  )}
+                  {connectingSlack ? "Connecting..." : "Connect with Slack"}
+                  {!connectingSlack && <ExternalLink className="size-3 ml-2 opacity-60" />}
+                </Button>
+              </div>
+            ) : selectedType === "slack" && isEditing ? (
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
+                <div className="flex items-center gap-2 pb-1">
+                  <MessageSquare className="size-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Slack Configuration
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-green-600">
+                  <CheckCircle2 className="size-4" />
+                  <span>Connected via Slack OAuth</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  To reconnect, delete this channel and add a new Slack channel.
+                </p>
+              </div>
+            ) : configFields.length > 0 ? (
               <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
                 <div className="flex items-center gap-2 pb-1">
                   <TypeIcon className="size-4 text-muted-foreground" />
@@ -348,7 +426,7 @@ export function ChannelFormDialog({
                   </p>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
 
           <DialogFooter className="gap-2">
@@ -360,12 +438,14 @@ export function ChannelFormDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting && (
-                <Loader2 className="size-4 mr-2 animate-spin" />
-              )}
-              {isEditing ? "Save Changes" : "Create Channel"}
-            </Button>
+            {!(selectedType === "slack" && !isEditing) && (
+              <Button type="submit" disabled={submitting}>
+                {submitting && (
+                  <Loader2 className="size-4 mr-2 animate-spin" />
+                )}
+                {isEditing ? "Save Changes" : "Create Channel"}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>
