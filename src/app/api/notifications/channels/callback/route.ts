@@ -27,7 +27,6 @@ export async function GET(request: Request): Promise<Response> {
     user_id: string;
     channel_type: string;
     name: string;
-    config: Record<string, unknown>;
   } | null;
 
   if (!oauthData) {
@@ -37,30 +36,29 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
-    const redirectUri = `${SITE()}/api/notifications/channels/callback`;
+    const params = new URLSearchParams();
+    params.append("client_id", env.SLACK_CLIENT_ID);
+    params.append("client_secret", env.SLACK_CLIENT_SECRET);
+    params.append("code", code);
 
     const tokenRes = await fetch("https://slack.com/api/oauth.v2.access", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_id: env.SLACK_CLIENT_ID,
-        client_secret: env.SLACK_CLIENT_SECRET,
-        code,
-        redirect_uri: redirectUri,
-      }),
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
     });
 
     const tokenData = await tokenRes.json();
+
     if (!tokenData.ok) {
-      console.error("[Slack Callback] Token exchange failed:", tokenData.error);
+      console.error("[Slack Callback] Token exchange failed:", tokenData.error, tokenData);
       return NextResponse.redirect(
-        `${SITE()}/channels?error=token_exchange_failed`
+        `${SITE()}/channels?error=token_exchange_failed&detail=${encodeURIComponent(tokenData.error || "unknown")}`
       );
     }
 
     const webhookUrl = tokenData.incoming_webhook?.url;
     if (!webhookUrl) {
-      console.error("[Slack Callback] No webhook URL in response");
+      console.error("[Slack Callback] No webhook URL in response:", JSON.stringify(tokenData));
       return NextResponse.redirect(
         `${SITE()}/channels?error=no_webhook`
       );
