@@ -79,7 +79,33 @@ export async function POST(request: Request) {
           for (const jobId of newJobIds) {
             const jobRecord = jobMap.get(jobId) || {};
             try {
-              await analyzeJob(supabase, jobRecord, jobId, userId);
+              const analysis = await analyzeJob(supabase, jobRecord, jobId, userId);
+
+              // Fire notifications for high-scoring jobs
+              if (
+                typeof analysis?.match_score === "number" && analysis.match_score >= 50 ||
+                typeof analysis?.opportunity_score === "number" && analysis.opportunity_score >= 50
+              ) {
+                try {
+                  const { notifyUser } = await import("@/lib/notifications");
+                  await notifyUser(userId, {
+                    jobId,
+                    upworkJobId: jobRecord.upwork_job_id || "",
+                    title: jobRecord.title || "",
+                    url: jobRecord.url || "",
+                    budget: jobRecord.budget ? `$${jobRecord.budget}` : jobRecord.hourly_min ? `$${jobRecord.hourly_min}-$${jobRecord.hourly_max}/hr` : undefined,
+                    country: jobRecord.client_country || jobRecord.client_location_country || "",
+                    skills: Array.isArray(jobRecord.skills) ? jobRecord.skills : [],
+                    matchScore: analysis.match_score,
+                    opportunityScore: analysis.opportunity_score,
+                    winProbability: analysis.win_probability,
+                    recommendation: analysis.recommendation,
+                    proposalTips: Array.isArray(analysis.proposal_tips) ? analysis.proposal_tips : [],
+                  });
+                } catch (notifErr: any) {
+                  console.warn(`[Cron] Notification error for job ${jobId}, user ${userId}:`, notifErr.message);
+                }
+              }
             } catch (err: any) {
               console.warn(`[Cron] Analysis error for job ${jobId}, user ${userId}:`, err.message);
             }
