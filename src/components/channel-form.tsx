@@ -339,7 +339,7 @@ export function ChannelFormDialog({
                   {!connectingSlack && <ExternalLink className="size-3 ml-2 opacity-60" />}
                 </Button>
               </div>
-            ) : selectedType === "slack" && isEditing ? (
+            ) : selectedType === "slack" && isEditing && (watch("config")?.webhook_url) ? (
               <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
                 <div className="flex items-center gap-2 pb-1">
                   <MessageSquare className="size-4 text-muted-foreground" />
@@ -354,6 +354,33 @@ export function ChannelFormDialog({
                 <p className="text-xs text-muted-foreground">
                   To reconnect, delete this channel and add a new Slack channel.
                 </p>
+              </div>
+            ) : selectedType === "slack" && isEditing ? (
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
+                <div className="flex items-center gap-2 pb-1">
+                  <MessageSquare className="size-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Slack Configuration
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  This channel is not connected yet. Connect your Slack workspace:
+                </p>
+                <Button
+                  type="button"
+                  variant="default"
+                  className="w-full bg-[#4A154B] hover:bg-[#350d36] text-white"
+                  onClick={handleSlackConnect}
+                  disabled={connectingSlack}
+                >
+                  {connectingSlack ? (
+                    <Loader2 className="size-4 mr-2 animate-spin" />
+                  ) : (
+                    <MessageSquare className="size-4 mr-2" />
+                  )}
+                  {connectingSlack ? "Connecting..." : "Connect with Slack"}
+                  {!connectingSlack && <ExternalLink className="size-3 ml-2 opacity-60" />}
+                </Button>
               </div>
             ) : configFields.length > 0 ? (
               <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
