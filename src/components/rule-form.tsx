@@ -194,16 +194,18 @@ export function RuleFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger
-        render={
-          trigger ?? (
-            <Button>
-              <Plus className="size-4 mr-2" />
-              Add Rule
-            </Button>
-          )
-        }
-      />
+      {!isEditing && controlledOpen === undefined && (
+        <DialogTrigger
+          render={
+            trigger ?? (
+              <Button>
+                <Plus className="size-4 mr-2" />
+                Add Rule
+              </Button>
+            )
+          }
+        />
+      )}
       <DialogContent className="sm:max-w-lg">
         <form
           onSubmit={handleSubmit(onSubmit as (v: RuleFormValues) => void)}
