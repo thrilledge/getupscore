@@ -121,6 +121,7 @@ function ChannelsContent() {
               className={`size-4 ${isRefetching ? "animate-spin" : ""}`}
             />
           </Button>
+          <ChannelFormDialog />
         </div>
       </div>
 

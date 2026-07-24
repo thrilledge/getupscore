@@ -124,6 +124,7 @@ export default function RulesPage() {
               className={`size-4 ${isRefetching ? "animate-spin" : ""}`}
             />
           </Button>
+          <RuleFormDialog />
         </div>
       </div>
 
