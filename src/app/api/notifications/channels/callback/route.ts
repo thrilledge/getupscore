@@ -31,14 +31,14 @@ export async function GET(request: Request): Promise<Response> {
 
   if (!code || !state) {
     return NextResponse.redirect(
-      `${env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/notifications?error=missing_params`
+      `${env.SITE_URL || "http://localhost:3000"}/notifications?error=missing_params`
     );
   }
 
   const oauthData = await getSlackOAuthState(state);
   if (!oauthData) {
     return NextResponse.redirect(
-      `${env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/notifications?error=invalid_state`
+      `${env.SITE_URL || "http://localhost:3000"}/notifications?error=invalid_state`
     );
   }
 
@@ -79,19 +79,19 @@ export async function GET(request: Request): Promise<Response> {
     if (error) {
       console.error("[Channels Callback] DB insert error:", error);
       return NextResponse.redirect(
-        `${env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/notifications?error=save_failed`
+        `${env.SITE_URL || "http://localhost:3000"}/notifications?error=save_failed`
       );
     }
 
     await deleteSlackOAuthState(state);
 
     return NextResponse.redirect(
-      `${env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/notifications?success=slack_connected`
+      `${env.SITE_URL || "http://localhost:3000"}/notifications?success=slack_connected`
     );
   } catch (err) {
     console.error("[Channels Callback] Error:", err);
     return NextResponse.redirect(
-      `${env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/notifications?error=oauth_failed`
+      `${env.SITE_URL || "http://localhost:3000"}/notifications?error=oauth_failed`
     );
   }
 }

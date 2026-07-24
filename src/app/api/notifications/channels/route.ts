@@ -71,7 +71,7 @@ export async function POST(request: Request): Promise<Response> {
 
     if (channel_type === "slack") {
       const state = nanoid();
-      const redirect_uri = env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+      const redirect_uri = env.SITE_URL || "http://localhost:3000";
 
       const oauthData = {
         user_id: userId,

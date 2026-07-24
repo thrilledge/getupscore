@@ -64,6 +64,11 @@ export const env = {
   // UpAlerts
   UPALERTS_API_URL: getEnv("UPALERTS_API_URL", "https://upalerts.app/api/public/jobs"),
 
+  // Slack Notifications
+  SLACK_CLIENT_ID: getEnv("SLACK_CLIENT_ID"),
+  SLACK_CLIENT_SECRET: getEnv("SLACK_CLIENT_SECRET"),
+  SLACK_SIGNING_SECRET: getEnv("SLACK_SIGNING_SECRET"),
+
   // Cron
   CRON_SECRET: getEnv("CRON_SECRET"),
 
