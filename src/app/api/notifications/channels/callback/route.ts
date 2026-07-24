@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import fs from "fs/promises";
+import path from "path";
 
 async function getSlackOAuthState(state: string): Promise<any | null> {
   const cacheDir = path.join(process.cwd(), ".cache", "slack");
-  const filePath = path.join(cacheDir, `${state}.json`);
+  const filePath = path.join(cacheDir, `${state}.json");
   try {
-    const fs = require("fs/promises");
     const content = await fs.readFile(filePath, "utf8");
     return JSON.parse(content);
   } catch {
@@ -15,9 +16,8 @@ async function getSlackOAuthState(state: string): Promise<any | null> {
 }
 
 async function deleteSlackOAuthState(state: string): Promise<void> {
-  const fs = require("fs/promises");
   const cacheDir = path.join(process.cwd(), ".cache", "slack");
-  const filePath = path.join(cacheDir, `${state}.json`);
+  const filePath = path.join(cacheDir, `${state}.json");
   try {
     await fs.unlink(filePath);
   } catch {
