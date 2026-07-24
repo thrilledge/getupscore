@@ -104,7 +104,8 @@ export async function POST(request: Request): Promise<Response> {
         type: channel_type,
         config: sanitizedConfig,
         is_active: true,
-      })\n      .select()
+      })
+      .select()
       .single();
 
     if (insertError) {

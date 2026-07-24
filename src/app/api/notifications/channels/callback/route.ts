@@ -6,7 +6,7 @@ import path from "path";
 
 async function getSlackOAuthState(state: string): Promise<any | null> {
   const cacheDir = path.join(process.cwd(), ".cache", "slack");
-  const filePath = path.join(cacheDir, `${state}.json");
+  const filePath = path.join(cacheDir, `${state}.json`);
   try {
     const content = await fs.readFile(filePath, "utf8");
     return JSON.parse(content);
@@ -17,7 +17,7 @@ async function getSlackOAuthState(state: string): Promise<any | null> {
 
 async function deleteSlackOAuthState(state: string): Promise<void> {
   const cacheDir = path.join(process.cwd(), ".cache", "slack");
-  const filePath = path.join(cacheDir, `${state}.json");
+  const filePath = path.join(cacheDir, `${state}.json`);
   try {
     await fs.unlink(filePath);
   } catch {
