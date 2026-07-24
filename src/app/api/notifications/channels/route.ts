@@ -1,11 +1,7 @@
-import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import crypto from "crypto";
 
-/**
- * Create a signed state token that encodes user_id + channel info.
- * No server-side storage needed — works on Vercel serverless.
- */
 function createSignedState(data: Record<string, unknown>): string {
   const payload = Buffer.from(JSON.stringify(data)).toString("base64url");
   const secret = env.SLACK_SIGNING_SECRET || env.SLACK_CLIENT_SECRET || "fallback";
@@ -13,10 +9,7 @@ function createSignedState(data: Record<string, unknown>): string {
   return `${payload}.${signature}`;
 }
 
-/**
- * Verify and decode a signed state token.
- */
-function verifySignedState(state: string): Record<string, unknown> | null {
+export function verifySignedState(state: string): Record<string, unknown> | null {
   try {
     const [payload, signature] = state.split(".");
     if (!payload || !signature) return null;
@@ -29,12 +22,6 @@ function verifySignedState(state: string): Record<string, unknown> | null {
   }
 }
 
-/**
- * POST /api/notifications/channels
- *
- * Add a new notification channel for the current user.
- * For Slack: initiate OAuth flow; for others: create directly.
- */
 export async function POST(request: Request): Promise<Response> {
   try {
     const body = await request.json();
@@ -44,10 +31,8 @@ export async function POST(request: Request): Promise<Response> {
       return Response.json({ error: "channel_type is required" }, { status: 400 });
     }
 
-    const supabase = await createSupabaseAdminClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const supabase = await createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user?.id) {
       return Response.json({ error: "Not authenticated" }, { status: 401 });
@@ -55,12 +40,10 @@ export async function POST(request: Request): Promise<Response> {
 
     if (channel_type === "slack") {
       const redirectUri = `${env.SITE_URL}/api/notifications/channels/callback`;
-
       const state = createSignedState({
         user_id: user.id,
         channel_type,
         name: name || "Slack Notifications",
-        config: config || {},
       });
 
       const scope = "incoming-webhook,chat:write,channels:read,users:read";
@@ -72,7 +55,8 @@ export async function POST(request: Request): Promise<Response> {
     const sanitizedName = name || `${channel_type} Notifications`;
     const sanitizedConfig = config || {};
 
-    const { data, error: insertError } = await supabase
+    const admin = createSupabaseAdminClient();
+    const { data, error: insertError } = await admin
       .from("notification_channels")
       .insert({
         user_id: user.id,
@@ -100,5 +84,3 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Invalid request" }, { status: 400 });
   }
 }
-
-export { verifySignedState };

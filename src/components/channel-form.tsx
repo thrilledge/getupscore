@@ -143,19 +143,16 @@ export function ChannelFormDialog({
       });
       const data = await res.json();
       if (data.auth_url) {
-        window.open(data.auth_url, "_blank");
-        toast.info("Slack authorization opened in a new tab. Authorize the app to complete setup.");
-        setOpen(false);
-        onSuccess?.();
+        window.location.href = data.auth_url;
       } else {
         toast.error(data.error || "Failed to initiate Slack connection.");
+        setConnectingSlack(false);
       }
     } catch {
       toast.error("Failed to connect to Slack.");
-    } finally {
       setConnectingSlack(false);
     }
-  }, [watch, setOpen, onSuccess]);
+  }, [watch]);
 
   // Reset form when dialog opens / channel changes
   const handleOpenChange = useCallback(
