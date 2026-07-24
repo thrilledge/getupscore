@@ -2,29 +2,27 @@
  * POST /api/notifications/send
  *
  * Send a test notification through a specific channel.
- * Used for testing channel configuration and for manual notification dispatch.
  *
- * Auth: Bearer <CRON_SECRET> or authenticated user
+ * Auth: Bearer <CRON_SECRET> or Bearer <supabase_jwt> or session cookie
  *
  * Body: { channelId: string; jobId?: string }
  */
 import { NextResponse } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyUser, type JobAlertContext } from "@/lib/notifications";
 
 export async function POST(request: Request) {
   try {
-    // Read body once
     const body = await request.json();
     const { channelId, jobId } = body;
 
-    // Auth: support both Bearer token and Supabase session
     const authHeader = request.headers.get("authorization") || "";
     let userId: string | null = null;
 
     if (authHeader.startsWith("Bearer ")) {
       const token = authHeader.slice(7).trim();
-      // Try cron secret first
+
+      // 1) Try cron secret
       const cronSecret = process.env.CRON_SECRET;
       if (cronSecret && token === cronSecret) {
         userId = body.user_id || null;
@@ -32,21 +30,27 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "user_id required with cron-secret auth" }, { status: 400 });
         }
       } else {
-        // Try extension API token
-        const supabase = await createSupabaseAdminClient();
-        const { data } = await supabase
-          .from("api_tokens")
-          .select("user_id")
-          .eq("token", token)
-          .single();
-        if (data) {
-          userId = data.user_id;
+        // 2) Try as Supabase JWT — verify via admin client
+        const admin = createSupabaseAdminClient();
+        const { data: { user } } = await admin.auth.getUser(token);
+        if (user) {
+          userId = user.id;
+        } else {
+          // 3) Try api_tokens table
+          const { data } = await admin
+            .from("api_tokens")
+            .select("user_id")
+            .eq("token", token)
+            .single();
+          if (data) {
+            userId = data.user_id;
+          }
         }
       }
     } else {
-      // Try Supabase session cookie
-      const supabase = await createSupabaseAdminClient();
-      const { data: { user } } = await supabase.auth.getUser();
+      // No Bearer — try Supabase session cookie
+      const serverClient = await createSupabaseServerClient();
+      const { data: { user } } = await serverClient.auth.getUser();
       if (user) {
         userId = user.id;
       }
@@ -60,12 +64,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "channelId is required" }, { status: 400 });
     }
 
-    // Build a test alert context
     let alertContext: JobAlertContext;
 
     if (jobId) {
-      // Use real job data if provided
-      const supabase = await createSupabaseAdminClient();
+      const supabase = createSupabaseAdminClient();
       const { data: job } = await supabase
         .from("jobs")
         .select("id, upwork_job_id, title, url, budget, client_country")
@@ -76,7 +78,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Job not found" }, { status: 404 });
       }
 
-      // Get analysis if available
       const { data: analysis } = await supabase
         .from("job_analyses")
         .select("match_score, opportunity_score, win_probability, recommendation, proposal_tips")
@@ -98,7 +99,6 @@ export async function POST(request: Request) {
         proposalTips: (analysis?.proposal_tips as string[]) || ["Focus on your relevant experience", "Highlight similar projects", "Ask smart questions about scope"],
       };
     } else {
-      // Use test data
       alertContext = {
         jobId: "test",
         upworkJobId: "test_job_id",
@@ -119,7 +119,6 @@ export async function POST(request: Request) {
       };
     }
 
-    // Dispatch notifications (will go through all matching rules)
     const results = await notifyUser(userId, alertContext);
 
     return NextResponse.json({
