@@ -152,8 +152,10 @@ function clientLocation(job: Job): string {
   if (job.client_city && job.client_location_country)
     return `${job.client_city}, ${job.client_location_country}`;
   if (job.client_city) return job.client_city;
+  if (job.client_location_country) return job.client_location_country;
   if (job.client_country) return job.client_country;
-  return "Unavailable";
+  if (job.client_score != null || job.client_total_spend != null) return "Location not available";
+  return "New client — no history yet";
 }
 
 export default function JobDetailPage() {
@@ -392,9 +394,6 @@ export default function JobDetailPage() {
         <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-accent-blue via-accent-purple to-accent-blue/60" />
         <div className="p-5">
           <div className="flex items-center gap-2 mb-4">
-            <div className="rounded-lg bg-accent-blue/10 p-1.5">
-              <User className="size-4 text-accent-blue" />
-            </div>
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Client Details
             </span>
