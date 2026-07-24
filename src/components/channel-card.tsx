@@ -157,6 +157,12 @@ export function ChannelCard({ channel }: ChannelCardProps) {
 
       if (sent > 0) {
         toast.success(`Test notification sent via ${channel.name}!`);
+        if (!channel.is_verified) {
+          await supabase
+            .from("notification_channels")
+            .update({ is_verified: true })
+            .eq("id", channel.id);
+        }
       } else if (failed > 0) {
         const firstError = results.find((r: any) => !r.ok)?.error;
         toast.error(`Failed: ${firstError ?? "No matching rules"}`);

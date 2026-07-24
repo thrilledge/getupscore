@@ -77,6 +77,7 @@ export async function GET(request: Request): Promise<Response> {
         team_name: tokenData.team?.name || null,
       },
       is_active: true,
+      is_verified: true,
     });
 
     if (error) {
