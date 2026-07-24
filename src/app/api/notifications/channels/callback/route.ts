@@ -37,6 +37,8 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   try {
+    const redirectUri = `${SITE()}/api/notifications/channels/callback`;
+
     const tokenRes = await fetch("https://slack.com/api/oauth.v2.access", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -44,6 +46,7 @@ export async function GET(request: Request): Promise<Response> {
         client_id: env.SLACK_CLIENT_ID,
         client_secret: env.SLACK_CLIENT_SECRET,
         code,
+        redirect_uri: redirectUri,
       }),
     });
 
