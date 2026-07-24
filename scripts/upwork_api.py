@@ -1,45 +1,35 @@
 import json
 import os
-from urllib.request import Request, urlopen
+from fastapi import Request
 from typing import Optional
-from fastapi import FastAPI, Body, Query, HTTPException
-from pydantic import BaseModel
-from upwork_scraper import fetch_jobs, fetch_job_details, fetch_full_job_page
+from fastapi import FastAPI, Query, HTTPException
+from fastapi.responses import HTMLResponse
+from upwork_scraper import fetch_jobs, fetch_job_details, fetch_jobs_with_details
 
 
-class FullPageRequest(BaseModel):
-    cookie_string: Optional[str] = None
-
-
-app = FastAPI(title="Upwork Jobs API", version="2.0.0")
+app = FastAPI(title="Upwork Jobs API", version="5.0.0")
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
+COOKIE_FILE = "/tmp/upwork_cookies.json"
 
 
-def _get_latest_cookie_string() -> Optional[str]:
-    """Read the latest Upwork session cookie from Supabase."""
-    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
-        return None
-    url = f"{SUPABASE_URL}/rest/v1/upwork_sessions?select=cookie_string&order=captured_at.desc&limit=1"
-    req = Request(url, headers={
-        "apikey": SUPABASE_SERVICE_KEY,
-        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
-        "Accept": "application/json",
-    })
+def _load_cookies() -> dict:
     try:
-        with urlopen(req, timeout=10) as resp:
-            rows = json.loads(resp.read())
-            if rows and rows[0].get("cookie_string"):
-                return rows[0]["cookie_string"]
-    except Exception:
-        return None
-    return None
+        with open(COOKIE_FILE, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _save_cookies(cookies: dict):
+    with open(COOKIE_FILE, "w") as f:
+        json.dump(cookies, f)
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": "5.0.0"}
 
 
 @app.get("/jobs")
@@ -54,24 +44,61 @@ async def get_jobs(
     return result
 
 
+@app.get("/jobs/ingest")
+async def ingest_jobs(
+    count: int = Query(default=50, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
+    max_details: int = Query(default=20, ge=0, le=50),
+):
+    """Fetch jobs + enrich with client details if cookies available."""
+    cookie_string = _load_cookies().get("JobDetailsNuxt_vt")
+    result = fetch_jobs_with_details(
+        count=count, offset=offset, max_details=max_details,
+        cookie_string=cookie_string,
+    )
+    if not result.get("success"):
+        raise HTTPException(status_code=502, detail=result.get("error", "Unknown error"))
+    return result
+
+
 @app.get("/jobs/{ciphertext}/details")
 async def get_job_details(ciphertext: str):
-    result = fetch_job_details(ciphertext)
+    cookie_string = _load_cookies().get("JobDetailsNuxt_vt")
+    result = fetch_job_details(ciphertext, cookie_string=cookie_string)
     if not result.get("success"):
         raise HTTPException(status_code=502, detail=result.get("error", "Unknown error"))
     return result
 
 
-@app.post("/jobs/{ciphertext}/full")
-async def get_full_job(ciphertext: str, body: Optional[FullPageRequest] = None):
-    """
-    Fetch the full job page HTML with logged-in cookies from Supabase
-    (or provided in the request), extract __NUXT__ state and client recent jobs.
-    """
-    cookie = body.cookie_string if body else None
-    if not cookie:
-        cookie = _get_latest_cookie_string()
-    result = fetch_full_job_page(ciphertext, cookie_string=cookie)
-    if not result.get("success"):
-        raise HTTPException(status_code=502, detail=result.get("error", "Unknown error"))
-    return result
+@app.post("/refresh-cookies")
+async def refresh_cookies(request: Request):
+    """Refresh Upwork cookies. Accepts JSON body or raw cookie string."""
+    content_type = request.headers.get("content-type", "")
+    body = await request.body()
+    raw = body.decode("utf-8", errors="replace").strip()
+
+    if "application/json" in content_type:
+        try:
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                cookie_string = data.get("JobDetailsNuxt_vt") or data.get("cookie_string") or ""
+            else:
+                cookie_string = str(data)
+        except json.JSONDecodeError:
+            cookie_string = raw
+    else:
+        cookie_string = raw
+
+    if not cookie_string or len(cookie_string) < 10:
+        raise HTTPException(status_code=400, detail="Invalid cookie string")
+
+    _save_cookies({"JobDetailsNuxt_vt": cookie_string})
+    return {"success": True, "message": "Cookies updated"}
+
+
+@app.get("/cookies/status")
+async def cookie_status():
+    """Check if cookies are loaded and valid."""
+    cookies = _load_cookies()
+    has_cookie = bool(cookies.get("JobDetailsNuxt_vt"))
+    return {"has_cookies": has_cookie}

@@ -5,15 +5,15 @@
 }
 
 :root {
-  --bg: #0f0f13;
-  --surface: #1a1a24;
-  --surface-hover: #22222f;
-  --border: #2a2a3a;
-  --text: #e8e8ed;
-  --text-secondary: #9494a6;
-  --text-muted: #6b6b80;
-  --accent-blue: #3b82f6;
-  --accent-green: #22c55e;
+  --bg: #212121;
+  --surface: #2a2a2a;
+  --surface-hover: #333333;
+  --border: rgba(255,255,255,0.10);
+  --text: #fafafa;
+  --text-secondary: #8a8a8a;
+  --text-muted: #666666;
+  --accent-blue: #4a7cef;
+  --accent-green: #43c76a;
   --radius: 10px;
   --radius-sm: 6px;
 }
@@ -133,10 +133,10 @@ body {
 .btn:active { transform: scale(0.98); }
 
 .btn-primary { background: var(--accent-blue); color: white; }
-.btn-primary:hover { background: #2563eb; }
+.btn-primary:hover { background: #3d6fd4; }
 
-.btn-success { background: var(--accent-green); color: black; }
-.btn-success:hover { background: #16a34a; }
+.btn-success { background: var(--accent-green); color: white; }
+.btn-success:hover { background: #38a85c; }
 
 .connection-status {
   display: flex;
@@ -155,8 +155,8 @@ body {
 }
 
 .dot.connected { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
-.dot.disconnected { background: #f59e0b; }
-.dot.error { background: #ef4444; }
+.dot.disconnected { background: var(--accent-amber, #d89c3c); }
+.dot.error { background: var(--accent-red, #c84138); }
 .dot.idle { background: var(--text-muted); }
 
 .about { opacity: 0.7; }

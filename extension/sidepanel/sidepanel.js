@@ -18,7 +18,7 @@ function showView(name) {
   }
   // Show back button for sub-views
   const backBtn = $("btnBack");
-  backBtn.style.display = name === "dashboard" || name === "settings" ? "none" : "";
+  backBtn.style.display = name === "dashboard" ? "none" : "";
   // Update title
   $("appTitle").textContent =
     name === "dashboard" ? "UpScore" :
@@ -69,6 +69,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("proposalRules").value = proposalRules;
   setConnectionStatus(token ? "connected" : "disconnected", token ? "Configured" : "Not connected");
 
+  // Check if opened with pending job details — go straight to proposal view
+  const pending = await chrome.runtime.sendMessage({ type: "GET_PENDING_JOB_DETAILS" });
+  if (pending?.success && pending?.data) {
+    pendingJobDetails = pending.data;
+    showView("proposal");
+    showJobPreview(pendingJobDetails);
+  }
+
   // View switching
   $("btnSettings").addEventListener("click", () => showView("settings"));
   $("btnBack").addEventListener("click", () => showView("dashboard"));
@@ -95,6 +103,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === "STATUS_UPDATE") {
       updateConnectionStatus(msg.connected, msg.message);
+    }
+    if (msg.type === "OPEN_SIDEPANEL_WITH_JOB" && msg.jobDetails) {
+      pendingJobDetails = msg.jobDetails;
+      showView("proposal");
+      showJobPreview(pendingJobDetails);
     }
   });
 
@@ -246,6 +259,18 @@ let pendingJobDetails = null;
 
 async function loadProposalJobs() {
   if (!token) return;
+
+  // Always reset proposal view first
+  pendingJobDetails = null;
+  $("proposalResult").style.display = "none";
+  $("proposalLoading").style.display = "none";
+  $("proposalSource").style.display = "";
+  $("proposalJobPreview").style.display = "none";
+  $("proposalCustomize").style.display = "none";
+  $("proposalInstructions").value = "";
+  $("proposalText").textContent = "";
+  $("proposalScore").innerHTML = "";
+  $("reasoningContent").textContent = "";
 
   const pending = await chrome.runtime.sendMessage({ type: "GET_PENDING_JOB_DETAILS" });
   if (pending?.success && pending?.data) {

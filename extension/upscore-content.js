@@ -232,8 +232,24 @@ function extractAndSend() {
     injectMainWorld("getProfileFromDom");
   }
   if (detectJobPage()) {
-    extractJobFromPage();
+    return extractJobFromPage().then((result) => {
+      if (!result?.success) {
+        const alreadyRetried = sessionStorage.getItem("__upscore_refreshed");
+        if (!alreadyRetried) {
+          sessionStorage.setItem("__upscore_refreshed", "1");
+          setTimeout(() => location.reload(), 500);
+        }
+      }
+      return result;
+    }).catch(() => {
+      const alreadyRetried = sessionStorage.getItem("__upscore_refreshed");
+      if (!alreadyRetried) {
+        sessionStorage.setItem("__upscore_refreshed", "1");
+        setTimeout(() => location.reload(), 500);
+      }
+    });
   }
+  return Promise.resolve();
 }
 
 function injectApplyButton() {
@@ -333,14 +349,14 @@ if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
       captureCookies();
-      extractAndSend();
+      extractAndSend().catch(() => {});
       injectApplyButton();
     }, 2000);
   });
 } else {
   setTimeout(() => {
     captureCookies();
-    extractAndSend();
+    extractAndSend().catch(() => {});
     injectApplyButton();
   }, 2000);
 }
@@ -350,9 +366,10 @@ const observer = new MutationObserver(() => {
   const currentUrl = location.href;
   if (currentUrl !== lastUrl) {
     lastUrl = currentUrl;
+    sessionStorage.removeItem("__upscore_refreshed");
     setTimeout(() => {
       captureCookies();
-      extractAndSend();
+      extractAndSend().catch(() => {});
       injectApplyButton();
     }, 2000);
   }
