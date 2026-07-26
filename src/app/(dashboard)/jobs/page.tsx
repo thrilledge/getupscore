@@ -170,6 +170,7 @@ export default function JobsPage() {
   function daysAgo(dateStr: string | null): string {
     if (!dateStr) return "";
     const diff = Date.now() - new Date(dateStr).getTime();
+    if (diff < 0) return "Just now";
     const minutes = Math.floor(diff / 60000);
     if (minutes < 1) return "Just now";
     if (minutes < 60) return `${minutes}m ago`;
