@@ -111,7 +111,7 @@ def uphunt_to_db_row(job):
         "duration_weeks": dur.get("weeks"),
         "skills": [s.get("prefLabel", "") for s in (job.get("ontologySkills") or []) if s.get("prefLabel")],
         "source": "uphunt",
-        "posted_at": _clamp_past(tile.get("publishTime") or tile.get("createTime"), fallback=datetime.now(timezone.utc).isoformat()),
+        "posted_at": _clamp_past(tile.get("publishTime") or tile.get("createTime")) or datetime.now(timezone.utc).isoformat(),
         "connects_required": None,
         "proposals_count": _int(client_activity.get("totalApplicants")),
         "category": (category_obj.get("name") or "")[:200] or None,
@@ -142,19 +142,19 @@ def uphunt_to_db_row(job):
     }
 
 
-def _clamp_past(date_str, fallback=None):
-    """Return date_str as ISO if in the past, else fallback."""
+def _clamp_past(date_str):
+    """Return date_str as ISO if in the past, else None."""
     if not date_str:
-        return fallback
+        return None
     try:
         dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         if dt > datetime.now(timezone.utc):
-            return fallback
+            return None
         return dt.isoformat()
     except (ValueError, TypeError):
-        return fallback
+        return None
 
 
 def _workload(w):
