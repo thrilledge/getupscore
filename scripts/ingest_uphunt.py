@@ -111,7 +111,7 @@ def uphunt_to_db_row(job):
         "duration_weeks": dur.get("weeks"),
         "skills": [s.get("prefLabel", "") for s in (job.get("ontologySkills") or []) if s.get("prefLabel")],
         "source": "uphunt",
-        "posted_at": _clamp_past(tile.get("publishTime") or tile.get("createTime")) or datetime.now(timezone.utc).isoformat(),
+        "posted_at": None,  # UpHunt publishTime unreliable (EC2 clock skew); frontend uses created_at
         "connects_required": None,
         "proposals_count": _int(client_activity.get("totalApplicants")),
         "category": (category_obj.get("name") or "")[:200] or None,

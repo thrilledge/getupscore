@@ -97,9 +97,10 @@ type Job = {
   job_analyses: Analysis[];
 };
 
-function daysAgo(dateStr: string | null): string {
-  if (!dateStr) return "";
-  const diff = Date.now() - new Date(dateStr).getTime();
+function daysAgo(dateStr: string | null, fallbackStr?: string | null): string {
+  const effective = dateStr || fallbackStr;
+  if (!effective) return "";
+  const diff = Date.now() - new Date(effective).getTime();
   if (diff < 0) return "Today";
   const days = Math.floor(diff / 86400000);
   if (days === 0) return "Today";
@@ -342,10 +343,10 @@ export default function JobDetailPage() {
             </div>
             <span className="text-xs font-medium text-muted-foreground">Posted</span>
           </div>
-          <p className="text-lg font-bold">{daysAgo(job.posted_at) || "—"}</p>
-          {job.posted_at && (
+          <p className="text-lg font-bold">{daysAgo(job.posted_at, job.created_at) || "—"}</p>
+          {(job.posted_at || job.created_at) && (
             <p className="text-xs text-muted-foreground mt-0.5">
-              {new Date(job.posted_at).toLocaleDateString()}
+              {new Date(job.posted_at || job.created_at).toLocaleDateString()}
             </p>
           )}
         </div>

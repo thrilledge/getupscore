@@ -167,9 +167,10 @@ export default function JobsPage() {
     return () => clearInterval(id);
   }, [fetchJobs]);
 
-  function daysAgo(dateStr: string | null): string {
-    if (!dateStr) return "";
-    const diff = Date.now() - new Date(dateStr).getTime();
+  function daysAgo(dateStr: string | null, fallbackStr?: string | null): string {
+    const effective = dateStr || fallbackStr;
+    if (!effective) return "";
+    const diff = Date.now() - new Date(effective).getTime();
     if (diff < 0) return "Just now";
     const minutes = Math.floor(diff / 60000);
     if (minutes < 1) return "Just now";
@@ -440,7 +441,7 @@ export default function JobsPage() {
                       </td>
                       <td className="px-5 py-4 text-right">
                         <span className="text-sm text-muted-foreground whitespace-nowrap">
-                          {daysAgo(job.posted_at)}
+                          {daysAgo(job.posted_at, job.created_at)}
                         </span>
                         <div className="mt-1">
                           {a ? (
