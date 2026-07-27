@@ -97,15 +97,19 @@ type Job = {
   job_analyses: Analysis[];
 };
 
-function daysAgo(dateStr: string | null, fallbackStr?: string | null): string {
-  const effective = dateStr || fallbackStr;
-  if (!effective) return "";
-  const diff = Date.now() - new Date(effective).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days === 0) return "Today";
+function daysAgo(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.round(diff / 60000);
+  if (Math.abs(minutes) < 1) return "Just now";
+  const sign = minutes < 0 ? "-" : "";
+  const absMins = Math.abs(minutes);
+  if (absMins < 60) return `${sign}${absMins}m ago`;
+  const hours = Math.floor(absMins / 60);
+  if (hours < 24) return `${sign}${hours}h ago`;
+  const days = Math.floor(hours / 24);
   if (days === 1) return "Yesterday";
-  if (days < 0) return "Today";
-  return `${days}d ago`;
+  return `${sign}${days}d ago`;
 }
 
 function formatExperience(tier: string | null): string {
@@ -343,10 +347,10 @@ export default function JobDetailPage() {
             </div>
             <span className="text-xs font-medium text-muted-foreground">Posted</span>
           </div>
-          <p className="text-lg font-bold">{daysAgo(job.posted_at, job.created_at) || "—"}</p>
-          {(job.posted_at || job.created_at) && (
+          <p className="text-lg font-bold">{daysAgo(job.posted_at) || "—"}</p>
+          {job.posted_at && (
             <p className="text-xs text-muted-foreground mt-0.5">
-              {new Date(job.posted_at || job.created_at).toLocaleDateString()}
+              {new Date(job.posted_at).toLocaleDateString()}
             </p>
           )}
         </div>

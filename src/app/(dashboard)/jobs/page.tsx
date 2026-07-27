@@ -167,18 +167,19 @@ export default function JobsPage() {
     return () => clearInterval(id);
   }, [fetchJobs]);
 
-  function daysAgo(dateStr: string | null, fallbackStr?: string | null): string {
-    const effective = dateStr || fallbackStr;
-    if (!effective) return "";
-    const diff = Date.now() - new Date(effective).getTime();
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return "Just now";
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+  function daysAgo(dateStr: string | null): string {
+    if (!dateStr) return "";
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.round(diff / 60000);
+    if (Math.abs(minutes) < 1) return "Just now";
+    const sign = minutes < 0 ? "-" : "";
+    const absMins = Math.abs(minutes);
+    if (absMins < 60) return `${sign}${absMins}m ago`;
+    const hours = Math.floor(absMins / 60);
+    if (hours < 24) return `${sign}${hours}h ago`;
     const days = Math.floor(hours / 24);
-    if (days === 1) return "Yesterday";
-    return `${days}d ago`;
+    if (days === 1) return minutes > 0 ? "Yesterday" : "in 1 day";
+    return `${sign}${days}d ago`;
   }
 
   function clearFilters() {
@@ -440,7 +441,7 @@ export default function JobsPage() {
                       </td>
                       <td className="px-5 py-4 text-right">
                         <span className="text-sm text-muted-foreground whitespace-nowrap">
-                          {daysAgo(job.posted_at, job.created_at)}
+                          {daysAgo(job.posted_at)}
                         </span>
                         <div className="mt-1">
                           {a ? (
