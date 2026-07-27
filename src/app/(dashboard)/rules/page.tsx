@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
 import type {
@@ -124,7 +124,7 @@ export default function RulesPage() {
               className={`size-4 ${isRefetching ? "animate-spin" : ""}`}
             />
           </Button>
-          <RuleFormDialog />
+          <RuleFormDialog onSuccess={() => refetch()} />
         </div>
       </div>
 
@@ -223,6 +223,7 @@ export default function RulesPage() {
                   Create Your First Rule
                 </Button>
               }
+              onSuccess={() => refetch()}
             />
           </CardContent>
         </Card>
@@ -249,6 +250,7 @@ export default function RulesPage() {
                     rule={rule}
                     channelName={rule.channel_name}
                     filterName={rule.filter_name}
+                    onSuccess={() => refetch()}
                   />
                 ))}
               </div>
@@ -273,6 +275,7 @@ export default function RulesPage() {
                     rule={rule}
                     channelName={rule.channel_name}
                     filterName={rule.filter_name}
+                    onSuccess={() => refetch()}
                   />
                 ))}
               </div>

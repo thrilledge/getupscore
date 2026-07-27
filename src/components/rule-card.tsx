@@ -54,12 +54,14 @@ interface RuleCardProps {
   channelName?: string;
   /** Pre-resolved filter name */
   filterName?: string;
+  onSuccess?: () => void;
 }
 
 export function RuleCard({
   rule,
   channelName,
   filterName,
+  onSuccess,
 }: RuleCardProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -77,6 +79,7 @@ export function RuleCard({
     }
 
     toast.success(rule.is_active ? "Rule paused." : "Rule activated.");
+    onSuccess?.();
   }
 
   async function handleDelete() {
@@ -91,6 +94,7 @@ export function RuleCard({
 
     toast.success("Rule deleted.");
     setShowDeleteDialog(false);
+    onSuccess?.();
   }
 
   return (
@@ -254,6 +258,7 @@ export function RuleCard({
         rule={rule}
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
+        onSuccess={onSuccess}
       />
 
       {/* Delete Confirmation */}

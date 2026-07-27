@@ -121,7 +121,7 @@ function ChannelsContent() {
               className={`size-4 ${isRefetching ? "animate-spin" : ""}`}
             />
           </Button>
-          <ChannelFormDialog />
+          <ChannelFormDialog onSuccess={() => refetch()} />
         </div>
       </div>
 
@@ -220,6 +220,7 @@ function ChannelsContent() {
                   Create Your First Channel
                 </Button>
               }
+              onSuccess={() => refetch()}
             />
           </CardContent>
         </Card>
@@ -242,7 +243,7 @@ function ChannelsContent() {
               </div>
               <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {activeChannels.map((channel) => (
-                  <ChannelCard key={channel.id} channel={channel} />
+                  <ChannelCard key={channel.id} channel={channel} onSuccess={() => refetch()} />
                 ))}
               </div>
             </section>
@@ -262,7 +263,7 @@ function ChannelsContent() {
               </div>
               <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {pausedChannels.map((channel) => (
-                  <ChannelCard key={channel.id} channel={channel} />
+                  <ChannelCard key={channel.id} channel={channel} onSuccess={() => refetch()} />
                 ))}
               </div>
             </section>

@@ -67,6 +67,7 @@ const iconMap: Record<string, React.ElementType> = {
 
 interface ChannelCardProps {
   channel: NotificationChannel;
+  onSuccess?: () => void;
 }
 
 function getConfigSummary(channel: NotificationChannel): string {
@@ -92,7 +93,7 @@ function getConfigPreview(channel: NotificationChannel): string {
   return summary.length > 40 ? summary.slice(0, 40) + "…" : summary;
 }
 
-export function ChannelCard({ channel }: ChannelCardProps) {
+export function ChannelCard({ channel, onSuccess }: ChannelCardProps) {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -113,6 +114,7 @@ export function ChannelCard({ channel }: ChannelCardProps) {
     }
 
     toast.success(channel.is_active ? "Channel paused." : "Channel activated.");
+    onSuccess?.();
   }
 
   async function handleDelete() {
@@ -127,6 +129,7 @@ export function ChannelCard({ channel }: ChannelCardProps) {
 
     toast.success("Channel deleted.");
     setShowDeleteDialog(false);
+    onSuccess?.();
   }
 
   async function handleSendTest() {
@@ -163,6 +166,7 @@ export function ChannelCard({ channel }: ChannelCardProps) {
             .update({ is_verified: true })
             .eq("id", channel.id);
         }
+        onSuccess?.();
       } else if (failed > 0) {
         const firstError = results.find((r: any) => !r.ok)?.error;
         toast.error(`Failed: ${firstError ?? "No matching rules"}`);
@@ -320,6 +324,7 @@ export function ChannelCard({ channel }: ChannelCardProps) {
         channel={channel}
         open={showEditDialog}
         onOpenChange={setShowEditDialog}
+        onSuccess={onSuccess}
       />
 
       {/* Delete Confirmation Dialog */}
