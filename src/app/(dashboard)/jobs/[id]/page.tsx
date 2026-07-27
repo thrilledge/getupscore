@@ -101,10 +101,10 @@ function daysAgo(dateStr: string | null, fallbackStr?: string | null): string {
   const effective = dateStr || fallbackStr;
   if (!effective) return "";
   const diff = Date.now() - new Date(effective).getTime();
-  if (diff < 0) return "Today";
   const days = Math.floor(diff / 86400000);
   if (days === 0) return "Today";
   if (days === 1) return "Yesterday";
+  if (days < 0) return "Today";
   return `${days}d ago`;
 }
 

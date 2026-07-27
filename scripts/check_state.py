@@ -9,17 +9,21 @@ key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 now = datetime.now(timezone.utc)
 
 r = requests.get(
-    f"{url}/rest/v1/jobs?select=posted_at,created_at&order=created_at.desc&limit=5",
+    f"{url}/rest/v1/jobs?select=posted_at,created_at,title&order=created_at.desc&limit=5",
     headers={"apikey": key, "Authorization": f"Bearer {key}"},
 )
 
-print(f"Now (local UTC): {now.isoformat()}")
+print(f"Your UTC: {now.isoformat()}\n")
 for j in r.json():
     pa = j.get("posted_at")
     ca = j.get("created_at")
+    title = (j.get("title") or "")[:40]
     if pa:
         pa_dt = datetime.fromisoformat(pa.replace("Z", "+00:00"))
-        diff_h = (pa_dt - now).total_seconds() / 3600
-        print(f"posted={pa}  created={ca}  diff_h={diff_h:.1f}")
+        diff_min = (pa_dt - now).total_seconds() / 60
+        print(f"posted={pa}  diff={diff_min:.0f}m  title={title}")
     else:
-        print(f"posted=None  created={ca}")
+        if ca:
+            ca_dt = datetime.fromisoformat(ca.replace("Z", "+00:00"))
+            diff_min = (ca_dt - now).total_seconds() / 60
+            print(f"posted=None  created={ca}  diff={diff_min:.0f}m  title={title}")
