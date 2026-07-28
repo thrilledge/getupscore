@@ -84,6 +84,7 @@ const gettingStartedSteps = [
     description: "Set up keywords, budget, and countries to find relevant jobs.",
     icon: Filter,
     href: "/filters",
+    id: "filters",
   },
   {
     number: 2,
@@ -91,13 +92,23 @@ const gettingStartedSteps = [
     description: "Connect Email, Telegram, Slack, or any custom channel.",
     icon: Bell,
     href: "/channels",
+    id: "channels",
   },
   {
     number: 3,
+    title: "Add Notification Rules",
+    description: "Set up rules for when and how you want to be notified.",
+    icon: Bell,
+    href: "/rules",
+    id: "rules",
+  },
+  {
+    number: 4,
     title: "Get Alerts & Apply",
     description: "Receive scored job alerts and generate AI proposals.",
     icon: Zap,
     href: "/jobs",
+    id: "jobs",
   },
 ];
 
@@ -122,6 +133,7 @@ export default function DashboardPage() {
   const [statusLoading, setStatusLoading] = useState(true);
   const [myStats, setMyStats] = useState<MyStats | null>(null);
   const [myStatsLoading, setMyStatsLoading] = useState(true);
+  const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
 
   // Fetch status for live stats
   useEffect(() => {
@@ -147,7 +159,18 @@ export default function DashboardPage() {
   useEffect(() => {
     fetch("/api/analytics")
       .then((r) => r.json())
-      .then((d) => { setMyStats(d); setMyStatsLoading(false); })
+      .then((d) => {
+        setMyStats(d);
+        setMyStatsLoading(false);
+
+        // Determine which steps are completed based on user data
+        const completed = new Set<string>();
+        if (d && d.activeFilters > 0) completed.add("filters");
+        if (d && d.totalChannels > 0) completed.add("channels");
+        if (d && d.activeRules > 0) completed.add("rules");
+        if (d && d.totalNotifications > 0 || (d && d.totalProposals > 0)) completed.add("jobs");
+        setCompletedSteps(completed);
+      })
       .catch(() => setMyStatsLoading(false));
   }, []);
 
@@ -193,10 +216,10 @@ export default function DashboardPage() {
         {defaultStats.map((stat) => {
           const Icon = stat.icon;
           const iconStyle = iconBgMap[stat.color] || iconBgMap["accent-blue"];
-          const valueColor = stat.color === "accent-blue" ? "text-accent-blue" 
+          const valueColor = stat.color === "accent-blue" ? "text-accent-blue"
             : stat.color === "accent-green" ? "text-accent-green"
-            : stat.color === "accent-amber" ? "text-accent-amber"
-            : "text-accent-purple";
+              : stat.color === "accent-amber" ? "text-accent-amber"
+                : "text-accent-purple";
 
           return (
             <Card
@@ -274,7 +297,7 @@ export default function DashboardPage() {
               </div>
               <div className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
                 <Circle className="size-2 fill-muted-foreground/40" />
-                <span>0 of {gettingStartedSteps.length} complete</span>
+                <span>{completedSteps.size} of {gettingStartedSteps.length} complete</span>
               </div>
             </div>
           </CardHeader>
@@ -286,7 +309,7 @@ export default function DashboardPage() {
               <div className="space-y-0">
                 {gettingStartedSteps.map((step, index) => {
                   const StepIcon = step.icon;
-                  const isLast = index === gettingStartedSteps.length - 1;
+                  const isCompleted = completedSteps.has(step.id);
 
                   return (
                     <a
@@ -295,28 +318,49 @@ export default function DashboardPage() {
                       className="group relative flex items-start gap-5 px-2 py-4 rounded-xl transition-all duration-200 hover:bg-muted/50 cursor-pointer"
                     >
                       {/* Step number circle */}
-                      <div className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-primary/20 bg-background text-sm font-bold text-primary shadow-sm transition-all duration-300 group-hover:border-primary/40 group-hover:shadow-md group-hover:scale-105">
-                        <StepIcon className="size-4" />
+                      <div className={`relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border-2 shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:scale-105 ${isCompleted
+                        ? "border-accent-green bg-accent-green/10 text-accent-green"
+                        : "border-primary/20 bg-background text-primary group-hover:border-primary/40"
+                        }`}>
+                        {isCompleted ? (
+                          <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          <StepIcon className="size-4" />
+                        )}
                       </div>
 
                       {/* Content */}
                       <div className="flex-1 min-w-0 pt-0.5">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-heading font-semibold text-foreground group-hover:text-primary transition-colors">
+                          <h3 className={`font-heading font-semibold transition-colors ${isCompleted
+                            ? "text-muted-foreground line-through"
+                            : "text-foreground group-hover:text-primary"
+                            }`}>
                             {step.title}
                           </h3>
                           <ArrowRight className="size-3.5 text-muted-foreground opacity-0 -translate-x-2 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0" />
                         </div>
-                        <p className="text-sm text-muted-foreground mt-0.5">
+                        <p className={`text-sm mt-0.5 ${isCompleted ? "text-muted-foreground/70" : "text-muted-foreground"
+                          }`}>
                           {step.description}
                         </p>
                       </div>
 
                       {/* Status indicator */}
                       <div className="shrink-0 self-center">
-                        <div className="flex size-6 items-center justify-center rounded-full border border-muted-foreground/20 text-muted-foreground/40">
-                          <Circle className="size-3" />
-                        </div>
+                        {isCompleted ? (
+                          <div className="flex size-6 items-center justify-center rounded-full bg-accent-green/10 text-accent-green">
+                            <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <div className="flex size-6 items-center justify-center rounded-full border border-muted-foreground/20 text-muted-foreground/40">
+                            <Circle className="size-3" />
+                          </div>
+                        )}
                       </div>
                     </a>
                   );

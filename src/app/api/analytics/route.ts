@@ -47,6 +47,11 @@ export async function GET() {
       .select("*", { count: "exact", head: true })
       .eq("user_id", user.id);
 
+    const { count: totalChannels } = await admin
+      .from("notification_channels")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
     // Saved jobs' skills
     const { data: savedJobsData } = await admin
       .from("saved_jobs")
@@ -84,6 +89,7 @@ export async function GET() {
       activeRules: activeRules ?? 0,
       totalProposals: totalProposals ?? 0,
       totalNotifications: totalNotifications ?? 0,
+      totalChannels: totalChannels ?? 0,
       topSkills,
     });
   } catch (err: any) {
