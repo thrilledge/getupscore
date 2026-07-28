@@ -304,9 +304,9 @@ export default function DashboardPage() {
           <CardContent>
             <div className="relative">
               {/* Vertical connector line */}
-              <div className="absolute left-[19px] top-2 bottom-2 w-px bg-gradient-to-b from-primary/30 via-primary/20 to-transparent" />
 
-              <div className="space-y-0">
+              <div className="space-y-0 relative">
+                <div className="absolute left-[27px] top-[17px] bottom-2 w-px bg-gradient-to-b from-primary/30 via-primary/20 to-transparent" />
                 {gettingStartedSteps.map((step, index) => {
                   const StepIcon = step.icon;
                   const isCompleted = completedSteps.has(step.id);
@@ -319,7 +319,7 @@ export default function DashboardPage() {
                     >
                       {/* Step number circle */}
                       <div className={`relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border-2 shadow-sm transition-all duration-300 group-hover:shadow-md group-hover:scale-105 ${isCompleted
-                        ? "border-accent-green bg-accent-green/10 text-accent-green"
+                        ? "border-accent-green bg-[#e5f7ed] text-accent-green"
                         : "border-primary/20 bg-background text-primary group-hover:border-primary/40"
                         }`}>
                         {isCompleted ? (

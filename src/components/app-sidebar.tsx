@@ -78,15 +78,15 @@ export function AppSidebar() {
   const initials = user?.email?.charAt(0).toUpperCase() ?? "U";
 
   return (
-    <Sidebar collapsible="icon" className="group/sidebar-app">
+    <Sidebar collapsible="icon" className="group/sidebar-app overflow-hidden bg-sidebar-background/90 shadow-lg ring-1 ring-sidebar-ring/20 transition-all duration-300 p-0">
       {/* Brand */}
-      <SidebarHeader className="animate-in fade-in slide-in-from-left-2 duration-300 px-1 pt-3 pb-1">
+      <SidebarHeader className="animate-in fade-in slide-in-from-left-2 duration-300 h-[53px] p-0 flex items-center justify-center">
         <SidebarMenu>
-          <SidebarMenuItem>
+          <SidebarMenuItem className="flex justify-center">
             <SidebarMenuButton
               size="lg"
               render={<Link href="/dashboard" />}
-              className="group-data-[collapsible=icon]:!p-0! transition-all duration-300 rounded-xl"
+              className="group-data-[collapsible=icon]:!p-0! transition-all duration-300 rounded-xl pt-0 pb-0"
             >
               <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary/95 to-primary/80 text-primary-foreground font-bold shadow-sm ring-1 ring-primary/20 transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
                 <span className="text-lg">{env.APP_NAME.charAt(0)}</span>
@@ -102,11 +102,11 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarSeparator className="mx-3 w-auto transition-opacity duration-300" />
+      <SidebarSeparator className=" w-auto transition-opacity duration-300" />
 
       {/* Navigation */}
       <SidebarContent className="px-2">
-        <SidebarGroup>
+        <SidebarGroup className="animate-in fade-in slide-in-from-left-2 duration-300 p-0 pt-6 ">
           <SidebarGroupLabel className="hidden px-2 text-[11px] font-medium text-muted-foreground/40 uppercase tracking-widest">
             Main Menu
           </SidebarGroupLabel>
@@ -119,7 +119,7 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem
                     key={item.href}
-                    className="animate-in fade-in slide-in-from-left-2 fill-mode-both" 
+                    className="animate-in fade-in slide-in-from-left-2 fill-mode-both"
                     style={{ animationDelay: `${index * 60}ms`, animationDuration: "400ms" }}
                   >
                     <SidebarMenuButton

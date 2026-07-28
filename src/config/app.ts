@@ -18,8 +18,6 @@ export const appConfig = {
       { title: "Jobs", href: "/jobs", icon: "Briefcase" },
       { title: "Saved Jobs", href: "/saved", icon: "Heart" },
       { title: "Notifications", href: "/notifications", icon: "Bell" },
-      { title: "Channels", href: "/channels", icon: "Radio" },
-      { title: "Rules", href: "/rules", icon: "GitBranch" },
       { title: "Proposals", href: "/proposals", icon: "FileText" },
       { title: "Upwork Profile", href: "/upwork-profile", icon: "UserCircle" },
       { title: "Contracts", href: "/contracts", icon: "Briefcase" },

@@ -17,6 +17,11 @@ export function useUser() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user);
       setLoading(false);
+    }).catch(() => {
+      // Invalid refresh token — clear stale session
+      supabase.auth.signOut();
+      setUser(null);
+      setLoading(false);
     });
 
     // Listen for auth changes
