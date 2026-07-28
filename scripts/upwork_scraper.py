@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Upwork Job Scraper — uses curl_cffi to bypass Cloudflare and Upwork's GraphQL API.
+Supports client detail enrichment with authenticated cookies.
 """
 import json
 import re
@@ -48,17 +49,17 @@ query VisitorJobSearch($requestVariables: VisitorJobSearchV1Request!) {
 """
 
 DETAILS_QUERY = """
-query VisitorJobDetails($jobCiphertext: String!) {
-    jobPubDetails {
-        opening(ciphertext: $jobCiphertext) {
+query VisitorJobDetails($jobCiphertext: ID!) {
+    jobPubDetails(id: $jobCiphertext) {
+        opening {
             status
             postedOn
             description
             info { ciphertext id type access title hideBudget createdOn premium }
             sandsData {
-                occupation { uid prefLabel }
-                ontologySkills { uid prefLabel relevance }
-                additionalSkills { uid prefLabel relevance }
+                occupation { prefLabel }
+                ontologySkills { prefLabel relevance }
+                additionalSkills { prefLabel relevance }
             }
             category { name urlSlug }
             budget { amount currencyCode }
@@ -68,8 +69,6 @@ query VisitorJobDetails($jobCiphertext: String!) {
                 hourlyBudgetMax
                 hourlyBudgetType
             }
-            connectsRequired
-            connects
             clientActivity {
                 totalApplicants
                 totalHired
@@ -107,6 +106,30 @@ HEADERS = {
 def get_visitor_token(session) -> str | None:
     resp = session.get(UPWORK_URL, impersonate="safari17_0", timeout=60)
     return resp.cookies.get("visitor_gql_token")
+
+
+def _load_cookies_from_file(cookie_file: str = "/app/cookies/upwork_cookies.json") -> dict:
+    """Load ALL cookies from file."""
+    try:
+        with open(cookie_file) as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                return data
+            return {}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _apply_cookies_to_session(session, cookies: dict):
+    """Apply all cookies to a session."""
+    for name, value in cookies.items():
+        if name and value:
+            session.cookies.set(name, str(value), domain=".upwork.com")
+
+
+def _get_bearer_token(cookies: dict) -> str | None:
+    """Get the best Bearer token from cookies."""
+    return cookies.get("UniversalSearchNuxt_vt") or cookies.get("oauth2_global_js_token")
 
 
 def fetch_jobs(count: int = 20, offset: int = 0, keywords: str | None = None) -> dict:
@@ -188,13 +211,8 @@ def fetch_jobs(count: int = 20, offset: int = 0, keywords: str | None = None) ->
     }
 
 
-def fetch_jobs_with_details(count: int = 20, offset: int = 0, keywords: str | None = None, max_details: int = 20, cookie_string: str | None = None) -> dict:
-    """Fetch jobs AND enrich each with client details.
-
-    Job search uses visitor token (no cookies needed).
-    Client detail enrichment requires authenticated cookies (JobDetailsNuxt_vt).
-    If no cookies provided, returns jobs without client details.
-    """
+def fetch_jobs_with_details(count: int = 20, offset: int = 0, keywords: str | None = None, max_details: int = 20, all_cookies: dict | None = None) -> dict:
+    """Fetch jobs AND enrich each with client details using authenticated cookies."""
     session = requests.Session()
     token = get_visitor_token(session)
     if not token:
@@ -202,7 +220,7 @@ def fetch_jobs_with_details(count: int = 20, offset: int = 0, keywords: str | No
 
     headers = {**HEADERS, "Authorization": f"Bearer {token}"}
 
-    # 1. Fetch jobs via visitor search (no cookies needed)
+    # 1. Fetch jobs via visitor search
     variables = {
         "sort": "recency",
         "paging": {"offset": offset, "count": count},
@@ -266,80 +284,85 @@ def fetch_jobs_with_details(count: int = 20, offset: int = 0, keywords: str | No
             "source": "upwork_graphql",
         })
 
-    # 2. Fetch client details (requires authenticated cookies)
+    # 2. Enrich with client details using ALL browser cookies
     enriched_count = 0
-    if cookie_string:
-        detail_targets = jobs[:max_details]
-        detail_session = requests.Session()
-        detail_session.cookies.set("JobDetailsNuxt_vt", cookie_string)
+    if all_cookies:
+        bearer = _get_bearer_token(all_cookies)
+        if bearer:
+            detail_session = requests.Session()
+            _apply_cookies_to_session(detail_session, all_cookies)
 
-        for idx, job in enumerate(detail_targets):
-            cipher = job.get("ciphertext")
-            if not cipher:
-                continue
-
-            time.sleep(1.5)
-
-            detail_headers = {
-                **HEADERS,
-                "Referer": f"https://www.upwork.com/jobs/~{cipher}",
-            }
-
-            detail_payload = {
-                "query": DETAILS_QUERY,
-                "variables": {"jobCiphertext": cipher},
-            }
-
-            try:
-                detail_resp = detail_session.post(
-                    f"{API_URL}?alias=gql-query-get-visitor-job-details",
-                    json=detail_payload,
-                    headers=detail_headers,
-                    impersonate="safari17_0",
-                    timeout=30,
-                )
-
-                if detail_resp.status_code != 200:
+            detail_targets = jobs[:max_details]
+            for idx, job in enumerate(detail_targets):
+                cipher = job.get("ciphertext")
+                if not cipher:
                     continue
 
-                d_data = detail_resp.json()
-                if "errors" in d_data:
+                time.sleep(1.5)
+
+                detail_headers = {
+                    **HEADERS,
+                    "Referer": f"https://www.upwork.com/jobs/{cipher}",
+                    "Authorization": f"Bearer {bearer}",
+                }
+
+                detail_payload = {
+                    "query": DETAILS_QUERY,
+                    "variables": {"jobCiphertext": cipher},
+                }
+
+                try:
+                    detail_resp = detail_session.post(
+                        f"{API_URL}?alias=gql-query-get-visitor-job-details",
+                        json=detail_payload,
+                        headers=detail_headers,
+                        impersonate="safari17_0",
+                        timeout=30,
+                    )
+
+                    if detail_resp.status_code != 200:
+                        continue
+
+                    d_data = detail_resp.json()
+                    if "errors" in d_data:
+                        continue
+
+                    details = d_data.get("data", {}).get("jobPubDetails", {})
+                    if not details:
+                        continue
+
+                    opening = details.get("opening") or {}
+                    buyer = details.get("buyer") or {}
+                    buyer_extra = details.get("buyerExtra") or {}
+
+                    activity = opening.get("clientActivity") or {}
+                    location = buyer.get("location") or {}
+                    stats = buyer.get("stats") or {}
+                    company = (buyer.get("company") or {}).get("profile") or {}
+                    total_charges = (stats.get("totalCharges") or {}) if stats else {}
+
+                    job["client_score"] = stats.get("score")
+                    job["client_hours_count"] = stats.get("hoursCount")
+                    job["client_feedback_count"] = stats.get("feedbackCount")
+                    job["client_payment_verified"] = buyer_extra.get("isPaymentMethodVerified")
+                    job["client_total_spend"] = total_charges.get("amount")
+                    job["client_total_hires"] = stats.get("totalJobsWithHires")
+                    job["client_total_assignments"] = stats.get("totalAssignments")
+                    job["client_active_assignments"] = stats.get("activeAssignmentsCount")
+                    job["client_city"] = (location.get("city") or "")[:100] or None
+                    job["client_location_country"] = (location.get("country") or "")[:100] or None
+                    job["client_company_size"] = str(company.get("size", ""))[:50] or None
+                    job["client_industry"] = (company.get("industry") or "")[:200] or None
+                    job["total_invited"] = activity.get("totalInvitedToInterview")
+                    job["total_hired"] = activity.get("totalHired")
+                    job["proposals_count"] = activity.get("totalApplicants")
+                    job["category"] = (opening.get("category") or {}).get("name")
+                    job["enriched"] = True
+                    enriched_count += 1
+
+                except Exception:
                     continue
 
-                details = d_data.get("data", {}).get("jobPubDetails", {})
-                opening = details.get("opening") or {}
-                buyer = details.get("buyer") or {}
-                buyer_extra = details.get("buyerExtra") or {}
-
-                activity = opening.get("clientActivity") or {}
-                location = buyer.get("location") or {}
-                stats = buyer.get("stats") or {}
-                company = (buyer.get("company") or {}).get("profile") or {}
-                total_charges = (stats.get("totalCharges") or {}) if stats else {}
-
-                job["client_score"] = stats.get("score")
-                job["client_hours_count"] = stats.get("hoursCount")
-                job["client_feedback_count"] = stats.get("feedbackCount")
-                job["client_payment_verified"] = buyer_extra.get("isPaymentMethodVerified")
-                job["client_total_spend"] = total_charges.get("amount")
-                job["client_total_hires"] = stats.get("totalJobsWithHires")
-                job["client_total_assignments"] = stats.get("totalAssignments")
-                job["client_active_assignments"] = stats.get("activeAssignmentsCount")
-                job["client_city"] = (location.get("city") or "")[:100] or None
-                job["client_location_country"] = (location.get("country") or "")[:100] or None
-                job["client_company_size"] = str(company.get("size", ""))[:50] or None
-                job["client_industry"] = (company.get("industry") or "")[:200] or None
-                job["total_invited"] = activity.get("totalInvitedToInterview")
-                job["total_hired"] = activity.get("totalHired")
-                job["proposals_count"] = activity.get("totalApplicants")
-                job["category"] = (opening.get("category") or {}).get("name")
-                job["enriched"] = True
-                enriched_count += 1
-
-            except Exception as e:
-                continue
-
-    # Remove ciphertext from output (internal use only)
     for job in jobs:
         job.pop("ciphertext", None)
 
@@ -353,21 +376,27 @@ def fetch_jobs_with_details(count: int = 20, offset: int = 0, keywords: str | No
     }
 
 
-def fetch_job_details(ciphertext: str, cookie_string: str | None = None) -> dict:
+def fetch_job_details(ciphertext: str, all_cookies: dict | None = None) -> dict:
     session = requests.Session()
-    if cookie_string:
-        session.cookies.set("JobDetailsNuxt_vt", cookie_string)
+    bearer = None
+    if all_cookies:
+        _apply_cookies_to_session(session, all_cookies)
+        bearer = _get_bearer_token(all_cookies)
+
     token = get_visitor_token(session)
     if not token:
         return {"success": False, "error": "Failed to get visitor_gql_token"}
+
+    if not bearer:
+        bearer = token
 
     alias = "gql-query-get-visitor-job-details"
     url = f"{API_URL}?alias={alias}"
 
     details_headers = {
         **HEADERS,
-        "Referer": f"https://www.upwork.com/jobs/~{ciphertext}",
-        "Authorization": f"Bearer {token}",
+        "Referer": f"https://www.upwork.com/jobs/{ciphertext}",
+        "Authorization": f"Bearer {bearer}",
     }
 
     payload = {
@@ -427,8 +456,6 @@ def fetch_job_details(ciphertext: str, cookie_string: str | None = None) -> dict
                 "size": company_profile.get("size"),
             },
             "payment_verified": buyer_extra.get("isPaymentMethodVerified"),
-            "connects_required": opening.get("connectsRequired"),
-            "connects": opening.get("connects"),
         },
     }
 
@@ -438,26 +465,24 @@ if __name__ == "__main__":
     parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--offset", type=int, default=0)
     parser.add_argument("--keywords", type=str, default=None)
-    parser.add_argument("--details", type=str, default=None,
-                        help="Fetch details for a specific job ciphertext")
-    parser.add_argument("--with-details", action="store_true",
-                        help="Fetch jobs with client details in one call")
-    parser.add_argument("--max-details", type=int, default=20,
-                        help="Max number of jobs to enrich with details")
-    parser.add_argument("--cookie", type=str, default=None,
-                        help="JobDetailsNuxt_vt cookie string for enrichment")
+    parser.add_argument("--details", type=str, default=None)
+    parser.add_argument("--with-details", action="store_true")
+    parser.add_argument("--max-details", type=int, default=20)
+    parser.add_argument("--cookie-file", type=str, default="/app/cookies/upwork_cookies.json")
     args = parser.parse_args()
 
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+    all_cookies = _load_cookies_from_file(args.cookie_file)
 
     if args.with_details:
         result = fetch_jobs_with_details(
             count=args.count, offset=args.offset,
             keywords=args.keywords, max_details=args.max_details,
-            cookie_string=args.cookie,
+            all_cookies=all_cookies,
         )
     elif args.details:
-        result = fetch_job_details(args.details, cookie_string=args.cookie)
+        result = fetch_job_details(args.details, all_cookies=all_cookies)
     else:
         result = fetch_jobs(count=args.count, offset=args.offset, keywords=args.keywords)
 
