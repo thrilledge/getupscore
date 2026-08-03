@@ -96,6 +96,7 @@ export async function streamProposal(
 ): Promise<ReadableStream<Uint8Array>> {
   const apiKey = groqApiKey || process.env.GROQ_API_KEY;
   const model = groqModel || process.env.GROQ_MODEL || "openai/gpt-oss-20b";
+  console.log("[Proposal Stream] Using model:", model);
 
   return new ReadableStream({
     async start(controller) {
@@ -105,9 +106,8 @@ export async function streamProposal(
       };
 
       if (!apiKey) {
-        const fallback = generateFallbackProposal(input);
-        send("proposal", { text: fallback.generated_text });
-        send("done", { score: fallback.score || 70 });
+        console.warn("[Proposal Stream] No GROQ_API_KEY configured — aborting instead of writing a template.");
+        send("error", { message: "Server has no GROQ_API_KEY configured. Check Vercel env vars." });
         controller.close();
         return;
       }
@@ -135,9 +135,7 @@ export async function streamProposal(
         if (!response.ok) {
           const errText = await response.text().catch(() => "Unknown error");
           console.warn("[Proposal Stream] GroqCloud error:", response.status, errText);
-          const fallback = generateFallbackProposal(input);
-          send("proposal", { text: fallback.generated_text });
-          send("done", { score: fallback.score || 70 });
+          send("error", { message: `Groq error ${response.status}: ${errText.slice(0, 200)}` });
           controller.close();
           return;
         }
@@ -181,9 +179,7 @@ export async function streamProposal(
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
         console.warn("[Proposal Stream] Error:", message);
-        const fallback = generateFallbackProposal(input);
-        send("proposal", { text: fallback.generated_text });
-        send("done", { score: fallback.score || 70 });
+        send("error", { message: `Proposal generation failed: ${message.slice(0, 200)}` });
         controller.close();
       }
     },
@@ -318,43 +314,37 @@ function generateFallbackProposal(input: ProposalInput): ProposalResult {
   const lines: string[] = [];
 
   // Move 1 — Anti-pitch opener
-  const tools = input.skills?.slice(0, 3).join(", ") || "this type of work";
+  const tools = input.skills?.slice(0, 3).filter(Boolean).join(", ");
   lines.push(
-    `Not pitching — just letting you know I've done this exact type of work before: ${tools}.`
+    tools
+      ? `Not pitching — just confirming I've already done this exact type of work before: ${tools}.`
+      : "Not pitching — this is exactly the kind of work I've handled before, and here's how I'd approach yours."
   );
   lines.push("");
 
-  // Move 2 — Reframe
+  // Move 2 — Reframe (never echo the job post itself)
   lines.push(
-    `The part that actually matters here isn't executing the steps — it's ${input.jobDescription
-      .slice(0, 400)
-      .replace(/\s+/g, " ")
-      .split(".")
-      .slice(0, 2)
-      .join(".")
-      .trim() || "getting the details right"}.`
+    "What actually matters here isn't the execution steps — it's getting the details right up front so nothing gets reworked, and keeping you in the loop as I go."
   );
   lines.push("");
 
   // Move 3 — Question
   lines.push(
-    `One thing I want to confirm before quoting: is there a specific part of this project that has tripped up previous attempts, or a constraint I should know about before we start?`
+    "One thing I'd confirm before quoting: is there a specific part of this project that has tripped up previous attempts, or a constraint I should know about before we start?"
   );
   lines.push("");
 
   // Move 4 — Day-one suggestions
   lines.push(
-    `Here's how I'd start: review everything you have and flag anything unclear before touching a deliverable, then execute in a structured pass with no assumptions — you'd get a summary of every change and decision made.`
+    "Here's how I'd start: review everything you have and flag anything unclear before touching a deliverable, then execute in a structured pass — you'd get a summary of every change and decision made."
   );
   lines.push("");
 
   // Move 5 — Close
-  lines.push(
-    `Happy to walk through my approach on a quick call if useful.`
-  );
+  lines.push("Happy to walk through my approach on a quick call if useful.");
 
   return {
     generated_text: lines.join("\n"),
-    score: 70,
+    score: 55,
   };
 }

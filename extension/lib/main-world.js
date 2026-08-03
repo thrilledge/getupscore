@@ -492,6 +492,21 @@
     const minAttemptsForPartial = 4;
     const job = extractJobFromDom();
 
+    // On the apply page the sidebar (.fe-job-details) is the authoritative source —
+    // it renders server-side with the page, so accept it immediately and never let
+    // Nuxt/Vue portfolio objects override it.
+    if (job?._source === "apply-dom") {
+      window.__upscoreLastJob = job;
+      window.postMessage({
+        type: "__upscore_result",
+        operation: "jobDetails",
+        success: true,
+        data: job,
+      }, "*");
+      pendingPartialJob = null;
+      return;
+    }
+
     if (job) {
       const hasHistory = job.client_recent_history && job.client_recent_history.length > 0;
       if (hasHistory || attempt >= minAttemptsForPartial) {
@@ -557,7 +572,68 @@
     pendingPartialJob = null;
   }
 
+  function extractJobFromApplyPage() {
+    try {
+      const container = document.querySelector(".fe-job-details");
+      if (!container) return null;
+
+      const job = {};
+      const matched = [];
+
+      const titleEl = container.querySelector(".content h3");
+      if (titleEl) { job.title = titleEl.textContent?.trim(); matched.push("title"); }
+
+      const postedEl = container.querySelector('[itemprop="datePosted"]');
+      if (postedEl) { job.posted_at = postedEl.textContent?.trim(); matched.push("posted_at"); }
+
+      const descEl = container.querySelector(".description.text-body-sm");
+      if (descEl) {
+        const desc = descEl.textContent?.trim();
+        if (desc && desc.length > 40) { job.description = desc; matched.push("description"); }
+      }
+
+      const durationEl = container.querySelector('[data-test="hourly-duration"]');
+      if (durationEl) {
+        const txt = durationEl.textContent || "";
+        const range = txt.match(/\$([\d,]+(?:\.\d+)?)\s*[-–]\s*\$([\d,]+(?:\.\d+)?)/);
+        if (range) {
+          job.hourly_min = parseFloat(range[1].replace(",", ""));
+          job.hourly_max = parseFloat(range[2].replace(",", ""));
+          job.budget_type = "hourly";
+          matched.push("budget");
+        }
+      }
+
+      const clientsBudget = container.querySelector(".clients-budget");
+      if (clientsBudget) {
+        const txt = clientsBudget.textContent || "";
+        const range = txt.match(/\$([\d,]+(?:\.\d+)?)\s*[-–]\s*\$([\d,]+(?:\.\d+)?)/);
+        if (range) {
+          job.hourly_min = parseFloat(range[1].replace(",", ""));
+          job.hourly_max = parseFloat(range[2].replace(",", ""));
+          job.budget_type = "hourly";
+          matched.push("clients_budget");
+        }
+      }
+
+      job.url = window.location.href;
+      job._source = "apply-dom";
+
+      if (job.title && (job.description || matched.includes("budget"))) return job;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   function extractJobFromDom() {
+    // On the apply page the job lives in the sidebar (.fe-job-details) and the
+    // generic extractors can match portfolio objects instead of the job — so
+    // try the apply-page extractor first and only use it when solid.
+    const applyDetails = extractJobFromApplyPage();
+    if (applyDetails) {
+      return applyDetails;
+    }
     // Try detailed DOM extraction first (most data, no normalization)
     const detailed = extractJobFromSelectors();
     if (detailed) {

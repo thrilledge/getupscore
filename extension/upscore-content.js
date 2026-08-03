@@ -300,6 +300,19 @@ function resetBtnState(btn) {
   btn.disabled = false;
 }
 
+function summarizeJob(job) {
+  if (!job) return null;
+  return {
+    title: (job.title || job.jobTitle || "").slice(0, 120),
+    _source: job._source || "?",
+    url: job.url || "",
+    budget: job.budget ?? (job.hourly_min ? `$${job.hourly_min}-$${job.hourly_max}` : undefined),
+    client_country: job.client_country || job.clientCountry || "",
+    skills: Array.isArray(job.skills) ? job.skills.slice(0, 8) : [],
+    description: (job.description || job.jobDescription || "").slice(0, 400),
+  };
+}
+
 async function generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJobId) {
   const settings = await getExtensionSettings();
   if (!settings.apiToken) {
@@ -313,6 +326,12 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJob
     setTimeout(() => resetBtnState(btn), 3500);
     return;
   }
+
+  console.log("[UpScore] Generating proposal with:", {
+    path: jobDetails ? "page-details" : "db-lookup",
+    upworkJobId: upworkJobId || null,
+    jobDetails: summarizeJob(jobDetails),
+  });
 
   const payload = { stream: true };
   if (jobDetails) payload.jobDetails = jobDetails;
@@ -348,6 +367,7 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJob
       const data = await response.json();
       if (data.proposal) {
         setTextareaValue(textarea, textarea.value + data.proposal);
+        console.log("[UpScore] Proposal written (json):", data.proposal.slice(0, 300));
         setBtnState(btn, data.score ? `Written! Score ${data.score}` : "Written!", "done");
         setTimeout(() => resetBtnState(btn), 4000);
       } else {
@@ -368,6 +388,7 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJob
   let buffer = "";
   let score = null;
   let lastEventType = "";
+  let streamError = null;
 
   try {
     while (true) {
@@ -391,6 +412,9 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJob
             setTextareaValue(textarea, textarea.value + parsed.text);
           }
           if (parsed.score !== undefined) score = parsed.score;
+          if (lastEventType === "error") {
+            streamError = parsed.message || parsed.text || "Generation failed on the server";
+          }
         } catch { /* ignore */ }
       }
     }
@@ -400,7 +424,15 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJob
     return;
   }
 
+  if (streamError) {
+    console.error("[UpScore] Proposal stream error:", streamError);
+    setBtnState(btn, "Failed: " + streamError.slice(0, 50), "error");
+    setTimeout(() => resetBtnState(btn), 6000);
+    return;
+  }
+
   setBtnState(btn, score !== null ? `Written! Score ${score}` : "Written!", "done");
+  console.log("[UpScore] Proposal written (stream):", textarea.value.slice(-400));
   setTimeout(() => resetBtnState(btn), 4000);
 }
 
@@ -450,10 +482,19 @@ function injectApplyButton() {
       const apiResult = await fetchJobFromApi(jobUrl);
       if (apiResult?.success && apiResult?.data) {
         jobDetails = apiResult.data;
+        console.log("[UpScore] Job fetched via API interceptor:", summarizeJob(jobDetails));
       } else {
+        console.log("[UpScore] API interceptor failed:", apiResult?.error || "no data");
         const domResult = await extractJobFromPage();
-        if (domResult?.success && domResult?.data) jobDetails = domResult.data;
+        if (domResult?.success && domResult?.data) {
+          jobDetails = domResult.data;
+          console.log("[UpScore] Job fetched via DOM extraction:", summarizeJob(jobDetails));
+        } else {
+          console.log("[UpScore] DOM extraction failed:", domResult?.error || "no data");
+        }
       }
+      if (jobDetails) console.log("[UpScore] Using page job details.");
+      else console.log("[UpScore] No page details — falling back to DB lookup by upworkJobId:", upworkJobId);
       await generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJobId);
     } catch (err) {
       setBtnState(btn, "Error: " + (err.message || "unknown"), "error");
