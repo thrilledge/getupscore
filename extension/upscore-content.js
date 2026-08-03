@@ -300,7 +300,7 @@ function resetBtnState(btn) {
   btn.disabled = false;
 }
 
-async function generateProposalIntoTextarea(btn, textarea, jobDetails) {
+async function generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJobId) {
   const settings = await getExtensionSettings();
   if (!settings.apiToken) {
     setBtnState(btn, "Not connected — open Settings", "error");
@@ -308,7 +308,15 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails) {
     return;
   }
 
-  const payload = { jobDetails, stream: true };
+  if (!jobDetails && !upworkJobId) {
+    setBtnState(btn, "Could not extract job details", "error");
+    setTimeout(() => resetBtnState(btn), 3500);
+    return;
+  }
+
+  const payload = { stream: true };
+  if (jobDetails) payload.jobDetails = jobDetails;
+  if (upworkJobId) payload.upworkJobId = upworkJobId;
   if (settings.rules) payload.customInstructions = settings.rules;
 
   let response;
@@ -428,6 +436,7 @@ function injectApplyButton() {
     const jobUrl = applyMatch
       ? `https://www.upwork.com/jobs/~${applyMatch[1]}`
       : window.location.href;
+    const upworkJobId = applyMatch ? applyMatch[1] : null;
 
     let jobDetails = null;
     setBtnState(btn, "Fetching job...", "loading");
@@ -440,8 +449,7 @@ function injectApplyButton() {
         const domResult = await extractJobFromPage();
         if (domResult?.success && domResult?.data) jobDetails = domResult.data;
       }
-      if (!jobDetails) throw new Error("Could not extract job details");
-      await generateProposalIntoTextarea(btn, textarea, jobDetails);
+      await generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJobId);
     } catch (err) {
       setBtnState(btn, "Error: " + (err.message || "unknown"), "error");
       setTimeout(() => resetBtnState(btn), 3500);

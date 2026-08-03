@@ -41,7 +41,7 @@ export async function generateProposal(
   groqModel?: string
 ): Promise<ProposalResult> {
   const apiKey = groqApiKey || process.env.GROQ_API_KEY;
-  const model = groqModel || process.env.GROQ_MODEL || "llama-3.1-70b-versatile";
+  const model = groqModel || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
   if (!apiKey) {
     return generateFallbackProposal(input);

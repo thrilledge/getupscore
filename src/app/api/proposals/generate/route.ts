@@ -3,6 +3,89 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { generateProposal, streamProposal } from "@/lib/proposals/generate";
 import { analyzeJob } from "@/lib/jobs/analyze";
 
+async function respondFromDbJob(
+  supabase: any,
+  job: Record<string, any>,
+  userId: string,
+  baseInput: Record<string, unknown>
+) {
+  const jobId = job.id;
+
+  const { data: existingAnalysis } = await supabase
+    .from("job_analyses")
+    .select("*")
+    .eq("job_id", jobId)
+    .eq("user_id", userId)
+    .single();
+
+  let analysisData = existingAnalysis as Record<string, unknown> | null;
+
+  if (!analysisData) {
+    try {
+      analysisData = await analyzeJob(supabase, job, jobId, userId);
+    } catch (analyzeErr: any) {
+      console.warn("[Proposals] On-demand analysis error:", analyzeErr.message);
+    }
+  }
+
+  const proposalInput = {
+    ...baseInput,
+    jobTitle: job.title || "Untitled",
+    jobDescription: job.description || "",
+    jobUrl: job.url || undefined,
+    skills: (job.skills as string[]) || [],
+    budget: job.budget ? `$${job.budget}` : job.hourly_min ? `$${job.hourly_min}-$${job.hourly_max}/hr` : undefined,
+    clientCountry: job.client_country || undefined,
+    proposalsCount: job.proposals_count || undefined,
+    postedAt: job.posted_at || undefined,
+    clientHireRate: job.client_hire_rate || undefined,
+    clientTotalSpend: job.client_spend || undefined,
+    clientRating: job.client_rating || undefined,
+    proposalTips: (analysisData?.proposal_tips as string[]) || [],
+    matchScore: analysisData?.match_score as number | undefined,
+    opportunityScore: analysisData?.opportunity_score as number | undefined,
+    winProbability: analysisData?.win_probability as number | undefined,
+    recommendation: analysisData?.recommendation as string | undefined,
+  };
+
+  const result = await generateProposal(proposalInput);
+
+  if (!result.generated_text || result.generated_text.length < 50) {
+    return NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 });
+  }
+
+  const { data: proposal, error: insertError } = await supabase
+    .from("proposals")
+    .insert({
+      user_id: userId,
+      job_id: jobId,
+      generated_text: result.generated_text,
+      score: result.score || null,
+      status: "draft",
+    })
+    .select("id, generated_text, score, status, created_at")
+    .single();
+
+  if (insertError) {
+    console.error("[Proposals] Insert error:", insertError.message);
+    return NextResponse.json({
+      ok: true,
+      proposal: result.generated_text,
+      score: result.score,
+      saved: false,
+    });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    proposal: proposal.generated_text,
+    score: proposal.score,
+    id: proposal.id,
+    saved: true,
+    created_at: proposal.created_at,
+  });
+}
+
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get("authorization") || "";
@@ -28,10 +111,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { jobId, jobDetails, customInstructions, stream } = body;
+    const { jobId, jobDetails, upworkJobId, customInstructions, stream } = body;
 
-    if (!jobId && !jobDetails) {
-      return NextResponse.json({ error: "Provide either jobId or jobDetails" }, { status: 400 });
+    if (!jobId && !jobDetails && !upworkJobId) {
+      return NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 });
     }
 
     const supabase = await createSupabaseAdminClient();
@@ -212,90 +295,44 @@ export async function POST(request: Request) {
       });
     }
 
-    const { data: job, error: jobError } = await supabase
-      .from("jobs")
-      .select("*")
-      .eq("id", jobId)
-      .single();
+    if (jobId) {
+      const { data: job, error: jobError } = await supabase
+        .from("jobs")
+        .select("*")
+        .eq("id", jobId)
+        .single();
 
-    if (jobError || !job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
-    }
-
-    const { data: existingAnalysis } = await supabase
-      .from("job_analyses")
-      .select("*")
-      .eq("job_id", jobId)
-      .eq("user_id", userId)
-      .single();
-
-    let analysisData = existingAnalysis as Record<string, unknown> | null;
-
-    // Trigger analysis if none exists yet
-    if (!analysisData) {
-      try {
-        analysisData = await analyzeJob(supabase, job, jobId, userId);
-      } catch (analyzeErr: any) {
-        console.warn("[Proposals] On-demand analysis error:", analyzeErr.message);
+      if (jobError || !job) {
+        return NextResponse.json({ error: "Job not found" }, { status: 404 });
       }
+
+      return respondFromDbJob(supabase, job, userId, baseInput);
     }
 
-    const proposalInput = {
-      ...baseInput,
-      jobTitle: job.title || "Untitled",
-      jobDescription: job.description || "",
-      jobUrl: job.url || undefined,
-      skills: (job.skills as string[]) || [],
-      budget: job.budget ? `$${job.budget}` : job.hourly_min ? `$${job.hourly_min}-$${job.hourly_max}/hr` : undefined,
-      clientCountry: job.client_country || undefined,
-      proposalsCount: job.proposals_count || undefined,
-      postedAt: job.posted_at || undefined,
-      clientHireRate: job.client_hire_rate || undefined,
-      clientTotalSpend: job.client_spend || undefined,
-      clientRating: job.client_rating || undefined,
-      proposalTips: (analysisData?.proposal_tips as string[]) || [],
-      matchScore: analysisData?.match_score as number | undefined,
-      opportunityScore: analysisData?.opportunity_score as number | undefined,
-      winProbability: analysisData?.win_probability as number | undefined,
-      recommendation: analysisData?.recommendation as string | undefined,
-    };
+    if (upworkJobId) {
+      const raw = String(upworkJobId).trim();
+      const candidates = Array.from(new Set([
+        raw,
+        raw.replace(/^~/, ""),
+        raw.startsWith("~") ? raw : `~${raw}`,
+      ])).filter(Boolean);
 
-    const result = await generateProposal(proposalInput);
+      const { data: rows, error: lookupError } = await supabase
+        .from("jobs")
+        .select("*")
+        .or(candidates.map((c) => `upwork_job_id.eq.${c}`).join(","))
+        .limit(1);
 
-    if (!result.generated_text || result.generated_text.length < 50) {
-      return NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 });
+      const job = rows && rows[0];
+
+      if (lookupError || !job) {
+        return NextResponse.json({ error: "Job not found in database" }, { status: 404 });
+      }
+
+      return respondFromDbJob(supabase, job, userId, baseInput);
     }
 
-    const { data: proposal, error: insertError } = await supabase
-      .from("proposals")
-      .insert({
-        user_id: userId,
-        job_id: jobId,
-        generated_text: result.generated_text,
-        score: result.score || null,
-        status: "draft",
-      })
-      .select("id, generated_text, score, status, created_at")
-      .single();
-
-    if (insertError) {
-      console.error("[Proposals] Insert error:", insertError.message);
-      return NextResponse.json({
-        ok: true,
-        proposal: result.generated_text,
-        score: result.score,
-        saved: false,
-      });
-    }
-
-    return NextResponse.json({
-      ok: true,
-      proposal: proposal.generated_text,
-      score: proposal.score,
-      id: proposal.id,
-      saved: true,
-      created_at: proposal.created_at,
-    });
+    return NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[Proposals] Error:", err);

@@ -5,7 +5,7 @@ export async function analyzeJob(
   userId: string
 ) {
   const groqApiKey = process.env.GROQ_API_KEY;
-  const groqModel = process.env.GROQ_MODEL || "llama-3.1-70b-versatile";
+  const groqModel = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
   let analysisData: Record<string, any>;
 
