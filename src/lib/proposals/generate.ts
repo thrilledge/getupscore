@@ -1,4 +1,5 @@
 import { buildProposalSystemPrompt } from "./system-prompt";
+import { chatCompletionWithRetry } from "@/lib/llm";
 
 export interface ProposalInput {
   jobTitle: string;
@@ -40,22 +41,10 @@ export async function generateProposal(
   groqApiKey?: string,
   groqModel?: string
 ): Promise<ProposalResult> {
-  const apiKey = groqApiKey || process.env.GROQ_API_KEY;
-  const model = groqModel || process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
-
-  if (!apiKey) {
-    return generateFallbackProposal(input);
-  }
-
   try {
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
+    const { response, provider } = await chatCompletionWithRetry(
+      (p) => ({
+        model: p.model,
         messages: [
           { role: "system", content: buildProposalSystemPrompt("json") },
           { role: "user", content: buildPrompt(input) },
@@ -64,13 +53,8 @@ export async function generateProposal(
         max_tokens: 4000,
         response_format: { type: "json_object" },
       }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "Unknown error");
-      console.warn("[Proposal] GroqCloud error:", response.status, errText);
-      return generateFallbackProposal(input);
-    }
+      { explicitApiKey: groqApiKey, explicitModel: groqModel }
+    );
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
@@ -94,10 +78,6 @@ export async function streamProposal(
   groqApiKey?: string,
   groqModel?: string
 ): Promise<ReadableStream<Uint8Array>> {
-  const apiKey = groqApiKey || process.env.GROQ_API_KEY;
-  const model = groqModel || process.env.GROQ_MODEL || "openai/gpt-oss-20b";
-  console.log("[Proposal Stream] Using model:", model);
-
   return new ReadableStream({
     async start(controller) {
       const encoder = new TextEncoder();
@@ -105,40 +85,22 @@ export async function streamProposal(
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       };
 
-      if (!apiKey) {
-        console.warn("[Proposal Stream] No GROQ_API_KEY configured — aborting instead of writing a template.");
-        send("error", { message: "Server has no GROQ_API_KEY configured. Check Vercel env vars." });
-        controller.close();
-        return;
-      }
-
       try {
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
+        const { response, provider } = await chatCompletionWithRetry(
+          (p) => ({
+            model: p.model,
             messages: [
               { role: "system", content: buildProposalSystemPrompt("stream") },
               { role: "user", content: buildPrompt(input) },
             ],
             stream: true,
-            reasoning_format: "parsed",
+            ...(p.groqStyle ? { reasoning_format: "parsed" as const } : {}),
             temperature: 0.7,
             max_tokens: 4000,
           }),
-        });
-
-        if (!response.ok) {
-          const errText = await response.text().catch(() => "Unknown error");
-          console.warn("[Proposal Stream] GroqCloud error:", response.status, errText);
-          send("error", { message: `Groq error ${response.status}: ${errText.slice(0, 200)}` });
-          controller.close();
-          return;
-        }
+          { explicitApiKey: groqApiKey, explicitModel: groqModel }
+        );
+        console.log("[Proposal Stream] Using provider:", provider.name, "model:", provider.model);
 
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();
@@ -164,14 +126,23 @@ export async function streamProposal(
               }
               if (delta?.content) {
                 fullProposal += delta.content;
-                send("proposal", { text: delta.content });
               }
             } catch { }
           }
         }
 
+        const cleaned = cleanProposal(fullProposal);
+        if (!cleaned) {
+          console.warn("[Proposal Stream] Model returned no usable proposal text.");
+          send("error", { message: "Model returned no usable proposal text." });
+          controller.close();
+          return;
+        }
+
+        send("proposal", { text: cleaned });
+
         // Calculate a simple score based on word count and content length
-        const wordCount = fullProposal.split(/\s+/).filter(Boolean).length;
+        const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
         const score = Math.min(95, Math.max(60, Math.round(60 + wordCount * 0.05)));
 
         send("done", { score });
@@ -308,6 +279,49 @@ MANDATORY CHECKS BEFORE FINALIZING:
 ✓ No markdown formatting inside the proposal — plain text paragraphs only`);
 
   return sections.join("\n\n");
+}
+
+/**
+ * Strip any reasoning blocks, markers, fences, or score tails that a
+ * reasoning-model provider may have leaked into the content stream.
+ */
+function cleanProposal(raw: string): string {
+  if (!raw) return "";
+
+  let text = raw;
+
+  // "---PROPOSAL---" marker: keep only what follows it.
+  const dashMarker = text.indexOf("---PROPOSAL---");
+  if (dashMarker !== -1) {
+    text = text.slice(dashMarker + "---PROPOSAL---".length);
+  }
+
+  // "**PROPOSAL:**" marker inside a leaked "**REASONING:**" block.
+  const reasoningStart = text.indexOf("**REASONING:**");
+  const boldProposal = text.indexOf("**PROPOSAL:**");
+  if (reasoningStart !== -1 && boldProposal !== -1 && boldProposal > reasoningStart) {
+    text = text.slice(boldProposal + "**PROPOSAL:**".length);
+  }
+
+  // Trailing score marker: keep only what precedes it.
+  const scoreIdx = text.lastIndexOf("---SCORE:");
+  if (scoreIdx !== -1) {
+    text = text.slice(0, scoreIdx);
+  }
+
+  // Remove code fences and stray label lines.
+  text = text
+    .replace(/```/g, "")
+    .split("\n")
+    .filter((line) => {
+      const t = line.trim();
+      return t !== "PROPOSAL:" && t !== "Proposal:" && !/^---(PROPOSAL|SCORE)/.test(t);
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  return text;
 }
 
 function generateFallbackProposal(input: ProposalInput): ProposalResult {

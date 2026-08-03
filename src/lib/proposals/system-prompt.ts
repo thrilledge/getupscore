@@ -63,21 +63,11 @@ Return ONLY valid JSON with this exact structure — no markdown, no preamble, n
 
   return base + `
 
-OUTPUT FORMAT — Show reasoning, then proposal
-First, reason step-by-step about the job, client, and strategy. Think through:
-- What is the client's real pain (reframe)?
-- What in the post is genuinely ambiguous (candidate questions)?
-- Which day-one suggestions would be most concrete and specific to this project?
-- Which hard rules matter most for this specific post?
-
-Then write the proposal following the six moves (Anti-Pitch Opener, Reframe, Questions, Day-One Suggestions, Close).
-
-FORMAT:
-[Your reasoning here, thinking through the strategy]
-
----PROPOSAL---
-
-[The proposal text, plain text only — under 200 words, no markdown, no bullet points]
-
----SCORE: [number 1-100]---`;
+OUTPUT FORMAT — Proposal only
+Write the proposal now, following the six moves. Output ONLY the proposal text itself:
+- No reasoning, no preamble, no commentary, no section headers
+- No markdown, no bullet points, no code fences
+- Plain prose, under 200 words
+- Do not wrap it in markers, delimiters, quotes, or labels like "Proposal:"
+- Start directly with the opening sentence. End with the one-line call to action.`;
 }

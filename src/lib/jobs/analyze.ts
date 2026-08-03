@@ -1,3 +1,5 @@
+import { chatCompletionWithRetry } from "@/lib/llm";
+
 export async function analyzeJob(
   supabase: any,
   job: any,
@@ -9,9 +11,10 @@ export async function analyzeJob(
 
   let analysisData: Record<string, any>;
 
-  if (groqApiKey) {
+  try {
     analysisData = await serverSideGroqAnalysis(job, groqApiKey, groqModel);
-  } else {
+  } catch (err) {
+    console.warn("[Analyze] LLM analysis failed, using keyword fallback:", err instanceof Error ? err.message : err);
     analysisData = serverSideKeywordFallback(job);
   }
 
@@ -30,7 +33,7 @@ export async function analyzeJob(
       reasoning: analysisData.reasoning || "",
       proposal_tips: analysisData.proposal_tips || [],
       red_flags: analysisData.red_flags || [],
-      model_used: groqApiKey ? groqModel : "keyword-fallback",
+      model_used: process.env.UPSCORE_LLM_MODEL || (groqApiKey ? groqModel : "deepshi-r1"),
     },
     { onConflict: "job_id, user_id", ignoreDuplicates: false }
   );
@@ -44,7 +47,7 @@ export async function analyzeJob(
 
 async function serverSideGroqAnalysis(
   job: any,
-  apiKey: string,
+  apiKey: string | undefined,
   model: string
 ): Promise<Record<string, any>> {
   const title = job.title || "";
@@ -117,14 +120,9 @@ Return JSON only with these exact fields:
   "red_flags": [strings]
 }`;
 
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
+  const response = await chatCompletionWithRetry(
+    (p) => ({
+      model: p.model,
       messages: [
         {
           role: "system",
@@ -136,21 +134,22 @@ Return JSON only with these exact fields:
       max_tokens: 1500,
       response_format: { type: "json_object" },
     }),
-  });
+    { explicitApiKey: apiKey, explicitModel: model }
+  );
 
-  if (!response.ok) {
-    const errBody = await response.text().catch(() => "");
-    throw new Error(`GroqCloud returned ${response.status}: ${errBody.slice(0, 200)}`);
+  if (!response.response.ok) {
+    const errBody = await response.response.text().catch(() => "");
+    throw new Error(`LLM returned ${response.response.status}: ${errBody.slice(0, 200)}`);
   }
 
-  const data = await response.json();
+  const data = await response.response.json();
   const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error("Empty GroqCloud response");
+  if (!content) throw new Error("Empty LLM response");
 
   try {
     return JSON.parse(content);
   } catch {
-    throw new Error("Invalid JSON from GroqCloud");
+    throw new Error("Invalid JSON from LLM");
   }
 }
 

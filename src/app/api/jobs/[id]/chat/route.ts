@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { proposalMethodology } from "@/lib/proposals/system-prompt";
+import { chatCompletionWithRetry } from "@/lib/llm";
 
 export const dynamic = "force-dynamic";
 
@@ -213,14 +214,7 @@ async function streamChat(
   systemPrompt: string,
   messages: ChatMessage[]
 ): Promise<Response> {
-  const apiKey = process.env.GROQ_API_KEY;
-  const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
-
   const encoder = new TextEncoder();
-
-  if (!apiKey) {
-    return NextResponse.json({ error: "GROQ_API_KEY not configured" }, { status: 500 });
-  }
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -229,31 +223,20 @@ async function streamChat(
       };
 
       try {
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model,
+        const { response, provider } = await chatCompletionWithRetry(
+          (p) => ({
+            model: p.model,
             messages: [
               { role: "system", content: systemPrompt },
               ...messages.map((m) => ({ role: m.role, content: m.content.slice(0, 3000) })),
             ],
             stream: true,
+            ...(p.groqStyle ? { reasoning_format: "parsed" as const } : {}),
             temperature: 0.7,
             max_tokens: 2000,
-          }),
-        });
-
-        if (!response.ok) {
-          const errBody = await response.text().catch(() => "");
-          console.warn("[Job Chat] GroqCloud error:", response.status, errBody.slice(0, 300));
-          send({ error: `AI service returned ${response.status}` });
-          controller.close();
-          return;
-        }
+          })
+        );
+        console.log("[Job Chat] Using provider:", provider.name, "model:", provider.model);
 
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();
