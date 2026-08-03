@@ -24,6 +24,7 @@ export interface ProposalInput {
   userExperience?: string;
   portfolioItems?: string;
   customInstructions?: string;
+  systemPrompt?: string;
 }
 
 export interface ProposalResult {
@@ -47,7 +48,7 @@ export async function generateProposal(
       (p) => ({
         model: p.model,
         messages: [
-          { role: "system", content: buildProposalSystemPrompt("json") },
+          { role: "system", content: buildProposalSystemPrompt("json", input.systemPrompt) },
           { role: "user", content: buildPrompt(input) },
         ],
         temperature: 0.7,
@@ -93,7 +94,7 @@ export async function streamProposal(
           (p) => ({
             model: p.model,
             messages: [
-              { role: "system", content: buildProposalSystemPrompt("stream") },
+              { role: "system", content: buildProposalSystemPrompt("stream", input.systemPrompt) },
               { role: "user", content: buildPrompt(input) },
             ],
             stream: true,

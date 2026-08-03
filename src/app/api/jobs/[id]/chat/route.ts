@@ -119,6 +119,14 @@ export async function POST(
     .eq("user_id", user.id)
     .single();
 
+  const { data: preferences } = await supabase
+    .from("user_preferences")
+    .select("proposal_system_prompt")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const customSystemPrompt = preferences?.proposal_system_prompt as string | null | undefined;
+
   const { data: filters } = await supabase
     .from("job_filters")
     .select("keywords")
@@ -131,7 +139,8 @@ export async function POST(
   const systemPrompt = buildChatSystemPrompt(
     job as ChatJob,
     (profile as ChatProfile) || null,
-    userKeywords
+    userKeywords,
+    customSystemPrompt ?? undefined
   );
 
   return streamChat(systemPrompt, messages);
@@ -140,7 +149,8 @@ export async function POST(
 function buildChatSystemPrompt(
   job: ChatJob,
   profile: ChatProfile,
-  userKeywords: string[]
+  userKeywords: string[],
+  customPrompt?: string
 ): string {
   const analysis = job.job_analyses?.[0];
   const skills = Array.isArray(job.skills) ? job.skills.join(", ") : "None listed";
@@ -201,7 +211,7 @@ ${(analysis.red_flags || []).map((f: string) => `- ${f}`).join("\n") || "- None"
 ${profileFields.length ? profileFields.join("\n") : "No profile data available. Do not invent past work — keep any proof generic or ask the user for specifics."}
 
 === PROPOSAL METHODOLOGY ===
-${proposalMethodology}
+${customPrompt && customPrompt.trim().length ? customPrompt.trim() : proposalMethodology}
 
 === BEHAVIOR ===
 - Answer questions about this job, its client, whether to apply, and how to position the application. Use the AI analysis above as your baseline but feel free to go deeper.

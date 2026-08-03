@@ -156,6 +156,17 @@ export async function POST(request: Request) {
       .eq("user_id", userId)
       .single();
 
+    const { data: preferences } = await supabase
+      .from("user_preferences")
+      .select("proposal_system_prompt")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const customSystemPrompt = preferences?.proposal_system_prompt as string | null | undefined;
+    if (customSystemPrompt && customSystemPrompt.trim().length) {
+      console.log("[Proposals] Using custom system prompt for user:", userId.slice(0, 8));
+    }
+
     const portfolio = (profile?.portfolio as { title: string; description?: string }[]) || [];
     const portfolioPreview = portfolio.length
       ? portfolio.slice(0, 5).map((p) => `- ${p.title}${p.description ? ": " + p.description.slice(0, 200) : ""}`).join("\n")
@@ -168,6 +179,7 @@ export async function POST(request: Request) {
       userExperience: profile?.bio || undefined,
       portfolioItems: portfolioPreview,
       customInstructions: customInstructions || undefined,
+      systemPrompt: customSystemPrompt || undefined,
     };
 
     if (jobDetails) {

@@ -15,6 +15,7 @@ import {
   type ApiTokenData,
 } from "@/actions/settings";
 import type { UserPreferenceInsert } from "@/lib/supabase/database-types";
+import { DEFAULT_PROPOSAL_SYSTEM_PROMPT } from "@/lib/proposals/system-prompt";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,8 @@ import {
   KeyRound,
   Eye,
   EyeOff,
+  Sparkles,
+  RotateCcw,
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -54,6 +57,10 @@ export default function SettingsPage() {
   const [prefs, setPrefs] = useState<UserPreferenceInsert | null>(null);
   const [prefsLoading, setPrefsLoading] = useState(true);
   const [savingPrefs, setSavingPrefs] = useState(false);
+
+  // Proposal system prompt state
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [savingPrompt, setSavingPrompt] = useState(false);
 
   // API Token state
   const [tokens, setTokens] = useState<ApiTokenData[]>([]);
@@ -91,6 +98,34 @@ export default function SettingsPage() {
       toast.error(result.error ?? "Failed to save preferences.");
     }
   }, [prefs]);
+
+  // Initialize the prompt editor once preferences are loaded
+  useEffect(() => {
+    if (!prefsLoading && prefs) {
+      setSystemPrompt(
+        (prefs.proposal_system_prompt ?? "").trim() || DEFAULT_PROPOSAL_SYSTEM_PROMPT
+      );
+    }
+  }, [prefs, prefsLoading]);
+
+  const handleSavePrompt = useCallback(async () => {
+    setSavingPrompt(true);
+    const value = systemPrompt.trim();
+    const result = await savePreferences({
+      proposal_system_prompt: value ? value : null,
+    });
+    setSavingPrompt(false);
+    if (result.success) {
+      setPrefs((p) => (p ? { ...p, proposal_system_prompt: value ? value : null } : p));
+      toast.success(value ? "AI proposal prompt saved." : "AI proposal prompt reset to default.");
+    } else {
+      toast.error(result.error ?? "Failed to save the prompt.");
+    }
+  }, [systemPrompt]);
+
+  const handleResetPrompt = useCallback(() => {
+    setSystemPrompt(DEFAULT_PROPOSAL_SYSTEM_PROMPT);
+  }, []);
 
   // Load tokens on mount
   useEffect(() => {
@@ -394,6 +429,60 @@ export default function SettingsPage() {
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ─── AI Proposal System Prompt Section ─── */}
+      <Card className="border-border/60">
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-accent-blue/10 p-2.5">
+              <Sparkles className="size-5 text-accent-blue" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-heading">
+                AI Proposal System Prompt
+              </CardTitle>
+              <CardDescription>
+                Controls how the AI writes your proposals (extension + dashboard).
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Edit the default 6-move methodology below or replace it with your own
+            instructions. The output format rules are always appended automatically,
+            so your proposal stays valid.
+          </p>
+          <textarea
+            value={systemPrompt}
+            onChange={(e) => setSystemPrompt(e.target.value)}
+            rows={16}
+            className="w-full rounded-lg border border-border/60 bg-background px-3 py-2.5 text-sm font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-accent-blue/40 resize-y"
+          />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleResetPrompt}
+              disabled={savingPrompt}
+              title="Restore the default methodology"
+            >
+              <RotateCcw className="size-4 mr-2" />
+              Reset to Default
+            </Button>
+            <Button
+              onClick={handleSavePrompt}
+              disabled={savingPrompt || !systemPrompt.trim()}
+            >
+              {savingPrompt ? (
+                <Loader2 className="size-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="size-4 mr-2" />
+              )}
+              Save Prompt
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

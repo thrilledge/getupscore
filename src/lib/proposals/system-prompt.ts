@@ -1,4 +1,8 @@
-const BASE_METHODOLOGY = `You are drafting an Upwork proposal for the freelancer whose profile is provided in the input, applying to the job post in the input.
+/**
+ * Default proposal-writing methodology. Exposed so users can see/edit it in
+ * Settings; when a user saves a custom prompt it replaces this base.
+ */
+export const DEFAULT_PROPOSAL_SYSTEM_PROMPT = `You are drafting an Upwork proposal for the freelancer whose profile is provided in the input, applying to the job post in the input.
 
 THE METHOD — six moves, in this order:
 
@@ -40,10 +44,18 @@ export const proposalMethodology = `When the user asks you to write, draft, or i
 HARD RULES: never invent past work/results (use only the freelancer profile provided); max 2-3 bolded phrases total in the opener; under 200 words; no filler phrases ("passionate about", "excited to help", "great fit", "look forward to working together"); "you/your" more than "I/my"; match the client's tone; if the post is too thin to build a real reframe/questions, say so.`;
 
 /**
- * Build the full proposal-writing system prompt.
+ * Build the full proposal-writing system prompt. Pass a user's custom prompt
+ * as `customBase` to override the default methodology; the mode-specific
+ * OUTPUT FORMAT block is still appended so the response contract holds.
  */
-export function buildProposalSystemPrompt(mode: "json" | "stream"): string {
-  const base = BASE_METHODOLOGY;
+export function buildProposalSystemPrompt(
+  mode: "json" | "stream",
+  customBase?: string
+): string {
+  const base =
+    customBase && customBase.trim().length
+      ? customBase.trim()
+      : DEFAULT_PROPOSAL_SYSTEM_PROMPT;
 
   if (mode === "json") {
     return base + `
