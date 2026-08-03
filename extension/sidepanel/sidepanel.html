@@ -12,7 +12,7 @@
 
   <!-- ═══ HEADER ═══ -->
   <header class="panel-header">
-    <button id="btnBack" class="btn-icon back-btn" title="Back" style="display:none">
+    <button id="btnBack" class="btn-icon back-btn" title="Back">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <line x1="19" y1="12" x2="5" y2="12" />
@@ -20,19 +20,10 @@
       </svg>
     </button>
     <div class="brand">
-      <svg width="22" height="22" viewBox="0 0 128 128">
-        <defs>
-          <linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#2563eb" />
-            <stop offset="100%" stop-color="#7c3aed" />
-          </linearGradient>
-        </defs>
-        <rect width="128" height="128" rx="24" fill="url(#sg)" />
-        <text x="64" y="82" text-anchor="middle" font-family="system-ui" font-weight="900" font-size="64"
-          fill="white">U</text>
-      </svg>
+      <div class="brand-logo">U</div>
       <div>
         <h1 id="appTitle">UpScore</h1>
+        <div class="tagline">AI-powered Upwork assistant</div>
       </div>
     </div>
     <div class="header-actions">
@@ -47,6 +38,14 @@
     </div>
   </header>
 
+  <!-- ═══ NAV ═══ -->
+  <nav class="panel-nav">
+    <button class="nav-item active" id="navDashboard">Dashboard</button>
+    <button class="nav-item" id="navSavedJobs">Saved Jobs</button>
+    <button class="nav-item" id="navProposal">Proposal</button>
+    <button class="nav-item" id="navSettings">Settings</button>
+  </nav>
+
   <!-- ═══ STATUS BAR ═══ -->
   <div class="status-bar" id="statusBar">
     <span class="dot" id="statusDot"></span>
@@ -57,6 +56,36 @@
   <!-- ═══  VIEW: DASHBOARD  ═══ -->
   <!-- ════════════════════════════════════════════════════ -->
   <div id="view-dashboard" class="view">
+
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-title">Boost your Upwork success rate</div>
+      <div class="hero-sub">Scored jobs, smart proposals, and winning tips in one place.</div>
+      <div class="hero-chips">
+        <span class="hero-chip">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+          </svg>
+          Match Scores
+        </span>
+        <span class="hero-chip">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          AI Proposals
+        </span>
+        <span class="hero-chip">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          Auto-fill
+        </span>
+      </div>
+    </div>
 
     <!-- Quick Stats -->
     <div class="stats-grid" id="statsGrid">
@@ -91,34 +120,64 @@
       </div>
       <div class="section-body">
         <button class="action-btn" id="btnViewSavedJobs">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-          </svg>
-          <div class="action-text">
+          <span class="action-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
+            </svg>
+          </span>
+          <span class="action-text">
             <span class="action-title">Saved Jobs</span>
             <span class="action-desc">View & analyze your saved jobs</span>
-          </div>
+          </span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round" class="action-arrow">
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </button>
         <button class="action-btn" id="btnNewProposal">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
-          <div class="action-text">
+          <span class="action-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </span>
+          <span class="action-text">
             <span class="action-title">Write Proposal</span>
             <span class="action-desc">AI-powered proposal for a job</span>
-          </div>
+          </span>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round" class="action-arrow">
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </button>
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="section">
+      <div class="section-header">
+        <div class="section-title">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
+          <span>How It Works</span>
+        </div>
+      </div>
+      <div class="section-body">
+        <div class="tip-banner" style="margin-bottom:0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          <div>
+            <strong>Write proposals directly on Upwork</strong>
+            <span>Open a job's proposal form, click <em>Write with AI</em> — UpScore drafts and fills your cover letter in place.</span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -151,6 +210,17 @@
   <!-- ═══  VIEW: PROPOSAL  ═══ -->
   <!-- ════════════════════════════════════════════════════ -->
   <div id="view-proposal" class="view" style="display:none">
+
+    <div class="tip-banner">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+      </svg>
+      <div>
+        <strong>Faster on Upwork itself</strong>
+        <span>Open the job's <em>Write Proposal</em> form and click the <em>Write with AI</em> button — UpScore auto-fills your cover letter there.</span>
+      </div>
+    </div>
 
     <div class="list-header">
       <h2>Write Proposal</h2>

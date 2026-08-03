@@ -245,15 +245,27 @@ export type Database = {
         Row: {
           budget: number | null
           category: string | null
+          client_active_assignments: number | null
+          client_city: string | null
+          client_company_size: string | null
           client_country: string | null
+          client_feedback_count: number | null
           client_hire_rate: number | null
+          client_hours_count: number | null
           client_industry: string | null
+          client_location_country: string | null
           client_member_since: string | null
           client_name: string | null
+          client_payment_verified: boolean | null
           client_rating: number | null
+          client_recent_history: Json | null
+          client_score: number | null
           client_spend: number | null
           client_total_assignments: number | null
           client_total_hires: number | null
+          client_total_jobs_with_hires: number | null
+          client_total_spend: number | null
+          connects_required: number | null
           contractor_tier: string | null
           created_at: string
           description: string | null
@@ -280,15 +292,27 @@ export type Database = {
         Insert: {
           budget?: number | null
           category?: string | null
+          client_active_assignments?: number | null
+          client_city?: string | null
+          client_company_size?: string | null
           client_country?: string | null
+          client_feedback_count?: number | null
           client_hire_rate?: number | null
+          client_hours_count?: number | null
           client_industry?: string | null
+          client_location_country?: string | null
           client_member_since?: string | null
           client_name?: string | null
+          client_payment_verified?: boolean | null
           client_rating?: number | null
+          client_recent_history?: Json | null
+          client_score?: number | null
           client_spend?: number | null
           client_total_assignments?: number | null
           client_total_hires?: number | null
+          client_total_jobs_with_hires?: number | null
+          client_total_spend?: number | null
+          connects_required?: number | null
           contractor_tier?: string | null
           created_at?: string
           description?: string | null
@@ -315,15 +339,27 @@ export type Database = {
         Update: {
           budget?: number | null
           category?: string | null
+          client_active_assignments?: number | null
+          client_city?: string | null
+          client_company_size?: string | null
           client_country?: string | null
+          client_feedback_count?: number | null
           client_hire_rate?: number | null
+          client_hours_count?: number | null
           client_industry?: string | null
+          client_location_country?: string | null
           client_member_since?: string | null
           client_name?: string | null
+          client_payment_verified?: boolean | null
           client_rating?: number | null
+          client_recent_history?: Json | null
+          client_score?: number | null
           client_spend?: number | null
           client_total_assignments?: number | null
           client_total_hires?: number | null
+          client_total_jobs_with_hires?: number | null
+          client_total_spend?: number | null
+          connects_required?: number | null
           contractor_tier?: string | null
           created_at?: string
           description?: string | null

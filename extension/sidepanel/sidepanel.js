@@ -5,6 +5,22 @@ const VIEWS = ["dashboard", "savedjobs", "proposal", "settings"];
 const viewEls = {};
 for (const v of VIEWS) viewEls[v] = $(`view-${v}`);
 
+const NAV_IDS = {
+  dashboard: "navDashboard",
+  savedjobs: "navSavedJobs",
+  proposal: "navProposal",
+  settings: "navSettings",
+};
+const navEls = {};
+for (const v of VIEWS) navEls[v] = $(NAV_IDS[v]);
+
+const VIEW_TITLES = {
+  dashboard: "UpScore",
+  savedjobs: "Saved Jobs",
+  proposal: "Write Proposal",
+  settings: "Settings",
+};
+
 let currentView = "dashboard";
 let savedJobsCache = [];
 let token = null;
@@ -15,16 +31,12 @@ function showView(name) {
   currentView = name;
   for (const v of VIEWS) {
     viewEls[v].style.display = v === name ? "" : "none";
+    if (navEls[v]) navEls[v].classList.toggle("active", v === name);
   }
-  // Show back button for sub-views
-  const backBtn = $("btnBack");
-  backBtn.style.display = name === "dashboard" ? "none" : "";
+  // Hide back button — nav tabs are the primary navigation
+  $("btnBack").style.display = "none";
   // Update title
-  $("appTitle").textContent =
-    name === "dashboard" ? "UpScore" :
-    name === "savedjobs" ? "Saved Jobs" :
-    name === "proposal" ? "Write Proposal" :
-    name === "settings" ? "Settings" : "UpScore";
+  $("appTitle").textContent = VIEW_TITLES[name] || "UpScore";
 }
 
 // ─── Status refs ───
@@ -78,18 +90,24 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // View switching
-  $("btnSettings").addEventListener("click", () => showView("settings"));
-  $("btnBack").addEventListener("click", () => showView("dashboard"));
+  $("btnSettings")?.addEventListener("click", () => showView("settings"));
+  $("btnBack")?.addEventListener("click", () => showView("dashboard"));
+
+  // Nav tabs
+  navEls.dashboard?.addEventListener("click", () => showView("dashboard"));
+  navEls.savedjobs?.addEventListener("click", () => { showView("savedjobs"); loadSavedJobs(); });
+  navEls.proposal?.addEventListener("click", () => { showView("proposal"); loadProposalJobs(); });
+  navEls.settings?.addEventListener("click", () => showView("settings"));
 
   // Quick actions
-  $("btnViewSavedJobs").addEventListener("click", () => { showView("savedjobs"); loadSavedJobs(); });
-  $("btnNewProposal").addEventListener("click", () => { showView("proposal"); loadProposalJobs(); });
+  $("btnViewSavedJobs")?.addEventListener("click", () => { showView("savedjobs"); loadSavedJobs(); });
+  $("btnNewProposal")?.addEventListener("click", () => { showView("proposal"); loadProposalJobs(); });
 
   // Proposal
-  $("btnExtractFromTab").addEventListener("click", extractJobFromCurrentTab);
-  $("btnGenerateProposal").addEventListener("click", generateProposal);
-  $("btnCopyProposal").addEventListener("click", copyProposal);
-  $("btnNewProposalAgain").addEventListener("click", resetProposal);
+  $("btnExtractFromTab")?.addEventListener("click", extractJobFromCurrentTab);
+  $("btnGenerateProposal")?.addEventListener("click", generateProposal);
+  $("btnCopyProposal")?.addEventListener("click", copyProposal);
+  $("btnNewProposalAgain")?.addEventListener("click", resetProposal);
 
   // Settings
   btnToggleToken.addEventListener("click", () => {

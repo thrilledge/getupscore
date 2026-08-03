@@ -37,6 +37,7 @@ import {
   Globe,
 } from "lucide-react";
 import { FavoriteButton } from "@/components/favorite-button";
+import { JobChat } from "@/components/job-chat";
 
 type Analysis = {
   match_score: number;
@@ -251,7 +252,7 @@ export default function JobDetailPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Back link */}
       <Link
         href="/jobs"
@@ -261,6 +262,8 @@ export default function JobDetailPage() {
         Back to Jobs
       </Link>
 
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+        <div className="space-y-6 min-w-0">
       {/* ── Header ── */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-4">
@@ -805,6 +808,12 @@ export default function JobDetailPage() {
             </p>
           </div>
         )}
+      </div>
+        </div>
+
+        <div className="lg:sticky lg:top-6">
+          <JobChat key={job.id} jobId={job.id} jobTitle={job.title} />
+        </div>
       </div>
     </div>
   );
