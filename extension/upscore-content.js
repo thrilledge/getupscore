@@ -367,6 +367,7 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJob
   const decoder = new TextDecoder();
   let buffer = "";
   let score = null;
+  let lastEventType = "";
 
   try {
     while (true) {
@@ -377,12 +378,16 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJob
       buffer = lines.pop() || "";
 
       for (const line of lines) {
+        if (line.startsWith("event: ")) {
+          lastEventType = line.slice(7).trim();
+          continue;
+        }
         if (!line.startsWith("data: ")) continue;
         const json = line.slice(6).trim();
         if (!json) continue;
         try {
           const parsed = JSON.parse(json);
-          if (typeof parsed.text === "string") {
+          if (typeof parsed.text === "string" && lastEventType === "proposal") {
             setTextareaValue(textarea, textarea.value + parsed.text);
           }
           if (parsed.score !== undefined) score = parsed.score;
