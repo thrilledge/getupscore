@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Vibeworker job ingester every 5 minutes
+After=docker.service
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=vw-ingest.service
+
+[Install]
+WantedBy=timers.target
