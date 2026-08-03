@@ -32,9 +32,10 @@ export interface ProposalResult {
 }
 
 export type StreamEvent =
-  | { type: "reasoning"; content: string }
-  | { type: "proposal"; content: string }
-  | { type: "done"; score: number };
+  | { type: "reasoning"; text: string }
+  | { type: "proposal"; text: string }
+  | { type: "done"; score: number }
+  | { type: "error"; text: string };
 
 export async function generateProposal(
   input: ProposalInput,
@@ -55,16 +56,18 @@ export async function generateProposal(
       }),
       { explicitApiKey: groqApiKey, explicitModel: groqModel }
     );
+    console.log("[Proposal] Using provider:", provider.name, "model:", provider.model);
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     if (!content) return generateFallbackProposal(input);
 
     const parsed = JSON.parse(content);
+    const proposalText = parsed.proposal || content;
 
     return {
-      generated_text: parsed.proposal || content,
-      score: parsed.score || 75,
+      generated_text: proposalText,
+      score: scoreProposal(proposalText),
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -105,7 +108,21 @@ export async function streamProposal(
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
-        let fullProposal = "";
+        let proposalText = "";
+
+        const emit = (chunk: string) => {
+          if (!chunk) return;
+          proposalText += chunk;
+          send("proposal", { text: chunk });
+        };
+
+        // Groq (reasoning_format: parsed) puts reasoning in delta.reasoning and
+        // keeps content clean — stream it live. Other providers may leak
+        // reasoning/markers into content, so route them through an incremental
+        // cleaner that only emits real proposal text.
+        const cleaner = provider.groqStyle
+          ? null
+          : createIncrementalCleaner(emit);
 
         while (true) {
           const { done, value } = await reader.read();
@@ -125,32 +142,29 @@ export async function streamProposal(
                 send("reasoning", { text: delta.reasoning });
               }
               if (delta?.content) {
-                fullProposal += delta.content;
+                if (cleaner) cleaner.push(delta.content);
+                else emit(delta.content);
               }
             } catch { }
           }
         }
 
-        const cleaned = cleanProposal(fullProposal);
-        if (!cleaned) {
+        if (cleaner) cleaner.flush();
+
+        const finalText = cleanProposal(proposalText);
+        if (!finalText) {
           console.warn("[Proposal Stream] Model returned no usable proposal text.");
-          send("error", { message: "Model returned no usable proposal text." });
+          send("error", { text: "Model returned no usable proposal text." });
           controller.close();
           return;
         }
 
-        send("proposal", { text: cleaned });
-
-        // Calculate a simple score based on word count and content length
-        const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
-        const score = Math.min(95, Math.max(60, Math.round(60 + wordCount * 0.05)));
-
-        send("done", { score });
+        send("done", { score: scoreProposal(finalText) });
         controller.close();
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
         console.warn("[Proposal Stream] Error:", message);
-        send("error", { message: `Proposal generation failed: ${message.slice(0, 200)}` });
+        send("error", { text: `Proposal generation failed: ${message.slice(0, 200)}` });
         controller.close();
       }
     },
@@ -164,7 +178,7 @@ function buildPrompt(input: ProposalInput): string {
   sections.push(`=== JOB DETAILS ===
 Title: ${input.jobTitle}
 Description:
-${input.jobDescription.slice(0, 4000)}
+${input.jobDescription.slice(0, 6000)}
 ${input.budget ? `Budget/Rate: ${input.budget}` : "Budget: Not specified — anchor on value, not cost"}
 ${input.clientCountry ? `Client Location: ${input.clientCountry}` : ""}
 ${input.skills?.length ? `Required Skills: ${input.skills.join(", ")}` : ""}
@@ -236,7 +250,7 @@ ${input.proposalTips.map((t) => `- ${t}`).join("\n")}`);
   if (input.userTitle) profileFields.push(`Title: ${input.userTitle}`);
   if (input.userSkills?.length) profileFields.push(`Skills: ${input.userSkills.join(", ")}`);
   if (input.userExperience) {
-    profileFields.push(`Background:\n${input.userExperience.slice(0, 1500)}`);
+    profileFields.push(`Background:\n${input.userExperience.slice(0, 2500)}`);
   }
   sections.push(`\n=== FREELANCER PROFILE ===
 ${profileFields.length ? profileFields.join("\n") : "No profile data available."}
@@ -282,6 +296,158 @@ MANDATORY CHECKS BEFORE FINALIZING:
 }
 
 /**
+ * Deterministic rubric score shared by both JSON and stream paths so the
+ * number means the same thing everywhere. Rewards methodology moves and
+ * penalizes verbosity past the 200-word ceiling.
+ */
+function scoreProposal(text: string): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  const lower = text.toLowerCase();
+
+  let score = 50;
+
+  if (/(not pitching|not a pitch|this isn't a pitch|already (done|handled) this|done this exact type)/.test(lower)) score += 15;
+  if (lower.includes("?") && /(confirm|clarify|would|does|is there|do you|are you|what'?s|which)/.test(lower)) score += 10;
+  if (/(here'?s how i'?d start|i'?d start by|how i'?d approach|i'?d begin|i'?d first)/.test(lower)) score += 10;
+  if (/(happy to|ready when|let me know|send me|share|look forward|walk through)/.test(lower)) score += 5;
+
+  if (words <= 200) score += 10;
+  else score -= 10 + Math.ceil((words - 200) / 10);
+
+  return Math.max(1, Math.min(100, score));
+}
+
+/**
+ * Incremental stream cleaner for providers that don't separate reasoning from
+ * content. Buffers the reasoning preamble until a proposal-start marker is
+ * seen (or a sanity cap is hit), then streams the proposal live while holding
+ * back a tail so a trailing score marker can be stripped before it's sent.
+ */
+function createIncrementalCleaner(emit: (chunk: string) => void) {
+  const PROPOSAL_START = ["---PROPOSAL---", "**PROPOSAL:**"];
+  const SCORE_MARKER = ["---SCORE:", "**SCORE:**"];
+  const TAIL = 200;
+  const PREAMBLE_CAP = 4000;
+
+  let preBuffer = "";
+  let pendingTail = "";
+  let proposalMode = false;
+  let done = false;
+  let thinkOpen = false;
+
+  function findFirst(s: string, markers: string[]): { index: number; len: number } | null {
+    let best: { index: number; len: number } | null = null;
+    for (const m of markers) {
+      const i = s.indexOf(m);
+      if (i !== -1 && (!best || i < best.index)) best = { index: i, len: m.length };
+    }
+    return best;
+  }
+
+  // Strip <think>...</think> blocks that may span chunk boundaries.
+  function scrubThink(text: string): string {
+    if (!text) return "";
+    if (thinkOpen) {
+      const close = text.indexOf("</think>");
+      if (close === -1) return "";
+      thinkOpen = false;
+      return scrubThink(text.slice(close + 8));
+    }
+    const open = text.indexOf("<think>");
+    if (open === -1) return text;
+    const close = text.indexOf("</think>", open);
+    if (close === -1) {
+      thinkOpen = true;
+      return text.slice(0, open);
+    }
+    return scrubThink(text.slice(0, open) + text.slice(close + 8));
+  }
+
+  // Longest suffix of `s` that is a prefix of any score marker.
+  function partialMarkerSuffix(s: string): number {
+    for (const m of SCORE_MARKER) {
+      for (let i = m.length; i >= 1; i--) {
+        if (s.endsWith(m.slice(0, i))) return i;
+      }
+    }
+    return 0;
+  }
+
+  function pushProposal(text: string) {
+    if (done) return;
+    let combined = pendingTail + text;
+
+    const marker = findFirst(combined, SCORE_MARKER);
+    if (marker) {
+      const before = combined.slice(0, marker.index);
+      if (before.trim()) emit(before);
+      done = true;
+      pendingTail = "";
+      return;
+    }
+
+    if (combined.length <= TAIL) {
+      pendingTail = combined;
+      return;
+    }
+
+    let cut = combined.length - TAIL;
+    let sendable = combined.slice(0, cut);
+    const hold = partialMarkerSuffix(sendable);
+    if (hold > 0) {
+      sendable = sendable.slice(0, sendable.length - hold);
+      pendingTail = combined.slice(sendable.length);
+    } else {
+      pendingTail = combined.slice(cut);
+    }
+    if (sendable.trim()) emit(sendable);
+  }
+
+  return {
+    push(raw: string) {
+      if (done) return;
+      const text = scrubThink(raw);
+
+      if (!proposalMode) {
+        preBuffer += text;
+        if (preBuffer.length > PREAMBLE_CAP) {
+          // No marker ever seen; assume everything from the last paragraph
+          // break on is the proposal and stream the rest live.
+          proposalMode = true;
+          const lastBreak = preBuffer.lastIndexOf("\n\n");
+          const head = lastBreak !== -1 ? preBuffer.slice(0, lastBreak) : "";
+          if (head.trim()) emit(cleanProposal(head));
+          const tail = lastBreak !== -1 ? preBuffer.slice(lastBreak) : preBuffer;
+          preBuffer = "";
+          pushProposal(tail);
+          return;
+        }
+        const marker = findFirst(preBuffer, PROPOSAL_START);
+        if (!marker) return;
+        proposalMode = true;
+        const rest = preBuffer.slice(marker.index + marker.len);
+        preBuffer = "";
+        if (rest) pushProposal(rest);
+        return;
+      }
+
+      pushProposal(text);
+    },
+    flush() {
+      if (done) return;
+      done = true;
+      if (!proposalMode) {
+        const cleaned = cleanProposal(preBuffer);
+        if (cleaned) emit(cleaned);
+        return;
+      }
+      const tail = cleanProposal(pendingTail);
+      if (tail) emit(tail);
+    },
+  };
+}
+
+/**
  * Strip any reasoning blocks, markers, fences, or score tails that a
  * reasoning-model provider may have leaked into the content stream.
  */
@@ -289,6 +455,9 @@ function cleanProposal(raw: string): string {
   if (!raw) return "";
 
   let text = raw;
+
+  // Self-hosted reasoning models leak chain-of-thought as <think>...</think>.
+  text = text.replace(/<think>[\s\S]*?<\/think>/g, "").replace(/<\/?think>/g, "");
 
   // "---PROPOSAL---" marker: keep only what follows it.
   const dashMarker = text.indexOf("---PROPOSAL---");
@@ -305,8 +474,10 @@ function cleanProposal(raw: string): string {
 
   // Trailing score marker: keep only what precedes it.
   const scoreIdx = text.lastIndexOf("---SCORE:");
-  if (scoreIdx !== -1) {
-    text = text.slice(0, scoreIdx);
+  const boldScoreIdx = text.lastIndexOf("**SCORE:**");
+  const cut = Math.max(scoreIdx, boldScoreIdx);
+  if (cut !== -1) {
+    text = text.slice(0, cut);
   }
 
   // Remove code fences and stray label lines.
@@ -337,8 +508,9 @@ function generateFallbackProposal(input: ProposalInput): ProposalResult {
   lines.push("");
 
   // Move 2 — Reframe (never echo the job post itself)
+  const project = input.jobTitle ? `a "${input.jobTitle}" result that actually works in your setup` : "getting the details right up front so nothing gets reworked";
   lines.push(
-    "What actually matters here isn't the execution steps — it's getting the details right up front so nothing gets reworked, and keeping you in the loop as I go."
+    `What actually matters here isn't the execution steps — it's ${project}, and keeping you in the loop as I go.`
   );
   lines.push("");
 
@@ -359,6 +531,6 @@ function generateFallbackProposal(input: ProposalInput): ProposalResult {
 
   return {
     generated_text: lines.join("\n"),
-    score: 55,
+    score: scoreProposal(lines.join("\n")),
   };
 }
