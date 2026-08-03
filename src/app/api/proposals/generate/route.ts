@@ -3,6 +3,27 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { generateProposal, streamProposal } from "@/lib/proposals/generate";
 import { analyzeJob } from "@/lib/jobs/analyze";
 
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Max-Age": "86400",
+};
+
+function withCors(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(CORS_HEADERS)) headers.set(key, value);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+export async function OPTIONS() {
+  return new Response(null, { status: 204, headers: CORS_HEADERS });
+}
+
 async function respondFromDbJob(
   supabase: any,
   job: Record<string, any>,
@@ -51,7 +72,7 @@ async function respondFromDbJob(
   const result = await generateProposal(proposalInput);
 
   if (!result.generated_text || result.generated_text.length < 50) {
-    return NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 });
+    return withCors(NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 }));
   }
 
   const { data: proposal, error: insertError } = await supabase
@@ -68,22 +89,22 @@ async function respondFromDbJob(
 
   if (insertError) {
     console.error("[Proposals] Insert error:", insertError.message);
-    return NextResponse.json({
+    return withCors(NextResponse.json({
       ok: true,
       proposal: result.generated_text,
       score: result.score,
       saved: false,
-    });
+    }));
   }
 
-  return NextResponse.json({
+  return withCors(NextResponse.json({
     ok: true,
     proposal: proposal.generated_text,
     score: proposal.score,
     id: proposal.id,
     saved: true,
     created_at: proposal.created_at,
-  });
+  }));
 }
 
 export async function POST(request: Request) {
@@ -107,14 +128,14 @@ export async function POST(request: Request) {
     }
 
     if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return withCors(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
     }
 
     const body = await request.json();
     const { jobId, jobDetails, upworkJobId, customInstructions, stream } = body;
 
     if (!jobId && !jobDetails && !upworkJobId) {
-      return NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 });
+      return withCors(NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 }));
     }
 
     const supabase = await createSupabaseAdminClient();
@@ -273,26 +294,26 @@ export async function POST(request: Request) {
           },
         });
 
-        return new Response(combined, {
+        return withCors(new Response(combined, {
           headers: {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache",
             Connection: "keep-alive",
           },
-        });
+        }));
       }
 
       if (!result || !result.generated_text || result.generated_text.length < 50) {
-        return NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 });
+        return withCors(NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 }));
       }
 
-      return NextResponse.json({
+      return withCors(NextResponse.json({
         ok: true,
         proposal: result.generated_text,
         score: result.score,
         saved: !!dbJobId,
         jobId: dbJobId,
-      });
+      }));
     }
 
     if (jobId) {
@@ -303,7 +324,7 @@ export async function POST(request: Request) {
         .single();
 
       if (jobError || !job) {
-        return NextResponse.json({ error: "Job not found" }, { status: 404 });
+        return withCors(NextResponse.json({ error: "Job not found" }, { status: 404 }));
       }
 
       return respondFromDbJob(supabase, job, userId, baseInput);
@@ -326,16 +347,16 @@ export async function POST(request: Request) {
       const job = rows && rows[0];
 
       if (lookupError || !job) {
-        return NextResponse.json({ error: "Job not found in database" }, { status: 404 });
+        return withCors(NextResponse.json({ error: "Job not found in database" }, { status: 404 }));
       }
 
       return respondFromDbJob(supabase, job, userId, baseInput);
     }
 
-    return NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 });
+    return withCors(NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 }));
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("[Proposals] Error:", err);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return withCors(NextResponse.json({ error: message }, { status: 500 }));
   }
 }
