@@ -54,9 +54,17 @@ export interface VibeworkerResponse {
 /**
  * Map a single Vibeworker job into our jobs table shape.
  */
-export function mapVibeworkerJobToInsert(job: VibeworkerJob): JobInsert {
+export type VibeworkerJobInsert = JobInsert & Record<string, unknown>;
+
+export function mapVibeworkerJobToInsert(job: VibeworkerJob): VibeworkerJobInsert {
   const stats = job.clientStats || {};
   const isHourly = job.jobType === "hourly";
+  const clientCountry = job.clientLocation?.slice(0, 100) || null;
+  const clientScore = typeof job.clientRankScore === "number" ? job.clientRankScore : null;
+  const totalSpend = typeof stats.totalSpent === "number" ? stats.totalSpent : null;
+  const jobsPosted = typeof stats.jobsPosted === "number" ? stats.jobsPosted : null;
+  const hireRate = typeof stats.hireRate === "number" ? stats.hireRate : null;
+  const paymentVerified = stats.paymentVerified === true ? true : null;
 
   return {
     upwork_job_id: job.publicId || job.id,
@@ -73,18 +81,25 @@ export function mapVibeworkerJobToInsert(job: VibeworkerJob): JobInsert {
     duration_label: job.duration?.slice(0, 100) || null,
     duration_weeks: null,
     skills: Array.isArray(job.skills) ? job.skills.slice(0, 50) : [],
-    client_country: job.clientLocation?.slice(0, 100) || null,
-    client_hire_rate: typeof stats.hireRate === "number" ? stats.hireRate : null,
-    client_rating: typeof job.clientRankScore === "number" ? job.clientRankScore : null,
-    client_spend: typeof stats.totalSpent === "number" ? stats.totalSpent : null,
-    client_total_assignments:
-      typeof stats.jobsPosted === "number" ? stats.jobsPosted : null,
+    client_country: clientCountry,
+    client_location_country: clientCountry,
+    client_hire_rate: hireRate,
+    // Frontend Client Details section reads client_score / client_total_spend /
+    // client_total_jobs_with_hires / client_payment_verified
+    client_score: clientScore,
+    client_rating: clientScore,
+    client_total_spend: totalSpend,
+    client_spend: totalSpend,
+    client_total_jobs_with_hires: jobsPosted,
+    client_total_assignments: jobsPosted,
+    client_payment_verified: paymentVerified,
+    payment_verified: paymentVerified,
     client_total_hires: null,
     client_name: null,
     client_member_since: null,
     client_industry: null,
     proposals_count: null,
-    payment_verified: stats.paymentVerified === true ? true : null,
+    connects_required: typeof job.connects === "number" ? job.connects : null,
     posted_at: job.receivedAt || null,
     category: job.category?.slice(0, 100) || null,
     subcategory: null,
@@ -95,7 +110,7 @@ export function mapVibeworkerJobToInsert(job: VibeworkerJob): JobInsert {
 /**
  * Map an array of Vibeworker jobs to JobInsert[], skipping invalid entries.
  */
-export function mapVibeworkerJobsToInserts(jobs: VibeworkerJob[]): JobInsert[] {
+export function mapVibeworkerJobsToInserts(jobs: VibeworkerJob[]): VibeworkerJobInsert[] {
   const inserts: JobInsert[] = [];
   for (const job of jobs) {
     if (!job || !job.title || (!job.publicId && !job.id)) continue;
