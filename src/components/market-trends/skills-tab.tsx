@@ -24,6 +24,7 @@ import {
   buildSkillTimeline,
   topRelatedSkills,
   formatNumber,
+  formatCompact,
   formatDelta,
   formatPct,
   sharePct,
@@ -85,6 +86,24 @@ function SkillRow({
         <div className="w-20 shrink-0 text-right">
           <DeltaBadge value={skill.deltaPct} />
         </div>
+        <div
+          className="hidden w-24 shrink-0 text-right text-xs tabular-nums lg:block"
+          title={
+            skill.freelancerCount != null
+              ? "Freelancers on Upwork talent search for this skill"
+              : skill.medianConnects != null
+                ? "Median required connects (approximate competition proxy)"
+                : "No competition data yet"
+          }
+        >
+          {skill.freelancerCount != null ? (
+            <span className="font-semibold text-foreground">{formatCompact(skill.freelancerCount)}</span>
+          ) : skill.medianConnects != null ? (
+            <span className="text-muted-foreground">{skill.medianConnects} conn.</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          )}
+        </div>
       </button>
 
       {open ? (
@@ -97,12 +116,14 @@ function SkillRow({
             </TabsList>
 
             <TabsContent value="overview" className="pt-3">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {[
                   { label: "Jobs mentioning", value: formatNumber(skill.count), sub: `${formatPct(share)} of all jobs` },
                   { label: "Last 7 days", value: formatNumber(skill.recent7), sub: "recent mentions" },
                   { label: "Prior 7 days", value: formatNumber(skill.prev7), sub: "comparison window" },
                   { label: "7-day change", value: formatDelta(skill.deltaPct), sub: "vs prior week" },
+                  { label: "Freelancer competition", value: skill.freelancerCount != null ? formatCompact(skill.freelancerCount) : "—", sub: "on Upwork talent search" },
+                  { label: "Median connects", value: skill.medianConnects != null ? String(skill.medianConnects) : "—", sub: "rough competition proxy" },
                 ].map((s) => (
                   <div key={s.label} className="rounded-lg border border-border/50 bg-background p-3">
                     <div className="text-xs text-muted-foreground">{s.label}</div>
@@ -212,7 +233,7 @@ export function SkillsTab({ data }: { data: MarketTrends }) {
       <SectionCard
         icon={TrendingUp}
         title="In-demand skills"
-        subtitle="Sorted by mention volume — click a row to drill in"
+        subtitle="Sorted by mention volume — competition column shows freelancer counts from the Upwork extension, or median connects as a proxy"
       >
         <div className="overflow-hidden rounded-lg border border-border/60">
           <div className="hidden items-center gap-3 border-b border-border/60 bg-muted/40 px-3 py-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground lg:flex">
@@ -223,6 +244,7 @@ export function SkillsTab({ data }: { data: MarketTrends }) {
             <span className="w-20 text-right">Mentions</span>
             <span className="w-20 text-right">Recent</span>
             <span className="w-20 text-right">7-day trend</span>
+            <span className="w-24 text-right">Competition</span>
           </div>
           {skills.map((skill, i) => (
             <SkillRow key={skill.name} skill={skill} index={i} data={data} />

@@ -87,6 +87,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Quick actions
   $("btnViewSavedJobs")?.addEventListener("click", () => { showView("savedjobs"); loadSavedJobs(); });
+  $("btnCheckCompetition")?.addEventListener("click", runCompetitionCheck);
 
   // Settings
   btnToggleToken.addEventListener("click", () => {
@@ -228,6 +229,55 @@ function renderJobCard(job) {
       </div>
     </div>
   `;
+}
+
+// ══════════════════════════════════════════════════════════
+// ═══  SKILL COMPETITION  ═══
+// ══════════════════════════════════════════════════════════
+async function runCompetitionCheck() {
+  const btn = $("btnCheckCompetition");
+  const title = $("compBtnTitle");
+  const status = $("compStatus");
+  const results = $("compResults");
+  if (!btn || !title || !status || !results) return;
+
+  if (!token) {
+    status.textContent = "Connect your API token first";
+    return;
+  }
+
+  const originalTitle = title.textContent;
+  btn.disabled = true;
+  title.textContent = "Checking...";
+  status.textContent = "Checking top skills in background tabs...";
+  results.style.display = "none";
+
+  try {
+    const response = await new Promise((resolve) => {
+      chrome.runtime.sendMessage({ type: "CHECK_COMPETITION" }, resolve);
+    });
+    if (!response?.ok) {
+      throw new Error(response?.error || "Check failed");
+    }
+
+    status.textContent = `${response.checked} of ${response.total} skills updated`;
+    if (Array.isArray(response.results) && response.results.length > 0) {
+      results.style.display = "";
+      results.innerHTML = response.results
+        .map((r) => `
+          <div class="comp-row">
+            <span>${escapeHtml(r.skill)}</span>
+            <strong>${r.freelancerCount != null ? Number(r.freelancerCount).toLocaleString() + " freelancers" : "—"}</strong>
+          </div>
+        `)
+        .join("");
+    }
+  } catch (err) {
+    status.textContent = err.message || "Check failed";
+  } finally {
+    title.textContent = originalTitle;
+    btn.disabled = false;
+  }
 }
 
 // ══════════════════════════════════════════════════════════

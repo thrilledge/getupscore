@@ -605,3 +605,32 @@ body {
 .desc { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
 .desc + .desc { margin-top: 6px; }
 .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+
+/* ─── SKILL COMPETITION ─── */
+.comp-results {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.comp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: var(--text);
+}
+.comp-row + .comp-row {
+  border-top: 1px solid var(--border);
+}
+.comp-row strong {
+  color: var(--accent-blue);
+  font-weight: 600;
+  white-space: nowrap;
+}
+#btnCheckCompetition:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

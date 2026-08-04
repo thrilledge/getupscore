@@ -41,6 +41,10 @@ injectMainWorldBridge();
 let pendingJobResolve = null;
 let pendingJobTimeout = null;
 
+let pendingTalentResolve = null;
+let pendingTalentTimeout = null;
+let lastSyncedTalent = "";
+
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
   if (event.data?.type !== "__upscore_result") return;
@@ -67,6 +71,25 @@ window.addEventListener("message", (event) => {
     }
   }
 
+  if (operation === "talentSearchCount") {
+    if (pendingTalentResolve) {
+      clearTimeout(pendingTalentTimeout);
+      pendingTalentTimeout = null;
+      pendingTalentResolve(event.data);
+      pendingTalentResolve = null;
+    }
+    const skill = event.data?.data?.skill || "";
+    const count = event.data?.data?.freelancerCount;
+    if (event.data.success && skill && count != null && lastSyncedTalent !== skill) {
+      lastSyncedTalent = skill;
+      chrome.runtime.sendMessage({
+        type: "TALENT_CAPTURED",
+        skill,
+        freelancerCount: count,
+      });
+    }
+  }
+
   if (operation === "getCookies") {
     chrome.runtime.sendMessage({ type: "GET_UPWORK_COOKIES" }, (resp) => {
       window.postMessage({ type: "__upscore_result", operation: "getCookies", cookies: resp?.cookies || "" }, "*");
@@ -87,6 +110,24 @@ function extractJobFromPage() {
         pendingJobResolve({ success: false, error: "Timeout" });
         pendingJobResolve = null;
         pendingJobTimeout = null;
+      }
+    }, 15000);
+  });
+}
+
+function extractTalentCountFromPage() {
+  return new Promise((resolve) => {
+    if (pendingTalentResolve) {
+      pendingTalentResolve({ success: false, error: "Overridden" });
+    }
+    clearTimeout(pendingTalentTimeout);
+    pendingTalentResolve = resolve;
+    injectMainWorld("getTalentSearchCount");
+    pendingTalentTimeout = setTimeout(() => {
+      if (pendingTalentResolve) {
+        pendingTalentResolve({ success: false, error: "Timeout" });
+        pendingTalentResolve = null;
+        pendingTalentTimeout = null;
       }
     }, 15000);
   });
@@ -192,11 +233,27 @@ function detectProfilePage() {
   return window.location.href.match(/\/freelancers\/~/);
 }
 
+function detectTalentSearchPage() {
+  return /\/search\/talent\//.test(window.location.href);
+}
+
 function detectJobPage() {
   return window.location.href.match(/\/(?:jobs|job)\/[^/]/) || window.location.href.match(/[~/][a-f0-9]{16,}/i);
 }
 
 function extractAndSend() {
+  if (detectTalentSearchPage()) {
+    return extractTalentCountFromPage().then((result) => {
+      if (result?.success) {
+        const skill = result?.data?.skill || "";
+        const count = result?.data?.freelancerCount;
+        if (skill && count != null && lastSyncedTalent !== skill) {
+          lastSyncedTalent = skill;
+          chrome.runtime.sendMessage({ type: "TALENT_CAPTURED", skill, freelancerCount: count });
+        }
+      }
+    }).catch(() => {});
+  }
   if (detectProfilePage()) {
     injectMainWorld("getProfileFromDom");
   }

@@ -20,6 +20,7 @@ export type UserPreference = Database["public"]["Tables"]["user_preferences"]["R
 export type UpworkProfile = Database["public"]["Tables"]["upwork_profiles"]["Row"];
 export type Contract = Database["public"]["Tables"]["contracts"]["Row"];
 export type WorkDiaryEntry = Database["public"]["Tables"]["work_diary_entries"]["Row"];
+export type SkillCompetition = Database["public"]["Tables"]["skill_competition"]["Row"];
 
 // ─── Insert Types ───
 export type ApiTokenInsert = Database["public"]["Tables"]["api_tokens"]["Insert"];
