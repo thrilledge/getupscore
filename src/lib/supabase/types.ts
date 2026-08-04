@@ -860,7 +860,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_market_trends: {
+        Args: {
+          p_days: number
+        }
+        Returns: Json
+      }
     }
     Enums: {
       channel_type:

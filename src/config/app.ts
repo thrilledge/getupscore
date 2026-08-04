@@ -22,6 +22,7 @@ export const appConfig = {
       { title: "Upwork Profile", href: "/upwork-profile", icon: "UserCircle" },
       { title: "Contracts", href: "/contracts", icon: "Briefcase" },
       { title: "Work Diary", href: "/work-diary", icon: "BookOpen" },
+      { title: "Market Trends", href: "/market-trends", icon: "BarChart3" },
       { title: "Extension", href: "/extension", icon: "ExternalLink" },
       { title: "Settings", href: "/settings", icon: "Settings" },
     ],
