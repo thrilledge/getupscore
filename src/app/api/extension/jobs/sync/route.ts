@@ -41,6 +41,15 @@ export async function POST(request: Request) {
     const supabase = createSupabaseAdminClient();
     let syncedCount = 0;
 
+    // Load the user's active filters once so notifications only fire for
+    // jobs that actually match their saved criteria.
+    const { data: activeFilters } = await supabase
+      .from("job_filters")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("is_active", true);
+    const filters = (activeFilters || []) as any[];
+
     for (const job of jobs) {
       const title = String(job.title || "Untitled").slice(0, 500);
       if (!title || title.length < 3) continue;
@@ -167,8 +176,12 @@ export async function POST(request: Request) {
           typeof a.match_score === "number" && a.match_score >= 50 ||
           typeof a.opportunity_score === "number" && a.opportunity_score >= 50
         ) {
-          // Fire notifications for high-scoring jobs
+          // Only notify when the job matches at least one saved filter.
           try {
+            const { findMatchingFilters } = await import("@/lib/filters/match");
+            const matchedFilters = findMatchingFilters(jobRecord, filters);
+            if (matchedFilters.length === 0) continue;
+
             const { notifyUser } = await import("@/lib/notifications");
             const skills = Array.isArray(job.skills) ? job.skills : [];
             await notifyUser(userId, {
@@ -184,6 +197,7 @@ export async function POST(request: Request) {
               winProbability: a.win_probability,
               recommendation: a.recommendation,
               proposalTips: Array.isArray(a.proposal_tips) ? a.proposal_tips : [],
+              matchedFilterIds: matchedFilters.map((f) => f.id),
             });
           } catch (notifErr: any) {
             console.warn("[Extension Jobs] Notification error:", notifErr.message);

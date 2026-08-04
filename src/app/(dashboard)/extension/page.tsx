@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, Key, Puzzle } from "lucide-react";
+import { Download, Key, Puzzle, UserCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function ExtensionPage() {
@@ -68,17 +68,23 @@ export default function ExtensionPage() {
         </CardContent>
       </Card>
 
-      <div className="flex justify-center">
+      <div className="flex justify-center gap-3">
         <Link href="/settings">
           <Button size="lg">
             <Key className="size-4 mr-2" />
             Generate API Token
           </Button>
         </Link>
+        <Link href="/upwork-profile">
+          <Button size="lg" variant="outline">
+            <UserCircle className="size-4 mr-2" />
+            Sync My Profile
+          </Button>
+        </Link>
       </div>
 
       <p className="text-center text-xs text-muted-foreground">
-        Once installed and configured, the extension will sync your jobs, profile, contracts, and work diary automatically.
+        Once installed and configured, the extension will sync your jobs and profile automatically.
       </p>
     </div>
   );

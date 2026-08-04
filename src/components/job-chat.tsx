@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 import {
   MessageSquare,
   Send,
@@ -48,7 +49,15 @@ const QUICK_ACTIONS: { label: string; icon: typeof Sparkles; prompt: string }[] 
   },
 ];
 
-export function JobChat({ jobId, jobTitle }: { jobId: string; jobTitle: string }) {
+export function JobChat({
+  jobId,
+  jobTitle,
+  className,
+}: {
+  jobId: string;
+  jobTitle: string;
+  className?: string;
+}) {
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -133,6 +142,9 @@ export function JobChat({ jobId, jobTitle }: { jobId: string; jobTitle: string }
                   return copy;
                 });
               }
+              if (data.saved) {
+                toast.success("Proposal saved to your Proposals page");
+              }
               if (data.error) throw new Error(data.error);
             } catch (err: unknown) {
               if (err instanceof Error) throw err;
@@ -170,7 +182,7 @@ export function JobChat({ jobId, jobTitle }: { jobId: string; jobTitle: string }
   }, [jobId]);
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card shadow-sm flex flex-col overflow-hidden">
+    <div className={`rounded-xl border border-border/60 bg-card shadow-sm flex flex-col overflow-hidden ${className ?? ""}`}>
       {/* Header */}
       <div className="flex items-center gap-2 p-4 border-b border-border/40">
         <div className="rounded-lg bg-accent-blue/10 p-1.5">
@@ -194,7 +206,7 @@ export function JobChat({ jobId, jobTitle }: { jobId: string; jobTitle: string }
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 h-[380px]">
+      <ScrollArea className="flex-1 min-h-0">
         <div ref={scrollRef} className="p-4 space-y-3">
           {messages.length === 0 && (
             <div className="text-center py-6">
@@ -203,8 +215,8 @@ export function JobChat({ jobId, jobTitle }: { jobId: string; jobTitle: string }
               </div>
               <p className="text-sm font-medium">Chat about this job</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-[260px] mx-auto leading-relaxed">
-                Ask about the client, whether to apply, or have a proposal drafted
-                right here.
+                Ask about the client, whether to apply, or draft a proposal — it&apos;s
+                saved to your Proposals page.
               </p>
             </div>
           )}

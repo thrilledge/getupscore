@@ -17,8 +17,6 @@ const pageTitles: Record<string, string> = {
   "/notifications": "Notifications",
   "/proposals": "Proposals",
   "/upwork-profile": "Upwork Profile",
-  "/contracts": "Contracts",
-  "/work-diary": "Work Diary",
   "/market-trends": "Market Trends",
   "/extension": "Extension",
   "/settings": "Settings",

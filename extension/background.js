@@ -6,7 +6,6 @@ let state = {
   apiToken: null,
   apiUrl: DEFAULT_API_URL,
   upworkCookies: false,
-  pendingJobDetails: null,
 };
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -60,32 +59,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       handleCapturedProfile(msg.profile).then(sendResponse);
       return true;
 
-    case "CONTRACTS_CAPTURED":
-      handleCapturedContracts(msg.contracts).then(sendResponse);
-      return true;
-
-    case "WORK_DIARY_CAPTURED":
-      handleCapturedWorkDiary(msg.entries).then(sendResponse);
-      return true;
-
     case "SYNC_COOKIES_FROM_SERVER":
       handleSyncCookiesFromServer().then(sendResponse);
       return true;
-
-    case "OPEN_SIDEPANEL_WITH_JOB":
-      state.pendingJobDetails = msg.jobDetails;
-      chrome.sidePanel.open({ tabId: sender.tab?.id }).catch(() => {}).then(() => {
-        broadcastState();
-        sendResponse({ ok: true });
-      });
-      return true;
-
-    case "GET_PENDING_JOB_DETAILS": {
-      const details = state.pendingJobDetails;
-      state.pendingJobDetails = null;
-      sendResponse(details);
-      break;
-    }
 
     case "GET_VISITOR_GQL_TOKEN":
       chrome.cookies.get({ url: "https://www.upwork.com", name: "visitor_gql_token" }, (cookie) => {
@@ -160,18 +136,6 @@ async function handleCapturedJobs(jobs) {
 
 async function handleCapturedProfile(profile) {
   const result = await postToServer("/api/extension/profile/sync", profile);
-  broadcastState();
-  return result;
-}
-
-async function handleCapturedContracts(contracts) {
-  const result = await postToServer("/api/extension/contracts/sync", { contracts });
-  broadcastState();
-  return result;
-}
-
-async function handleCapturedWorkDiary(entries) {
-  const result = await postToServer("/api/extension/work-diary/sync", { entries });
   broadcastState();
   return result;
 }

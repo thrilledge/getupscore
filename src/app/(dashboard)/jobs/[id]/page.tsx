@@ -795,8 +795,8 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        <div className="lg:sticky lg:top-6">
-          <JobChat key={job.id} jobId={job.id} jobTitle={job.title} />
+        <div className="lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)]">
+          <JobChat key={job.id} jobId={job.id} jobTitle={job.title} className="h-full" />
         </div>
       </div>
     </div>

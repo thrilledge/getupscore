@@ -1,4 +1,4 @@
-let bridgeReady = false;
+﻿let bridgeReady = false;
 const bridgeQueue = [];
 
 function injectMainWorldBridge() {
@@ -89,33 +89,6 @@ function extractJobFromPage() {
         pendingJobTimeout = null;
       }
     }, 15000);
-  });
-}
-
-function fetchJobFromApi(jobUrl) {
-  const match = jobUrl.match(/[~/]([a-f0-9]{16,})/i);
-  if (!match) {
-    return Promise.resolve({ success: false, error: "Could not extract job ID from URL" });
-  }
-  const ciphertext = "~" + match[1];
-  return new Promise((resolve) => {
-    if (pendingJobResolve) {
-      pendingJobResolve({ success: false, error: "Overridden" });
-    }
-    clearTimeout(pendingJobTimeout);
-    pendingJobResolve = resolve;
-    // Get the visitor_gql_token from background script (can read HttpOnly cookies)
-    chrome.runtime.sendMessage({ type: "GET_VISITOR_GQL_TOKEN" }, (response) => {
-      const token = response?.token || null;
-      injectMainWorld("fetchJobFromApi", { ciphertext, token });
-      pendingJobTimeout = setTimeout(() => {
-        if (pendingJobResolve) {
-          pendingJobResolve({ success: false, error: "Timeout fetching job from API" });
-          pendingJobResolve = null;
-          pendingJobTimeout = null;
-        }
-      }, 15000);
-    });
   });
 }
 
@@ -223,14 +196,6 @@ function detectJobPage() {
   return window.location.href.match(/\/(?:jobs|job)\/[^/]/) || window.location.href.match(/[~/][a-f0-9]{16,}/i);
 }
 
-function detectApplyPage() {
-  return (
-    window.location.href.match(/\/proposals\/job\/[^/]+\/apply/) ||
-    window.location.href.match(/\/job(?:s)?\/[^/]+\/(?:apply|proposal)\//i) ||
-    !!findCoverLetterTextarea()
-  );
-}
-
 function extractAndSend() {
   if (detectProfilePage()) {
     injectMainWorld("getProfileFromDom");
@@ -256,255 +221,6 @@ function extractAndSend() {
   return Promise.resolve();
 }
 
-function findCoverLetterTextarea() {
-  return (
-    document.querySelector("#cover-letter .air3-textarea.inner-textarea") ||
-    document.querySelector("#cover-letter textarea") ||
-    document.querySelector(".cover-letter-area .air3-textarea.inner-textarea") ||
-    document.querySelector('textarea[aria-labelledby="cover_letter_label"]') ||
-    document.querySelector(".fe-proposal-additional-details textarea") ||
-    document.querySelector('textarea[name="cover_letter"]') ||
-    document.querySelector('textarea[id="cover_letter"]') ||
-    document.querySelector('[data-qa="cover-letter-textarea"]')
-  );
-}
-
-function getExtensionSettings() {
-  return new Promise((resolve) => {
-    chrome.storage.sync.get(["upscore_api_url", "upscore_api_token", "upscore_proposal_rules"], (res) => {
-      resolve({
-        apiUrl: (res.upscore_api_url || "https://getupscore.vercel.app").replace(/\/+$/, ""),
-        apiToken: res.upscore_api_token || null,
-        rules: res.upscore_proposal_rules || "",
-      });
-    });
-  });
-}
-
-function setTextareaValue(textarea, value) {
-  textarea.value = value;
-  textarea.dispatchEvent(new Event("input", { bubbles: true }));
-  textarea.dispatchEvent(new Event("change", { bubbles: true }));
-  textarea.scrollTop = textarea.scrollHeight;
-}
-
-function setBtnState(btn, label, state) {
-  btn.textContent = label;
-  btn.dataset.state = state || "idle";
-  btn.disabled = state === "loading";
-}
-
-function resetBtnState(btn) {
-  btn.textContent = "Write with AI";
-  delete btn.dataset.state;
-  btn.disabled = false;
-}
-
-function summarizeJob(job) {
-  if (!job) return null;
-  return {
-    title: (job.title || job.jobTitle || "").slice(0, 120),
-    _source: job._source || "?",
-    url: job.url || "",
-    budget: job.budget ?? (job.hourly_min ? `$${job.hourly_min}-$${job.hourly_max}` : undefined),
-    client_country: job.client_country || job.clientCountry || "",
-    skills: Array.isArray(job.skills) ? job.skills.slice(0, 8) : [],
-    description: (job.description || job.jobDescription || "").slice(0, 400),
-  };
-}
-
-async function generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJobId) {
-  const settings = await getExtensionSettings();
-  if (!settings.apiToken) {
-    setBtnState(btn, "Not connected — open Settings", "error");
-    setTimeout(() => resetBtnState(btn), 3000);
-    return;
-  }
-
-  if (!jobDetails && !upworkJobId) {
-    setBtnState(btn, "Could not extract job details", "error");
-    setTimeout(() => resetBtnState(btn), 3500);
-    return;
-  }
-
-  console.log("[UpScore] Generating proposal with:", {
-    path: jobDetails ? "page-details" : "db-lookup",
-    upworkJobId: upworkJobId || null,
-    jobDetails: summarizeJob(jobDetails),
-  });
-
-  const payload = { stream: true };
-  if (jobDetails) payload.jobDetails = jobDetails;
-  if (upworkJobId) payload.upworkJobId = upworkJobId;
-  if (settings.rules) payload.customInstructions = settings.rules;
-
-  let response;
-  try {
-    response = await fetch(`${settings.apiUrl}/api/proposals/generate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${settings.apiToken}`,
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch {
-    setBtnState(btn, "Cannot reach server", "error");
-    setTimeout(() => resetBtnState(btn), 3000);
-    return;
-  }
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: "HTTP " + response.status }));
-    setBtnState(btn, err.error || "Request failed", "error");
-    setTimeout(() => resetBtnState(btn), 3500);
-    return;
-  }
-
-  const contentType = response.headers.get("content-type") || "";
-  if (!contentType.includes("text/event-stream")) {
-    try {
-      const data = await response.json();
-      if (data.proposal) {
-        setTextareaValue(textarea, textarea.value + data.proposal);
-        console.log("[UpScore] Proposal written (json):", data.proposal.slice(0, 300));
-        setBtnState(btn, data.score ? `Written! Score ${data.score}` : "Written!", "done");
-        setTimeout(() => resetBtnState(btn), 4000);
-      } else {
-        setBtnState(btn, "Empty result", "error");
-        setTimeout(() => resetBtnState(btn), 3000);
-      }
-    } catch {
-      setBtnState(btn, "Unexpected response", "error");
-      setTimeout(() => resetBtnState(btn), 3000);
-    }
-    return;
-  }
-
-  setBtnState(btn, "Writing...", "loading");
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let score = null;
-  let lastEventType = "";
-  let streamError = null;
-
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (line.startsWith("event: ")) {
-          lastEventType = line.slice(7).trim();
-          continue;
-        }
-        if (!line.startsWith("data: ")) continue;
-        const json = line.slice(6).trim();
-        if (!json) continue;
-        try {
-          const parsed = JSON.parse(json);
-          if (typeof parsed.text === "string" && lastEventType === "proposal") {
-            setTextareaValue(textarea, textarea.value + parsed.text);
-          }
-          if (parsed.score !== undefined) score = parsed.score;
-          if (lastEventType === "error") {
-            streamError = parsed.message || parsed.text || "Generation failed on the server";
-          }
-        } catch { /* ignore */ }
-      }
-    }
-  } catch {
-    setBtnState(btn, "Stream interrupted", "error");
-    setTimeout(() => resetBtnState(btn), 3000);
-    return;
-  }
-
-  if (streamError) {
-    console.error("[UpScore] Proposal stream error:", streamError);
-    setBtnState(btn, "Failed: " + streamError.slice(0, 50), "error");
-    setTimeout(() => resetBtnState(btn), 6000);
-    return;
-  }
-
-  setBtnState(btn, score !== null ? `Written! Score ${score}` : "Written!", "done");
-  console.log("[UpScore] Proposal written (stream):", textarea.value.slice(-400));
-  setTimeout(() => resetBtnState(btn), 4000);
-}
-
-function injectApplyButton() {
-  const existing = document.getElementById("upscore-apply-btn");
-  if (existing) return;
-
-  const textarea = findCoverLetterTextarea();
-  if (!textarea) {
-    if (detectApplyPage()) setTimeout(injectApplyButton, 2000);
-    return;
-  }
-
-  const btn = document.createElement("button");
-  btn.id = "upscore-apply-btn";
-  btn.type = "button";
-  btn.textContent = "Write with AI";
-  Object.assign(btn.style, {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-    margin: "0 0 8px",
-    padding: "7px 14px",
-    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
-    color: "#ffffff",
-    border: "none",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontSize: "13px",
-    fontWeight: "600",
-    fontFamily: "inherit",
-    lineHeight: "1.4",
-    boxShadow: "0 1px 3px rgba(37, 99, 235, 0.35)",
-    transition: "opacity 0.15s",
-  });
-  btn.addEventListener("click", async () => {
-    const applyMatch = window.location.href.match(/~([a-f0-9]{16,})/);
-    const jobUrl = applyMatch
-      ? `https://www.upwork.com/jobs/~${applyMatch[1]}`
-      : window.location.href;
-    const upworkJobId = applyMatch ? applyMatch[1] : null;
-
-    let jobDetails = null;
-    setBtnState(btn, "Fetching job...", "loading");
-
-    try {
-      const apiResult = await fetchJobFromApi(jobUrl);
-      if (apiResult?.success && apiResult?.data) {
-        jobDetails = apiResult.data;
-        console.log("[UpScore] Job fetched via API interceptor:", summarizeJob(jobDetails));
-      } else {
-        console.log("[UpScore] API interceptor failed:", apiResult?.error || "no data");
-        const domResult = await extractJobFromPage();
-        if (domResult?.success && domResult?.data) {
-          jobDetails = domResult.data;
-          console.log("[UpScore] Job fetched via DOM extraction:", summarizeJob(jobDetails));
-        } else {
-          console.log("[UpScore] DOM extraction failed:", domResult?.error || "no data");
-        }
-      }
-      if (jobDetails) console.log("[UpScore] Using page job details.");
-      else console.log("[UpScore] No page details — falling back to DB lookup by upworkJobId:", upworkJobId);
-      await generateProposalIntoTextarea(btn, textarea, jobDetails, upworkJobId);
-    } catch (err) {
-      setBtnState(btn, "Error: " + (err.message || "unknown"), "error");
-      setTimeout(() => resetBtnState(btn), 3500);
-    }
-  });
-
-  textarea.parentNode?.insertBefore(btn, textarea);
-}
-
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
     case "GET_COOKIES":
@@ -517,11 +233,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       break;
     case "EXTRACT_JOB_FROM_PAGE":
       extractJobFromPage().then((result) => {
-        sendResponse(result);
-      });
-      return true;
-    case "FETCH_JOB_FROM_API":
-      fetchJobFromApi(msg.jobUrl).then((result) => {
         sendResponse(result);
       });
       return true;
@@ -546,14 +257,12 @@ if (document.readyState === "loading") {
     setTimeout(() => {
       captureCookies();
       extractAndSend().catch(() => {});
-      injectApplyButton();
     }, 2000);
   });
 } else {
   setTimeout(() => {
     captureCookies();
     extractAndSend().catch(() => {});
-    injectApplyButton();
   }, 2000);
 }
 
@@ -566,7 +275,6 @@ const observer = new MutationObserver(() => {
     setTimeout(() => {
       captureCookies();
       extractAndSend().catch(() => {});
-      injectApplyButton();
     }, 2000);
   }
 });

@@ -294,13 +294,62 @@ export async function POST(request: Request) {
               jobId: dbJobId,
             })}\n\n`));
 
-            // Pipe the proposal stream
+            // Pipe the proposal stream while accumulating the final text so we
+            // can persist it to the `proposals` table for history/activity.
             const reader = proposalStream.getReader();
             const decoder = new TextDecoder();
+            let buffer = "";
+            let lastEventType = "";
+            let fullProposal = "";
+
+            const saveProposal = async () => {
+              if (!dbJobId || fullProposal.trim().length < 50) return;
+              try {
+                const { error: insertError } = await supabase
+                  .from("proposals")
+                  .insert({
+                    user_id: userId,
+                    job_id: dbJobId,
+                    generated_text: fullProposal.trim(),
+                    status: "draft",
+                  });
+                if (!insertError) {
+                  controller.enqueue(encoder.encode(
+                    `event: saved\ndata: ${JSON.stringify({ saved: true })}\n\n`
+                  ));
+                }
+              } catch (saveErr: any) {
+                console.warn("[Proposals] Stream save error:", saveErr.message);
+              }
+            };
+
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines.pop() || "";
+
+              for (const line of lines) {
+                if (line.startsWith("event: ")) {
+                  lastEventType = line.slice(7).trim();
+                  continue;
+                }
+                if (!line.startsWith("data: ")) continue;
+                const json = line.slice(6).trim();
+                if (!json) continue;
+                try {
+                  const parsed = JSON.parse(json);
+                  if (lastEventType === "proposal" && typeof parsed.text === "string") {
+                    fullProposal += parsed.text;
+                  }
+                } catch { /* ignore */ }
+              }
               controller.enqueue(value);
+            }
+
+            if (fullProposal.trim().length >= 50) {
+              await saveProposal();
             }
             controller.close();
           },

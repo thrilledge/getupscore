@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ProfileAuditChat } from "@/components/profile-audit-chat";
 import { toast } from "sonner";
 import {
   UserCircle,
@@ -51,7 +52,7 @@ export default function UpworkProfilePage() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-heading">Upwork Profile</h1>
@@ -65,7 +66,9 @@ export default function UpworkProfilePage() {
         </Button>
       </div>
 
-      {!profile ? (
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px] gap-6 items-start">
+        <div className="space-y-6 min-w-0">
+          {!profile ? (
         <Card>
           <CardHeader>
             <CardTitle>No Profile Synced</CardTitle>
@@ -184,6 +187,12 @@ export default function UpworkProfilePage() {
           </Card>
         </>
       )}
+        </div>
+
+        <div className="lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)]">
+          <ProfileAuditChat className="h-full" />
+        </div>
+      </div>
     </div>
   );
 }

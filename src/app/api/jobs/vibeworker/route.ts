@@ -67,12 +67,19 @@ export async function POST(request: Request) {
 
     // ── Run AI analysis for all active users ─────────────────────────
     if (newJobIds.length > 0) {
-      const { data: activeUsers } = await supabase
+      const { data: activeFilters } = await supabase
         .from("job_filters")
-        .select("user_id")
+        .select("*")
         .eq("is_active", true);
 
-      const userIds = [...new Set(activeUsers?.map((f: any) => f.user_id) || [])] as string[];
+      const filtersByUser = new Map<string, any[]>();
+      for (const f of activeFilters || []) {
+        const list = filtersByUser.get(f.user_id) || [];
+        list.push(f);
+        filtersByUser.set(f.user_id, list);
+      }
+
+      const userIds = [...filtersByUser.keys()] as string[];
 
       if (userIds.length > 0) {
         const { data: fullJobs } = await supabase
@@ -86,6 +93,11 @@ export async function POST(request: Request) {
           for (const jobId of newJobIds) {
             const jobRecord = jobMap.get(jobId) || {};
             try {
+              // Skip analysis entirely unless the job matches a saved filter.
+              const { findMatchingFilters } = await import("@/lib/filters/match");
+              const matchedFilters = findMatchingFilters(jobRecord, filtersByUser.get(userId) || []);
+              if (matchedFilters.length === 0) continue;
+
               const analysis = await analyzeJob(supabase, jobRecord, jobId, userId);
 
               if (
@@ -104,7 +116,7 @@ export async function POST(request: Request) {
                       : jobRecord.hourly_min
                         ? `$${jobRecord.hourly_min}-$${jobRecord.hourly_max}/hr`
                         : undefined,
-                    country: jobRecord.client_country || "",
+                    country: jobRecord.client_country || jobRecord.client_location_country || "",
                     skills: Array.isArray(jobRecord.skills) ? jobRecord.skills : [],
                     matchScore: analysis.match_score,
                     opportunityScore: analysis.opportunity_score,
@@ -113,6 +125,7 @@ export async function POST(request: Request) {
                     proposalTips: Array.isArray(analysis.proposal_tips)
                       ? analysis.proposal_tips
                       : [],
+                    matchedFilterIds: matchedFilters.map((f: any) => f.id),
                   });
                 } catch (notifErr: any) {
                   console.warn(

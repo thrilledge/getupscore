@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { proposalMethodology } from "@/lib/proposals/system-prompt";
-import { chatCompletionWithRetry } from "@/lib/llm";
+import { streamChat, type ChatMessage } from "@/lib/chat-stream";
 
 export const dynamic = "force-dynamic";
-
-type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
-};
 
 type ChatJob = {
   title: string | null;
@@ -143,7 +138,18 @@ export async function POST(
     customSystemPrompt ?? undefined
   );
 
-  return streamChat(systemPrompt, messages);
+  // When the user asks for a proposal, keep a copy in the `proposals` table
+  // so the Proposals page tracks every AI-written proposal as activity.
+  const saveProposal = isProposalDraftRequest(last.content)
+    ? { supabase: createSupabaseAdminClient(), userId: user.id, jobId: id }
+    : undefined;
+
+  return streamChat(systemPrompt, messages, saveProposal);
+}
+
+function isProposalDraftRequest(text: string): boolean {  return /(write|draft|generate|create|improve|rewrite|compose|polish)\b.{0,80}\b(proposal|cover letter)\b/i.test(
+    text
+  );
 }
 
 function buildChatSystemPrompt(
@@ -218,80 +224,4 @@ ${customPrompt && customPrompt.trim().length ? customPrompt.trim() : proposalMet
 - When the user asks to write, draft, or improve a proposal, produce it using the PROPOSAL METHODOLOGY and the freelancer's real profile. NEVER invent past results, tools, or case studies not present in the profile — if the profile is empty, say so and offer to write a generic draft the user can personalize.
 - Keep conversational answers concise (under ~350 words) unless the user asks for a full proposal.
 - Format with plain text: short paragraphs, occasionally light markdown bullets. No headers inside proposals.`;
-}
-
-async function streamChat(
-  systemPrompt: string,
-  messages: ChatMessage[]
-): Promise<Response> {
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (data: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
-      };
-
-      try {
-        const { response, provider } = await chatCompletionWithRetry(
-          (p) => ({
-            model: p.model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              ...messages.map((m) => ({ role: m.role, content: m.content.slice(0, 3000) })),
-            ],
-            stream: true,
-            ...(p.groqStyle ? { reasoning_format: "parsed" as const } : {}),
-            temperature: 0.7,
-            max_tokens: 2000,
-          })
-        );
-        console.log("[Job Chat] Using provider:", provider.name, "model:", provider.model);
-
-        const reader = response.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const json = line.slice(6).trim();
-            if (json === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(json);
-              const delta = parsed.choices?.[0]?.delta;
-              if (delta?.content) {
-                send({ content: delta.content });
-              }
-            } catch {
-              // ignore malformed chunk
-            }
-          }
-        }
-
-        send({ done: true });
-        controller.close();
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        console.warn("[Job Chat] Streaming error:", message);
-        send({ error: message });
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    },
-  });
 }

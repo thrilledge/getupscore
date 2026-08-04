@@ -36,7 +36,8 @@ BEGIN
       client_total_spend,
       contractor_tier,
       skills,
-      category
+      category,
+      subcategory
     FROM jobs
     WHERE COALESCE(posted_at, created_at) >= v_cutoff
   ),
@@ -153,6 +154,14 @@ BEGIN
     ORDER BY 2 DESC
     LIMIT 15
   ),
+  subcategories AS (
+    SELECT subcategory AS name, count(*) AS n
+    FROM base
+    WHERE subcategory IS NOT NULL AND subcategory <> ''
+    GROUP BY 1
+    ORDER BY 2 DESC
+    LIMIT 15
+  ),
   geography AS (
     SELECT COALESCE(NULLIF(client_location_country, ''), client_country) AS name,
            count(*) AS n
@@ -241,6 +250,9 @@ BEGIN
     'categories', (SELECT json_agg(json_build_object(
       'name', name, 'n', n
     )) FROM categories),
+    'subcategories', (SELECT json_agg(json_build_object(
+      'name', name, 'n', n
+    )) FROM subcategories),
     'geography', (SELECT json_agg(json_build_object(
       'name', name, 'n', n
     )) FROM geography),

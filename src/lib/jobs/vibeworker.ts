@@ -102,7 +102,7 @@ export function mapVibeworkerJobToInsert(job: VibeworkerJob): VibeworkerJobInser
     connects_required: typeof job.connects === "number" ? job.connects : null,
     posted_at: job.receivedAt || null,
     category: job.category?.slice(0, 100) || null,
-    subcategory: null,
+    subcategory: (job as { subcategory?: string | null }).subcategory?.slice(0, 100) || null,
     source: "vibeworker",
   };
 }

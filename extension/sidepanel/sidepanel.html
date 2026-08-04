@@ -42,7 +42,6 @@
   <nav class="panel-nav">
     <button class="nav-item active" id="navDashboard">Dashboard</button>
     <button class="nav-item" id="navSavedJobs">Saved Jobs</button>
-    <button class="nav-item" id="navProposal">Proposal</button>
     <button class="nav-item" id="navSettings">Settings</button>
   </nav>
 
@@ -60,7 +59,7 @@
     <!-- Hero -->
     <div class="hero">
       <div class="hero-title">Boost your Upwork success rate</div>
-      <div class="hero-sub">Scored jobs, smart proposals, and winning tips in one place.</div>
+      <div class="hero-sub">Scored jobs and winning tips in one place.</div>
       <div class="hero-chips">
         <span class="hero-chip">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
@@ -72,17 +71,20 @@
         <span class="hero-chip">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
             stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
           </svg>
-          AI Proposals
+          AI Analysis
         </span>
         <span class="hero-chip">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
             stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
-          Auto-fill
+          Auto Sync
         </span>
       </div>
     </div>
@@ -135,23 +137,6 @@
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </button>
-        <button class="action-btn" id="btnNewProposal">
-          <span class="action-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-          </span>
-          <span class="action-text">
-            <span class="action-title">Write Proposal</span>
-            <span class="action-desc">AI-powered proposal for a job</span>
-          </span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" class="action-arrow">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
       </div>
     </section>
 
@@ -171,11 +156,11 @@
         <div class="tip-banner" style="margin-bottom:0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+            <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
           </svg>
           <div>
-            <strong>Write proposals directly on Upwork</strong>
-            <span>Open a job's proposal form, click <em>Write with AI</em> — UpScore drafts and fills your cover letter in place.</span>
+            <strong>Everything syncs automatically</strong>
+            <span>Open any Upwork job or your freelancer profile and UpScore captures the details in the background — no buttons needed.</span>
           </div>
         </div>
       </div>
@@ -206,89 +191,6 @@
 
   </div>
 
-  <!-- ════════════════════════════════════════════════════ -->
-  <!-- ═══  VIEW: PROPOSAL  ═══ -->
-  <!-- ════════════════════════════════════════════════════ -->
-  <div id="view-proposal" class="view" style="display:none">
-
-    <div class="tip-banner">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-      </svg>
-      <div>
-        <strong>Faster on Upwork itself</strong>
-        <span>Open the job's <em>Write Proposal</em> form and click the <em>Write with AI</em> button — UpScore auto-fills your cover letter there.</span>
-      </div>
-    </div>
-
-    <div class="list-header">
-      <h2>Write Proposal</h2>
-    </div>
-
-    <!-- Step 0: Source selection -->
-    <div id="proposalSource">
-      <div class="source-tabs">
-        <button id="btnSourceTab" class="source-tab active" data-tab="tab">Current Tab</button>
-      </div>
-
-      <div id="proposalSourceTab" class="source-panel">
-        <button id="btnExtractFromTab" class="btn btn-primary btn-full">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          Fetch from Current Tab
-        </button>
-      </div>
-    </div>
-
-    <!-- Step 1: Job preview -->
-    <div id="proposalJobPreview" style="display:none">
-      <div class="job-preview" id="jobPreviewContent"></div>
-    </div>
-
-    <!-- Step 2: Customize -->
-    <div id="proposalCustomize" style="display:none">
-      <div class="field">
-        <label for="proposalInstructions">Additional Instructions (optional)</label>
-        <textarea id="proposalInstructions" class="textarea-input"
-          placeholder="Emphasize my experience with React and Node.js..." rows="3"></textarea>
-      </div>
-      <button id="btnGenerateProposal" class="btn btn-primary btn-full">Generate Proposal</button>
-    </div>
-
-    <!-- Loading -->
-    <div id="proposalLoading" class="loading" style="display:none">Generating proposal with AI...</div>
-
-    <!-- Result -->
-    <div id="proposalResult" style="display:none">
-      <div class="proposal-reasoning" id="proposalReasoning" style="display:none">
-        <details class="reasoning-details">
-          <summary class="reasoning-summary">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-              <line x1="12" y1="17" x2="12.01" y2="17" />
-            </svg>
-            AI Reasoning
-          </summary>
-          <div class="reasoning-content" id="reasoningContent">Thinking...</div>
-        </details>
-      </div>
-      <div class="proposal-score" id="proposalScore"></div>
-      <div class="proposal-text" id="proposalText"></div>
-      <div class="proposal-actions">
-        <button id="btnCopyProposal" class="btn btn-secondary">Copy to Clipboard</button>
-        <button id="btnNewProposalAgain" class="btn btn-secondary">Generate Again</button>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- ════════════════════════════════════════════════════ -->
   <!-- ════════════════════════════════════════════════════ -->
   <!-- ═══  VIEW: SETTINGS  ═══ -->
   <!-- ════════════════════════════════════════════════════ -->
@@ -332,30 +234,6 @@
           <button id="btnTestConnection" class="btn btn-secondary">Test Connection</button>
           <button id="btnSave" class="btn btn-primary">Save</button>
         </div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-header">
-        <div class="section-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
-          <span>Proposal Rules</span>
-        </div>
-      </div>
-      <div class="section-body">
-        <p class="desc">These rules are applied to every proposal you generate. Examples: "Always mention my React
-          expertise", "Keep proposals under 200 words", "Never mention WordPress".</p>
-        <div class="field">
-          <label for="proposalRules">Persistent Proposal Instructions</label>
-          <textarea id="proposalRules" class="textarea-input"
-            placeholder="e.g. Always lead with a specific result, mention my Shopify expertise, end with a question about their timeline..."
-            rows="5"></textarea>
-        </div>
-        <button id="btnSaveRules" class="btn btn-secondary btn-full">Save Rules</button>
       </div>
     </section>
 

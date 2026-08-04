@@ -357,6 +357,8 @@ def fetch_jobs_with_details(count: int = 20, offset: int = 0, keywords: str | No
                     job["total_hired"] = activity.get("totalHired")
                     job["proposals_count"] = activity.get("totalApplicants")
                     job["category"] = (opening.get("category") or {}).get("name")
+                    sands = opening.get("sandsData") or {}
+                    job["subcategory"] = ((sands.get("occupation") or {}).get("prefLabel") or "")[:200] or None
                     job["enriched"] = True
                     enriched_count += 1
 
@@ -421,6 +423,8 @@ def fetch_job_details(ciphertext: str, all_cookies: dict | None = None) -> dict:
     buyer_extra = details.get("buyerExtra") or {}
 
     category = opening.get("category") or {}
+    sands = opening.get("sandsData") or {}
+    occupation = sands.get("occupation") or {}
     activity = opening.get("clientActivity") or {}
     location = buyer.get("location") or {}
     stats = buyer.get("stats") or {}
@@ -432,6 +436,7 @@ def fetch_job_details(ciphertext: str, all_cookies: dict | None = None) -> dict:
         "success": True,
         "details": {
             "category": category.get("name"),
+            "subcategory": (occupation.get("prefLabel") or "")[:200] or None,
             "client_activity": {
                 "total_applicants": activity.get("totalApplicants"),
                 "total_hired": activity.get("totalHired"),

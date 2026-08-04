@@ -82,6 +82,7 @@ export interface MarketTrends {
   hourlyBands: BandStat[];
   timing: TimingData;
   categories: CategoryStat[];
+  subcategories: CategoryStat[];
   geography: GeographyStat[];
   clients: {
     tiers: ClientTierStat[];

@@ -85,7 +85,7 @@ export default function ProposalsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight font-heading">Proposals</h1>
           <p className="text-muted-foreground mt-1">
-            AI-generated proposals submitted via the extension.
+            Every proposal you&apos;ve written with AI — from the job chat or the extension.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchProposals} disabled={loading}>
@@ -106,9 +106,9 @@ export default function ProposalsPage() {
       ) : proposals.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Proposal Tracking</CardTitle>
+            <CardTitle>Proposal Activity</CardTitle>
             <CardDescription>
-              Proposals generated via the extension will appear here
+              Your AI-written proposals will show up here automatically
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center py-12 text-muted-foreground">
@@ -117,9 +117,10 @@ export default function ProposalsPage() {
                 <FileText className="size-8 text-muted-foreground/50" />
               </div>
               <div>
-                <p className="font-medium">No proposals yet</p>
-                <p className="text-sm mt-1">
-                  Install the extension and use it on Upwork job pages to generate proposals.
+                <p className="font-medium">No proposals written yet</p>
+                <p className="text-sm mt-1 max-w-md">
+                  Open any job and use the Job Assistant to draft a proposal — it&apos;s saved here
+                  automatically. Proposals written with the extension land here too.
                 </p>
               </div>
             </div>

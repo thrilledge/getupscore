@@ -495,6 +495,8 @@ interface UpworkApiJob {
   skills?: string[];
   client_rating?: number | null;
   posted_at?: string;
+  category?: string | null;
+  subcategory?: string | null;
   source: string;
 }
 
@@ -571,8 +573,8 @@ async function fetchUpworkApi(query?: string): Promise<FetchResult> {
       payment_verified: null,
       posted_at: j.posted_at || null,
       skills: j.skills || [],
-      category: null,
-      subcategory: null,
+      category: j.category ?? null,
+      subcategory: j.subcategory ?? null,
       source: "upwork_api",
     }));
 
@@ -609,6 +611,8 @@ interface GraphQLJob {
   contractor_tier?: string;
   skills?: string[];
   posted_at?: string;
+  category?: string | null;
+  subcategory?: string | null;
   source: string;
 }
 
@@ -674,8 +678,8 @@ async function fetchUpworkGraphql(query?: string): Promise<FetchResult> {
       posted_at: j.posted_at || null,
       skills: j.skills || [],
       payment_verified: null,
-      category: null,
-      subcategory: null,
+      category: j.category ?? null,
+      subcategory: j.subcategory ?? null,
       source: "upwork_graphql",
     }));
 

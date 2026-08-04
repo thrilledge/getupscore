@@ -32,6 +32,8 @@ export interface JobAlertContext {
   winProbability?: number;
   recommendation?: string;
   proposalTips?: string[];
+  /** IDs of the user's active job_filters that matched this job. */
+  matchedFilterIds?: string[];
 }
 
 export interface DispatchResult {
@@ -92,10 +94,20 @@ export async function notifyUser(
 
   // 2. Check each rule against this job
   const results: DispatchResult[] = [];
+  const matchedFilterIds = alert.matchedFilterIds ?? [];
 
   for (const rule of rules) {
     const channel = channels.find((c) => c.id === rule.channel_id);
     if (!channel) continue;
+
+    // Filter gating: a rule linked to a specific filter only fires for jobs
+    // that matched that filter. Rules without a filter ("all jobs") only
+    // fire when the job matched at least one of the user's active filters.
+    if (rule.job_filter_id) {
+      if (!matchedFilterIds.includes(rule.job_filter_id)) continue;
+    } else if (matchedFilterIds.length === 0) {
+      continue;
+    }
 
     // Check score thresholds
     const matchScore = alert.matchScore ?? 0;
