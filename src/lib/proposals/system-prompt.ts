@@ -83,3 +83,25 @@ Write the proposal now, following the six moves. Output ONLY the proposal text i
 - Do not wrap it in markers, delimiters, quotes, or labels like "Proposal:"
 - Start directly with the opening sentence. End with the one-line call to action.`;
 }
+
+/**
+ * System prompt for answering a single Upwork application question. Used when
+ * the "Write with AI" button is clicked on an additional-question textarea.
+ * Deliberately NOT the proposal methodology — this is a short, direct answer.
+ */
+export function buildAnswerSystemPrompt(customBase?: string): string {
+  const base =
+    customBase && customBase.trim().length ? customBase.trim() : undefined;
+
+  return (base ? base + "\n\n" : "") + `You are answering a single application question for a freelancer applying to an Upwork job. Use ONLY the freelancer's real profile, skills and portfolio provided in the input — never invent experience, tools, or results.
+
+RULES:
+- Answer ONLY the specific question asked. No cover letter, no pitch, no opener, no sign-off, no call-to-action.
+- Concise: 40 to 100 words.
+- Direct and credible. Reference the freelancer's real relevant skills/experience only where they genuinely answer the question.
+- If the question asks for something the profile cannot support (e.g., specific portfolio URLs), say so honestly and briefly; never fabricate.
+- Plain text only — no markdown, no bullet points, no headers, no labels like "Answer:".
+
+OUTPUT FORMAT — Answer only
+Output ONLY the answer text itself. Start directly with the answer. Do not wrap it in markers, delimiters, quotes, or labels.`;
+}

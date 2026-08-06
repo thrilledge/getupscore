@@ -1,4 +1,4 @@
-import { buildProposalSystemPrompt } from "./system-prompt";
+import { buildProposalSystemPrompt, buildAnswerSystemPrompt } from "./system-prompt";
 import { chatCompletionWithRetry, parseLlmJson } from "@/lib/llm";
 
 export interface ProposalInput {
@@ -24,6 +24,7 @@ export interface ProposalInput {
   userExperience?: string;
   portfolioItems?: string;
   customInstructions?: string;
+  answerQuestion?: string;
   systemPrompt?: string;
 }
 
@@ -48,7 +49,9 @@ export async function generateProposal(
       (p) => ({
         model: p.model,
         messages: [
-          { role: "system", content: buildProposalSystemPrompt("json", input.systemPrompt) },
+          { role: "system", content: input.answerQuestion
+            ? buildAnswerSystemPrompt(input.systemPrompt)
+            : buildProposalSystemPrompt("json", input.systemPrompt) },
           { role: "user", content: buildPrompt(input) },
         ],
         temperature: 0.7,
@@ -94,7 +97,9 @@ export async function streamProposal(
           (p) => ({
             model: p.model,
             messages: [
-              { role: "system", content: buildProposalSystemPrompt("stream", input.systemPrompt) },
+              { role: "system", content: input.answerQuestion
+                ? buildAnswerSystemPrompt(input.systemPrompt)
+                : buildProposalSystemPrompt("stream", input.systemPrompt) },
               { role: "user", content: buildPrompt(input) },
             ],
             stream: true,
@@ -271,7 +276,20 @@ ${input.customInstructions}`);
   }
 
   // ── FINAL DIRECTIVE ───────────────────────────────────────────────────────
-  sections.push(`
+  if (input.answerQuestion) {
+    sections.push(`
+=== TASK ===
+Answer this application question from the client's job post. Write ONLY the answer to the question — do NOT write a cover letter, proposal, or pitch. Do not add pricing, timelines, or sign-offs unless the question itself asks for them.
+
+Question: ${input.answerQuestion}
+
+FORMAT:
+- Plain text only — no markdown, no bullet points, no headers, no labels
+- Concise: 40 to 100 words
+- Direct and specific. Use the freelancer's real skills/experience from the profile above only where they genuinely answer the question.
+- If the question asks for something the profile cannot support (e.g., specific portfolio URLs), state honestly and briefly what you can provide instead. Never invent past work.`);
+  } else {
+    sections.push(`
 === WRITING DIRECTIVE ===
 Write the proposal now following the six moves from the system prompt:
   MOVE 1 — Anti-pitch opener (1-2 lines, confirmation not pitch, verbatim tools bolded)
@@ -292,6 +310,7 @@ MANDATORY CHECKS BEFORE FINALIZING:
 ✓ Ends with exactly ONE line inviting the next step — no begging
 ✓ Tone matches the client's writing style
 ✓ No markdown formatting inside the proposal — plain text paragraphs only`);
+  }
 
   return sections.join("\n\n");
 }

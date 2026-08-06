@@ -23,11 +23,13 @@
     ].join("|");
   }
 
-  function postJobDetails(job) {
+  function postJobDetails(job, requestId) {
     if (!job || typeof job !== "object") return;
     const fp = fingerprintJob(job);
     const now = Date.now();
-    if (fp && fp === lastJobFingerprint && now - lastJobTime < 30_000) {
+    // A pending explicit request (button click) must always get its response —
+    // only auto-extract posts are deduped.
+    if (!requestId && fp && fp === lastJobFingerprint && now - lastJobTime < 30_000) {
       return; // duplicate of the job we already sent — skip re-analyze/notify
     }
     lastJobFingerprint = fp;
@@ -37,6 +39,7 @@
       operation: "jobDetails",
       success: true,
       data: job,
+      requestId,
     }, "*");
   }
 
@@ -214,13 +217,13 @@
         tryExtractWithRetry(0);
         break;
       case "getJobDetailsFromDom":
-        tryExtractJobWithRetry(0);
+        tryExtractJobWithRetry(0, event.data?.params?.requestId);
         break;
       case "insertPortfolioOnApply":
         insertPortfolioOnApplyPage(event.data?.params?.portfolio);
         break;
       case "fetchJobFromApi":
-        fetchJobDetailsFromUpworkApi(event.data?.params?.ciphertext, event.data?.params?.token);
+        fetchJobDetailsFromUpworkApi(event.data?.params?.ciphertext, event.data?.params?.token, event.data?.params?.requestId);
         break;
     }
   });
@@ -518,7 +521,7 @@
 
   let pendingPartialJob = null;
 
-  function tryExtractJobWithRetry(attempt) {
+  function tryExtractJobWithRetry(attempt, requestId) {
     if (attempt === 0) {
       pendingPartialJob = null;
       // Click "more" buttons to expand truncated feedback text
@@ -526,7 +529,7 @@
       if (moreBtns.length > 0) {
         moreBtns.forEach(btn => btn.click());
         // Wait one frame for Vue to update DOM, then extract
-        requestAnimationFrame(() => tryExtractJobWithRetry(attempt));
+        requestAnimationFrame(() => tryExtractJobWithRetry(attempt, requestId));
         return;
       }
       const nuxt = window.__NUXT__;
@@ -551,7 +554,7 @@
     // Nuxt/Vue portfolio objects override it.
     if (job?._source === "apply-dom") {
       window.__upscoreLastJob = job;
-      postJobDetails(job);
+      postJobDetails(job, requestId);
       pendingPartialJob = null;
       return;
     }
@@ -563,7 +566,7 @@
           if (!job.client_recent_history) job.client_recent_history = pendingPartialJob.client_recent_history;
         }
         window.__upscoreLastJob = job;
-        postJobDetails(job);
+        postJobDetails(job, requestId);
         pendingPartialJob = null;
         return;
       }
@@ -573,7 +576,7 @@
 
     const nuxtJob = window.__NUXT__?.state?.jobViewer?.job || window.__NUXT__?.state?.job;
     if (!nuxtJob && attempt < 20) {
-      setTimeout(() => tryExtractJobWithRetry(attempt + 1), 1000);
+      setTimeout(() => tryExtractJobWithRetry(attempt + 1, requestId), 1000);
       return;
     }
 
@@ -584,7 +587,7 @@
         jobData.client_recent_history = pendingPartialJob.client_recent_history;
       }
       window.__upscoreLastJob = jobData;
-      postJobDetails(jobData);
+      postJobDetails(jobData, requestId);
       pendingPartialJob = null;
       return;
     }
@@ -596,13 +599,14 @@
     const finalJob = pendingPartialJob || job;
     if (finalJob && finalJob.title) {
       window.__upscoreLastJob = finalJob;
-      postJobDetails(finalJob);
+      postJobDetails(finalJob, requestId);
     } else {
       window.postMessage({
         type: "__upscore_result",
         operation: "jobDetails",
         success: false,
         error: "Could not extract job from DOM",
+        requestId,
       }, "*");
     }
     pendingPartialJob = null;
@@ -1245,13 +1249,14 @@
     } catch { return null; }
   }
 
-  async function fetchJobDetailsFromUpworkApi(ciphertext, providedToken) {
+  async function fetchJobDetailsFromUpworkApi(ciphertext, providedToken, requestId) {
     if (!ciphertext) {
       window.postMessage({
         type: "__upscore_result",
         operation: "jobDetails",
         success: false,
         error: "No ciphertext provided",
+        requestId,
       }, "*");
       return;
     }
@@ -1392,13 +1397,14 @@
         ciphertext,
       };
 
-      postJobDetails(addSnakeCaseAliases(job));
+      postJobDetails(addSnakeCaseAliases(job), requestId);
     } catch (err) {
       window.postMessage({
         type: "__upscore_result",
         operation: "jobDetails",
         success: false,
         error: err.message,
+        requestId,
       }, "*");
     }
   }

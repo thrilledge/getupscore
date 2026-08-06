@@ -132,7 +132,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { jobId, jobDetails, upworkJobId, customInstructions, stream } = body;
+    const { jobId, jobDetails, upworkJobId, customInstructions, answerQuestion, stream } = body;
 
     if (!jobId && !jobDetails && !upworkJobId) {
       return withCors(NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 }));
@@ -179,6 +179,7 @@ export async function POST(request: Request) {
       userExperience: profile?.bio || undefined,
       portfolioItems: portfolioPreview,
       customInstructions: customInstructions || undefined,
+      answerQuestion: answerQuestion ? String(answerQuestion).slice(0, 500) : undefined,
       systemPrompt: customSystemPrompt || undefined,
     };
 

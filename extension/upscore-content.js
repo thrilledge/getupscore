@@ -1,6 +1,14 @@
 ﻿let bridgeReady = false;
 const bridgeQueue = [];
 
+function contextOk() {
+  try {
+    return !!chrome.runtime?.id;
+  } catch {
+    return false;
+  }
+}
+
 function injectMainWorldBridge() {
   if (bridgeReady) return Promise.resolve();
   if (bridgeQueue.length > 0) {
@@ -8,8 +16,17 @@ function injectMainWorldBridge() {
   }
   return new Promise((resolve) => {
     bridgeQueue.push(resolve);
+    let src;
+    try {
+      src = chrome.runtime.getURL("lib/main-world.js");
+    } catch {
+      bridgeReady = true;
+      const q = bridgeQueue.splice(0);
+      q.forEach((r) => r());
+      return;
+    }
     const script = document.createElement("script");
-    script.src = chrome.runtime.getURL("lib/main-world.js");
+    script.src = src;
     script.setAttribute("data-upscore", "");
     script.onload = () => {
       bridgeReady = true;
@@ -38,8 +55,23 @@ async function injectMainWorld(operation, params = {}) {
 
 injectMainWorldBridge();
 
-let pendingJobResolve = null;
-let pendingJobTimeout = null;
+const pendingJobRequests = new Map();
+let jobRequestSeq = 0;
+
+let cachedJobCiphertext = null;
+let cachedJobDetails = null;
+
+function requestJobDetails(operation, params) {
+  const requestId = "jr_" + ++jobRequestSeq;
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      pendingJobRequests.delete(requestId);
+      resolve({ success: false, error: "Timeout" });
+    }, 20000);
+    pendingJobRequests.set(requestId, { resolve, timeout });
+    injectMainWorld(operation, { ...params, requestId });
+  });
+}
 
 window.addEventListener("message", (event) => {
   if (event.source !== window) return;
@@ -51,23 +83,35 @@ window.addEventListener("message", (event) => {
     if (!event.data.success) return;
     const profile = normalizeProfile(event.data.data);
     if (profile.title) {
-      chrome.runtime.sendMessage({ type: "PROFILE_CAPTURED", profile });
+      if (contextOk()) {
+        chrome.runtime.sendMessage({ type: "PROFILE_CAPTURED", profile });
+      }
     }
   }
 
   if (operation === "jobDetails") {
-    if (pendingJobResolve) {
-      clearTimeout(pendingJobTimeout);
-      pendingJobTimeout = null;
-      pendingJobResolve(event.data);
-      pendingJobResolve = null;
+    const requestId = event.data?.requestId;
+    if (requestId && pendingJobRequests.has(requestId)) {
+      const { resolve, timeout } = pendingJobRequests.get(requestId);
+      clearTimeout(timeout);
+      pendingJobRequests.delete(requestId);
+      resolve(event.data);
     }
-    if (event.data.success) {
-      chrome.runtime.sendMessage({ type: "JOBS_CAPTURED", jobs: [event.data.data] });
+    if (event.data.success && contextOk()) {
+      const job = event.data.data;
+      if (job) {
+        const urlMatch = location.href.match(/~([a-f0-9]{16,})/);
+        if (urlMatch) {
+          cachedJobCiphertext = "~" + urlMatch[1];
+          cachedJobDetails = job;
+        }
+      }
+      chrome.runtime.sendMessage({ type: "JOBS_CAPTURED", jobs: [job] });
     }
   }
 
   if (operation === "getCookies") {
+    if (!contextOk()) return;
     chrome.runtime.sendMessage({ type: "GET_UPWORK_COOKIES" }, (resp) => {
       window.postMessage({ type: "__upscore_result", operation: "getCookies", cookies: resp?.cookies || "" }, "*");
     });
@@ -75,20 +119,25 @@ window.addEventListener("message", (event) => {
 });
 
 function extractJobFromPage() {
+  return requestJobDetails("getJobDetailsFromDom", {});
+}
+
+function fetchJobFromApi(jobUrl) {
+  const match = jobUrl.match(/[~/]([a-f0-9]{16,})/i);
+  if (!match) {
+    return Promise.resolve({ success: false, error: "Could not extract job ID from URL" });
+  }
+  const ciphertext = "~" + match[1];
   return new Promise((resolve) => {
-    if (pendingJobResolve) {
-      pendingJobResolve({ success: false, error: "Overridden" });
+    if (!contextOk()) {
+      resolve({ success: false, error: "Extension updated - please refresh this page" });
+      return;
     }
-    clearTimeout(pendingJobTimeout);
-    pendingJobResolve = resolve;
-    injectMainWorld("getJobDetailsFromDom");
-    pendingJobTimeout = setTimeout(() => {
-      if (pendingJobResolve) {
-        pendingJobResolve({ success: false, error: "Timeout" });
-        pendingJobResolve = null;
-        pendingJobTimeout = null;
-      }
-    }, 15000);
+    // Get the visitor_gql_token from background script (can read HttpOnly cookies)
+    chrome.runtime.sendMessage({ type: "GET_VISITOR_GQL_TOKEN" }, (response) => {
+      const token = response?.token || null;
+      requestJobDetails("fetchJobFromApi", { ciphertext, token }).then(resolve);
+    });
   });
 }
 
@@ -196,6 +245,317 @@ function detectJobPage() {
   return window.location.href.match(/\/(?:jobs|job)\/[^/]/) || window.location.href.match(/[~/][a-f0-9]{16,}/i);
 }
 
+function detectApplyPage() {
+  return (
+    window.location.href.match(/\/proposals\/job\/[^/]+\/apply/) ||
+    window.location.href.match(/\/job(?:s)?\/[^/]+\/(?:apply|proposal)\//i) ||
+    !!document.querySelector("#cover-letter, .cover-letter-area, .fe-proposal")
+  );
+}
+
+function findCoverLetterTextarea() {
+  return findApplyTextareas()[0] || null;
+}
+
+/**
+ * Every textarea on the apply page — the cover letter plus any additional
+ * question fields. Each one gets its own "Write with AI" button.
+ */
+function findApplyTextareas() {
+  const found = new Set();
+  const selectors = [
+    "#cover-letter .air3-textarea.inner-textarea",
+    "#cover-letter textarea",
+    ".cover-letter-area .air3-textarea.inner-textarea",
+    'textarea[aria-labelledby="cover_letter_label"]',
+    ".fe-proposal-additional-details textarea",
+    'textarea[name="cover_letter"]',
+    'textarea[id="cover_letter"]',
+    '[data-qa="cover-letter-textarea"]',
+  ];
+  for (const sel of selectors) {
+    document.querySelectorAll(sel).forEach((el) => found.add(el));
+  }
+
+  // Additional question textareas — every visible textarea in the apply form.
+  const applyRoot =
+    document.querySelector(".fe-proposal") ||
+    document.querySelector(".fe-form") ||
+    document.querySelector(".fe-apply-page") ||
+    document.querySelector("form[id*='apply']");
+  const candidates = applyRoot
+    ? [...applyRoot.querySelectorAll("textarea")]
+    : [...document.querySelectorAll("textarea")];
+  for (const el of candidates) {
+    if (found.has(el)) continue;
+    const rect = el.getBoundingClientRect();
+    const style = getComputedStyle(el);
+    const visible = rect.width > 20 && rect.height > 20 && style.visibility !== "hidden" && style.display !== "none";
+    if (visible) found.add(el);
+  }
+  return [...found];
+}
+
+/** Pull the question text shown next to a textarea (for question-specific answers). */
+function getQuestionText(textarea) {
+  try {
+    const labelledBy = textarea.getAttribute("aria-labelledby");
+    if (labelledBy) {
+      const label = document.getElementById(labelledBy);
+      if (label?.textContent?.trim()) return label.textContent.trim().slice(0, 300);
+    }
+
+    const labelSelectors = "label, .air3-form-label, .label, [class*='label'], h2, h3, .title, strong";
+
+    // Upwork questions live in a wrapper element — grab the label inside it.
+    const container = textarea.closest(
+      ".fe-proposal-question, .air3-form-control, .fe-question, .air3-form-question, .question, .air3-form-group, [class*='question'], [class*='Question']"
+    );
+    if (container) {
+      const label = container.querySelector(labelSelectors);
+      if (label?.textContent?.trim()) return label.textContent.trim().slice(0, 300);
+    }
+
+    // Fallback: label in the immediate parent / grandparent
+    const parent = textarea.parentElement;
+    if (parent) {
+      const label = parent.querySelector(labelSelectors);
+      if (label?.textContent?.trim()) return label.textContent.trim().slice(0, 300);
+    }
+    const grandParent = parent?.parentElement;
+    if (grandParent) {
+      const label = grandParent.querySelector(labelSelectors);
+      if (label?.textContent?.trim()) return label.textContent.trim().slice(0, 300);
+    }
+
+    return "";
+  } catch {
+    return "";
+  }
+}
+
+function getExtensionSettings() {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(["upscore_api_url", "upscore_api_token", "upscore_proposal_rules"], (res) => {
+      resolve({
+        apiUrl: (res.upscore_api_url || "https://getupscore.vercel.app").replace(/\/+$/, ""),
+        apiToken: res.upscore_api_token || null,
+        rules: res.upscore_proposal_rules || "",
+      });
+    });
+  });
+}
+
+function setTextareaValue(textarea, value) {
+  textarea.value = value;
+  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  textarea.dispatchEvent(new Event("change", { bubbles: true }));
+  textarea.scrollTop = textarea.scrollHeight;
+}
+
+function setBtnState(btn, label, state) {
+  btn.textContent = label;
+  btn.dataset.state = state || "idle";
+  btn.disabled = state === "loading";
+}
+
+function resetBtnState(btn) {
+  btn.textContent = "Write with AI";
+  delete btn.dataset.state;
+  btn.disabled = false;
+}
+
+async function generateProposalIntoTextarea(btn, textarea, jobDetails, question) {
+  const settings = await getExtensionSettings();
+  if (!settings.apiToken) {
+    setBtnState(btn, "Not connected — open Settings", "error");
+    setTimeout(() => resetBtnState(btn), 3000);
+    return;
+  }
+
+  const payload = { jobDetails, stream: true };
+  const rules = settings.rules || "";
+  if (question) {
+    // Additional-question field: the server answers that specific question
+    // in short form instead of writing a full proposal.
+    payload.answerQuestion = question;
+  } else {
+    if (rules) payload.customInstructions = rules;
+  }
+
+  let response;
+  try {
+    response = await fetch(`${settings.apiUrl}/api/proposals/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${settings.apiToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    setBtnState(btn, "Cannot reach server", "error");
+    setTimeout(() => resetBtnState(btn), 3000);
+    return;
+  }
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: "HTTP " + response.status }));
+    setBtnState(btn, err.error || "Request failed", "error");
+    setTimeout(() => resetBtnState(btn), 3500);
+    return;
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.includes("text/event-stream")) {
+    try {
+      const data = await response.json();
+      if (data.proposal) {
+        setTextareaValue(textarea, textarea.value + data.proposal);
+        setBtnState(btn, data.score ? `Written! Score ${data.score}` : "Written!", "done");
+        setTimeout(() => resetBtnState(btn), 4000);
+      } else {
+        setBtnState(btn, "Empty result", "error");
+        setTimeout(() => resetBtnState(btn), 3000);
+      }
+    } catch {
+      setBtnState(btn, "Unexpected response", "error");
+      setTimeout(() => resetBtnState(btn), 3000);
+    }
+    return;
+  }
+
+  setBtnState(btn, "Writing...", "loading");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let score = null;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const json = line.slice(6).trim();
+        if (!json) continue;
+        try {
+          const parsed = JSON.parse(json);
+          if (typeof parsed.text === "string") {
+            setTextareaValue(textarea, textarea.value + parsed.text);
+          }
+          if (parsed.score !== undefined) score = parsed.score;
+        } catch { /* ignore */ }
+      }
+    }
+  } catch {
+    setBtnState(btn, "Stream interrupted", "error");
+    setTimeout(() => resetBtnState(btn), 3000);
+    return;
+  }
+
+  setBtnState(btn, score !== null ? `Written! Score ${score}` : "Written!", "done");
+  setTimeout(() => resetBtnState(btn), 4000);
+}
+
+let applyBtnCounter = 0;
+
+function injectApplyButton() {
+  if (!detectApplyPage()) return;
+
+  const textareas = findApplyTextareas();
+  if (textareas.length === 0) {
+    setTimeout(injectApplyButton, 2000);
+    return;
+  }
+
+  for (const textarea of textareas) {
+    if (textarea.dataset.upscoreBtnAdded) continue;
+    textarea.dataset.upscoreBtnAdded = "1";
+
+    const btn = document.createElement("button");
+    btn.id = "upscore-apply-btn-" + applyBtnCounter++;
+    btn.type = "button";
+    btn.textContent = "Write with AI";
+    Object.assign(btn.style, {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: "6px",
+      margin: "0 0 8px",
+      padding: "7px 14px",
+      background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+      color: "#ffffff",
+      border: "none",
+      borderRadius: "6px",
+      cursor: "pointer",
+      fontSize: "13px",
+      fontWeight: "600",
+      fontFamily: "inherit",
+      lineHeight: "1.4",
+      boxShadow: "0 1px 3px rgba(37, 99, 235, 0.35)",
+      transition: "opacity 0.15s",
+    });
+
+    const question = getQuestionText(textarea);
+
+    btn.addEventListener("click", async () => {
+      if (!contextOk()) {
+        setBtnState(btn, "Extension updated - refresh this page", "error");
+        setTimeout(() => resetBtnState(btn), 5000);
+        return;
+      }
+      const applyMatch = window.location.href.match(/~([a-f0-9]{16,})/);
+      const jobUrl = applyMatch
+        ? `https://www.upwork.com/jobs/~${applyMatch[1]}`
+        : window.location.href;
+      const ciphertext = applyMatch ? "~" + applyMatch[1] : null;
+
+      let jobDetails = null;
+      // Reuse already-extracted details for this job — don't re-fetch every click.
+      if (ciphertext && cachedJobCiphertext === ciphertext && cachedJobDetails) {
+        jobDetails = cachedJobDetails;
+      }
+
+      if (!jobDetails) {
+        setBtnState(btn, "Fetching job...", "loading");
+        try {
+          const apiResult = await fetchJobFromApi(jobUrl);
+          let failReason = "";
+          if (apiResult?.success && apiResult?.data) {
+            jobDetails = apiResult.data;
+          } else {
+            failReason = "API: " + (apiResult?.error || "no data");
+            const domResult = await extractJobFromPage();
+            if (domResult?.success && domResult?.data) {
+              jobDetails = domResult.data;
+            } else {
+              failReason += " | DOM: " + (domResult?.error || "no data");
+            }
+          }
+          if (!jobDetails) throw new Error("Could not extract job details - " + failReason);
+        } catch (err) {
+          setBtnState(btn, "Error: " + (err.message || "unknown"), "error");
+          setTimeout(() => resetBtnState(btn), 5000);
+          return;
+        }
+        if (ciphertext) {
+          cachedJobCiphertext = ciphertext;
+          cachedJobDetails = jobDetails;
+        }
+      }
+
+      await generateProposalIntoTextarea(btn, textarea, jobDetails, question);
+    });
+
+    textarea.parentNode?.insertBefore(btn, textarea);
+  }
+}
+
 function extractAndSend() {
   if (detectProfilePage()) {
     injectMainWorld("getProfileFromDom");
@@ -256,12 +616,14 @@ if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
       captureCookies();
+      injectApplyButton();
       extractAndSend().catch(() => {});
     }, 2000);
   });
 } else {
   setTimeout(() => {
     captureCookies();
+    injectApplyButton();
     extractAndSend().catch(() => {});
   }, 2000);
 }
@@ -274,6 +636,7 @@ const observer = new MutationObserver(() => {
     sessionStorage.removeItem("__upscore_refreshed");
     setTimeout(() => {
       captureCookies();
+      injectApplyButton();
       extractAndSend().catch(() => {});
     }, 2000);
   }
