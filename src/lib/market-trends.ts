@@ -27,8 +27,6 @@ export interface SkillStat {
   recent7: number;
   prev7: number;
   deltaPct: number | null;
-  medianConnects: number | null;
-  freelancerCount: number | null;
 }
 
 export interface SkillTrendPoint {

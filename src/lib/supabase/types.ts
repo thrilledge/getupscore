@@ -855,33 +855,6 @@ export type Database = {
           },
         ]
       }
-      skill_competition: {
-        Row: {
-          captured_at: string
-          created_at: string
-          freelancer_count: number | null
-          id: string
-          skill: string
-          source: string
-        }
-        Insert: {
-          captured_at?: string
-          created_at?: string
-          freelancer_count?: number | null
-          id?: string
-          skill: string
-          source?: string
-        }
-        Update: {
-          captured_at?: string
-          created_at?: string
-          freelancer_count?: number | null
-          id?: string
-          skill?: string
-          source?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never

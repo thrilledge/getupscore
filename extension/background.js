@@ -59,14 +59,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       handleCapturedProfile(msg.profile).then(sendResponse);
       return true;
 
-    case "TALENT_CAPTURED":
-      handleTalentCaptured(msg.skill, msg.freelancerCount).then(sendResponse);
-      return true;
-
-    case "CHECK_COMPETITION":
-      checkCompetition().then(sendResponse);
-      return true;
-
     case "SYNC_COOKIES_FROM_SERVER":
       handleSyncCookiesFromServer().then(sendResponse);
       return true;
@@ -146,76 +138,6 @@ async function handleCapturedProfile(profile) {
   const result = await postToServer("/api/extension/profile/sync", profile);
   broadcastState();
   return result;
-}
-
-// ─── Skill competition (freelancer counts from talent search) ───
-const talentWaiters = new Map();
-
-async function handleTalentCaptured(skill, freelancerCount) {
-  if (!skill || freelancerCount == null) return { ok: false, error: "Missing data" };
-  const waiter = talentWaiters.get(skill);
-  if (waiter) {
-    clearTimeout(waiter.timer);
-    talentWaiters.delete(skill);
-    waiter.resolve(freelancerCount);
-  }
-  const result = await postToServer("/api/extension/competition/sync", {
-    skills: [{ skill, freelancerCount }],
-  });
-  return result;
-}
-
-function waitForTalentCapture(skill, timeoutMs) {
-  return new Promise((resolve) => {
-    const timer = setTimeout(() => {
-      talentWaiters.delete(skill);
-      resolve(null);
-    }, timeoutMs);
-    talentWaiters.set(skill, { resolve, timer });
-  });
-}
-
-async function checkCompetition() {
-  if (!state.connected || !state.apiToken) return { ok: false, error: "Not connected" };
-  try {
-    const response = await fetch(`${state.apiUrl}/api/extension/competition/pending`, {
-      headers: {
-        Authorization: `Bearer ${state.apiToken}`,
-        "Content-Type": "application/json",
-      },
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      return { ok: false, error: err.error || "HTTP " + response.status };
-    }
-    const data = await response.json();
-    const skills = Array.isArray(data.skills) ? data.skills : [];
-    if (skills.length === 0) {
-      return { ok: true, checked: 0, total: 0, results: [] };
-    }
-
-    const results = [];
-    let checked = 0;
-    for (const skill of skills) {
-      try {
-        const url = `https://www.upwork.com/nx/search/talent/?q=${encodeURIComponent(skill)}&nbs=1`;
-        const tab = await chrome.tabs.create({ url, active: false });
-        const count = await waitForTalentCapture(skill, 30000);
-        try {
-          await chrome.tabs.remove(tab.id);
-        } catch { /* tab may have closed itself */ }
-        results.push({ skill, freelancerCount: count });
-        if (count != null) checked++;
-        await new Promise((r) => setTimeout(r, 1200));
-      } catch (err) {
-        console.warn(`[UpScore] Competition check failed for "${skill}":`, err.message);
-        results.push({ skill, freelancerCount: null });
-      }
-    }
-    return { ok: true, checked, total: skills.length, results };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
 }
 
 async function handleSyncCookiesFromServer() {

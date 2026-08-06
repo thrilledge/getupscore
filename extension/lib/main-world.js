@@ -79,22 +79,6 @@
               }
             }
           }
-
-          // Talent search responses carry the total freelancer count
-          if (requestUrl.includes("search/talent") || /talentSearch|TalentSearch|searchFreelancers/.test(requestBody)) {
-            const talentCount = findFreelancerCountInJson(json, 0);
-            if (talentCount != null) {
-              window.postMessage({
-                type: "__upscore_result",
-                operation: "talentSearchCount",
-                success: true,
-                data: {
-                  skill: getSkillFromTalentUrl().slice(0, 200),
-                  freelancerCount: talentCount,
-                },
-              }, "*");
-            }
-          }
         } catch { /* ignore */ }
       } catch { /* ignore */ }
 
@@ -183,9 +167,6 @@
         break;
       case "fetchJobFromApi":
         fetchJobDetailsFromUpworkApi(event.data?.params?.ciphertext, event.data?.params?.token);
-        break;
-      case "getTalentSearchCount":
-        tryExtractTalentCountWithRetry(0);
         break;
     }
   });
@@ -1217,140 +1198,6 @@
       companySize: companyProfile.size || undefined,
       captured_at: new Date().toISOString(),
     };
-  }
-
-  // ─── TALENT SEARCH (FREELANCER COMPETITION COUNT) ───
-
-  function getSkillFromTalentUrl() {
-    try {
-      return new URL(window.location.href).searchParams.get("q")?.trim() || "";
-    } catch {
-      return "";
-    }
-  }
-
-  function parseFreelancerCount(text) {
-    if (!text) return null;
-    const t = String(text);
-    let m = t.match(/of\s+([\d,]+)\s+Freelancers?/i) || t.match(/^([\d,]+)\s+Freelancers?$/i);
-    if (!m) m = t.match(/([\d,]+)\s+Freelancers?/i);
-    if (!m) return null;
-    const n = parseInt(m[1].replace(/,/g, ""), 10);
-    return Number.isFinite(n) && n > 0 ? n : null;
-  }
-
-  function extractTalentCountFromDom() {
-    try {
-      const candidates = document.querySelectorAll("[data-test], [data-qa], h1, h2, h3, p, span, strong, div");
-      let best = null;
-      for (const el of candidates) {
-        const text = (el.textContent || "").trim();
-        if (!text || text.length > 80) continue;
-        const m = text.match(/^([\d,]+)\s+Freelancers?$/i) || text.match(/of\s+([\d,]+)\s+Freelancers?/i);
-        if (!m) continue;
-        const n = parseInt(m[1].replace(/,/g, ""), 10);
-        if (!Number.isFinite(n) || n <= 0) continue;
-        const childCount = el.querySelectorAll("*").length;
-        if (!best || childCount < best.childCount) best = { n, childCount };
-      }
-      return best ? best.n : null;
-    } catch {
-      return null;
-    }
-  }
-
-  function findFreelancerCountInJson(json, depth) {
-    if (!json || typeof json !== "object" || depth > 25) return null;
-    for (const key of Object.keys(json)) {
-      const val = json[key];
-      if (/freelancer/i.test(key) && /(count|total|num|number)/i.test(key)) {
-        if (typeof val === "number" && val > 0 && val < 1e8) return Math.round(val);
-        if (typeof val === "string") {
-          const n = parseFreelancerCount(val);
-          if (n != null) return n;
-        }
-      }
-      if (/(totalcount|totalresults|numresults|resultcount)/i.test(key)) {
-        if (typeof val === "number" && val > 0 && val < 1e8) return Math.round(val);
-      }
-    }
-    for (const key of Object.keys(json)) {
-      const val = json[key];
-      if (val && typeof val === "object") {
-        const found = findFreelancerCountInJson(val, depth + 1);
-        if (found != null) return found;
-      }
-    }
-    return null;
-  }
-
-  function extractTalentCountFromNuxt() {
-    try {
-      if (window.__NUXT__?.state) {
-        return findFreelancerCountInJson(window.__NUXT__.state, 0);
-      }
-    } catch {}
-    return null;
-  }
-
-  function extractTalentCountFromScripts() {
-    for (const script of document.querySelectorAll("script")) {
-      const text = script.textContent || "";
-      if (!text.includes("Freelancer") && !/totalCount|numResults/.test(text)) continue;
-      const nuxtIdx = text.indexOf("window.__NUXT__");
-      if (nuxtIdx === -1) continue;
-      const slice = text.slice(nuxtIdx);
-      let braceCount = 0;
-      let start = -1;
-      for (let i = 0; i < slice.length; i++) {
-        if (slice[i] === "{") {
-          if (start === -1) start = i;
-          braceCount++;
-        } else if (slice[i] === "}") {
-          braceCount--;
-          if (braceCount === 0 && start !== -1) {
-            try {
-              const parsed = JSON.parse(slice.slice(start, i + 1));
-              const found = findFreelancerCountInJson(parsed, 0);
-              if (found != null) return found;
-            } catch {}
-            break;
-          }
-        }
-      }
-    }
-    return null;
-  }
-
-  function tryExtractTalentCountWithRetry(attempt) {
-    const skill = getSkillFromTalentUrl();
-    const count =
-      extractTalentCountFromDom() ??
-      extractTalentCountFromNuxt() ??
-      extractTalentCountFromScripts();
-
-    if (count != null) {
-      window.postMessage({
-        type: "__upscore_result",
-        operation: "talentSearchCount",
-        success: true,
-        data: { skill: skill.slice(0, 200), freelancerCount: count },
-      }, "*");
-      return;
-    }
-
-    if (attempt < 15) {
-      setTimeout(() => tryExtractTalentCountWithRetry(attempt + 1), 1000);
-      return;
-    }
-
-    window.postMessage({
-      type: "__upscore_result",
-      operation: "talentSearchCount",
-      success: false,
-      data: { skill: skill.slice(0, 200), freelancerCount: null },
-      error: "Could not extract freelancer count",
-    }, "*");
   }
 
   // ─── FETCH JOB DETAILS VIA UPWORK GRAPHQL API ───
