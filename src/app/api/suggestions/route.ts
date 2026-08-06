@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 15;
 
 export async function GET(request: Request) {
-  const supabase = createSupabaseAdminClient();
+  // Suggestions power filter forms — require a signed-in user so the
+  // "keywords" source can be scoped to that user's own filters instead of
+  // exposing every user's saved search terms.
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user?.id) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const admin = createSupabaseAdminClient();
 
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type") || "skills";
@@ -19,7 +31,7 @@ export async function GET(request: Request) {
   try {
     if (type === "skills") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any)
+      const { data, error } = await (admin as any)
         .from("jobs")
         .select("skills")
         .not("skills", "is", null)
@@ -38,14 +50,16 @@ export async function GET(request: Request) {
     }
 
     if (type === "keywords") {
-      const { data: filters, error } = await supabase
+      // Only the authenticated user's own filter keywords — never everyone's.
+      const { data: filters, error } = await admin
         .from("job_filters")
         .select("keywords")
+        .eq("user_id", user.id)
         .not("keywords", "is", null);
 
       if (error) throw error;
 
-      const { data: titleWords, error: titleError } = await supabase
+      const { data: titleWords, error: titleError } = await admin
         .from("jobs")
         .select("title")
         .ilike("title", `%${q}%`)
@@ -70,7 +84,7 @@ export async function GET(request: Request) {
     }
 
     if (type === "countries") {
-      const { data, error } = await supabase
+      const { data, error } = await admin
         .from("jobs")
         .select("client_country")
         .not("client_country", "is", null)

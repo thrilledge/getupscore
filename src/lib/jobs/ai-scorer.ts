@@ -15,6 +15,7 @@
  */
 
 import { env } from "@/lib/env";
+import { parseLlmJson } from "@/lib/llm";
 import type { Json } from "@/lib/supabase/database-types";
 
 // ─── Types ───
@@ -189,7 +190,7 @@ export async function analyzeJob(
       return getFallbackAnalysis(input);
     }
 
-    const result = JSON.parse(content) as JobAnalysisResult;
+    const result = parseLlmJson<JobAnalysisResult>(content);
 
     // Validate and clamp scores
     return {

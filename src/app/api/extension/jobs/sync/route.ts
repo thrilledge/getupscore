@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       let hourlyMin = null;
       let hourlyMax = null;
       if (job.budget && typeof job.budget === "string") {
-        const hourlyMatch = job.budget.match(/\$(\d+)\s*[-–]\s*\$(\d+)/);
+        const hourlyMatch = job.budget.match(/\$(\d+)\s*[-–]\s*\$?(\d+)\s*\/hr/i);
         if (hourlyMatch) {
           hourlyMin = parseFloat(hourlyMatch[1]);
           hourlyMax = parseFloat(hourlyMatch[2]);
@@ -192,6 +192,7 @@ export async function POST(request: Request) {
               budget: job.budget ? String(job.budget) : undefined,
               country: String(job.country || job.client_country || ""),
               skills,
+              proposalsCount: parseInt(job.proposals_count, 10) || undefined,
               matchScore: a.match_score,
               opportunityScore: a.opportunity_score,
               winProbability: a.win_probability,

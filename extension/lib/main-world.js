@@ -2,6 +2,75 @@
   if (window.__upscoreBridgeLoaded) return;
   window.__upscoreBridgeLoaded = true;
 
+  // ─── Job result dedupe ───
+  // The fetch interceptor, XHR interceptor and DOM extraction all fire
+  // `jobDetails` for the same job view → 2-4 duplicate POSTs per job. Each
+  // POST re-triggers analysis + notification server-side, so collapse
+  // identical payloads (same fingerprint) within a 30s window.
+  let lastJobFingerprint = null;
+  let lastJobTime = 0;
+
+  function fingerprintJob(job) {
+    return [
+      job.ciphertext || job.upwork_job_id || "",
+      job.title || "",
+      String(job.description || "").slice(0, 200),
+      String(job.budget || ""),
+      Array.isArray(job.skills) ? job.skills.join(",") : "",
+      String(job.proposalsCount ?? job.proposals_count ?? ""),
+      job.clientCountry || job.client_country || "",
+      job.postedAt || job.posted_at || "",
+    ].join("|");
+  }
+
+  function postJobDetails(job) {
+    if (!job || typeof job !== "object") return;
+    const fp = fingerprintJob(job);
+    const now = Date.now();
+    if (fp && fp === lastJobFingerprint && now - lastJobTime < 30_000) {
+      return; // duplicate of the job we already sent — skip re-analyze/notify
+    }
+    lastJobFingerprint = fp;
+    lastJobTime = now;
+    window.postMessage({
+      type: "__upscore_result",
+      operation: "jobDetails",
+      success: true,
+      data: job,
+    }, "*");
+  }
+
+  // The server-side sync route reads snake_case columns. The GraphQL
+  // normalizers emit camelCase, so mirror every camelCase field to its
+  // snake_case key (without overwriting explicit values).
+  function addSnakeCaseAliases(job) {
+    if (!job || typeof job !== "object") return job;
+    const map = {
+      client_country: ["clientCountry"],
+      client_rating: ["clientRating"],
+      client_total_spend: ["clientTotalSpend"],
+      client_hire_rate: ["clientHireRate"],
+      proposals_count: ["proposalsCount"],
+      posted_at: ["postedAt"],
+      payment_verified: ["paymentVerified"],
+      company_industry: ["companyIndustry", "client_industry"],
+      company_size: ["companySize"],
+    };
+    for (const [snake, sources] of Object.entries(map)) {
+      if (job[snake] !== undefined && job[snake] !== null) continue;
+      for (const src of sources) {
+        if (job[src] !== undefined && job[src] !== null) {
+          job[snake] = job[src];
+          break;
+        }
+      }
+    }
+    if (job.budget && job.budget_type === undefined) {
+      job.budget_type = /\/hr/i.test(String(job.budget)) ? "hourly" : "fixed";
+    }
+    return job;
+  }
+
   // ─── Intercept fetch to capture Upwork's own GraphQL responses ───
   const originalFetch = window.fetch.bind(window);
   window.fetch = function (...args) {
@@ -27,12 +96,7 @@
               const job = normalizeJobData(json.data.jobPubDetails);
               if (job && job.title) {
                 job._source = "api-interceptor";
-                window.postMessage({
-                  type: "__upscore_result",
-                  operation: "jobDetails",
-                  success: true,
-                  data: job,
-                }, "*");
+                postJobDetails(job);
               }
             }
           }
@@ -69,12 +133,7 @@
             if (foundJob) {
               const job = normalizeJobData(foundJob);
               if (job) {
-                window.postMessage({
-                  type: "__upscore_result",
-                  operation: "jobDetails",
-                  success: true,
-                  data: job,
-                }, "*");
+                postJobDetails(job);
                 return response;
               }
             }
@@ -133,12 +192,7 @@
             if (foundJob) {
               const job = normalizeJobData(foundJob);
               if (job) {
-                window.postMessage({
-                  type: "__upscore_result",
-                  operation: "jobDetails",
-                  success: true,
-                  data: job,
-                }, "*");
+                postJobDetails(job);
               }
             }
           }
@@ -497,12 +551,7 @@
     // Nuxt/Vue portfolio objects override it.
     if (job?._source === "apply-dom") {
       window.__upscoreLastJob = job;
-      window.postMessage({
-        type: "__upscore_result",
-        operation: "jobDetails",
-        success: true,
-        data: job,
-      }, "*");
+      postJobDetails(job);
       pendingPartialJob = null;
       return;
     }
@@ -514,12 +563,7 @@
           if (!job.client_recent_history) job.client_recent_history = pendingPartialJob.client_recent_history;
         }
         window.__upscoreLastJob = job;
-        window.postMessage({
-          type: "__upscore_result",
-          operation: "jobDetails",
-          success: true,
-          data: job,
-        }, "*");
+        postJobDetails(job);
         pendingPartialJob = null;
         return;
       }
@@ -539,12 +583,8 @@
         Object.assign(pendingPartialJob, jobData);
         jobData.client_recent_history = pendingPartialJob.client_recent_history;
       }
-      window.postMessage({
-        type: "__upscore_result",
-        operation: "jobDetails",
-        success: true,
-        data: jobData,
-      }, "*");
+      window.__upscoreLastJob = jobData;
+      postJobDetails(jobData);
       pendingPartialJob = null;
       return;
     }
@@ -555,12 +595,8 @@
     // Send whatever partial result we have as a last resort
     const finalJob = pendingPartialJob || job;
     if (finalJob && finalJob.title) {
-      window.postMessage({
-        type: "__upscore_result",
-        operation: "jobDetails",
-        success: true,
-        data: finalJob,
-      }, "*");
+      window.__upscoreLastJob = finalJob;
+      postJobDetails(finalJob);
     } else {
       window.postMessage({
         type: "__upscore_result",
@@ -1181,7 +1217,7 @@
 
     const info = opening.info || {};
 
-    return {
+    return addSnakeCaseAliases({
       title: info.title || opening.title || job.title || "",
       description: (opening.description || job.description || "").slice(0, 10000),
       url: window.location.href,
@@ -1197,7 +1233,7 @@
       companyIndustry: companyProfile.industry || undefined,
       companySize: companyProfile.size || undefined,
       captured_at: new Date().toISOString(),
-    };
+    });
   }
 
   // ─── FETCH JOB DETAILS VIA UPWORK GRAPHQL API ───
@@ -1356,12 +1392,7 @@
         ciphertext,
       };
 
-      window.postMessage({
-        type: "__upscore_result",
-        operation: "jobDetails",
-        success: true,
-        data: job,
-      }, "*");
+      postJobDetails(addSnakeCaseAliases(job));
     } catch (err) {
       window.postMessage({
         type: "__upscore_result",

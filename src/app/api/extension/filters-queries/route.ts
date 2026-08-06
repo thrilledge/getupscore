@@ -20,12 +20,13 @@ export async function GET(request: Request) {
     if (filtersError) {
       return NextResponse.json({ error: "Failed to load filters" }, { status: 500 });
     }
-    let queries: any[] = [];
-    const { data: queriesData, error: queriesError } = await supabase
-      .from("search_queries")
-      .select("*");
-    if (!queriesError) {
-      queries = queriesData || [];
+    // Aggregate only the queries that belong to this user's own filters —
+    // never every user's queries.
+    const queries: any[] = [];
+    for (const f of filters || []) {
+      for (const sq of (f as any).search_queries || []) {
+        queries.push(sq);
+      }
     }
     return NextResponse.json({ filters: filters || [], queries });
   } catch (err) {

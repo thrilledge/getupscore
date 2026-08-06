@@ -1,5 +1,5 @@
 import { buildProposalSystemPrompt } from "./system-prompt";
-import { chatCompletionWithRetry } from "@/lib/llm";
+import { chatCompletionWithRetry, parseLlmJson } from "@/lib/llm";
 
 export interface ProposalInput {
   jobTitle: string;
@@ -63,7 +63,7 @@ export async function generateProposal(
     const content = data.choices?.[0]?.message?.content;
     if (!content) return generateFallbackProposal(input);
 
-    const parsed = JSON.parse(content);
+    const parsed = parseLlmJson(content);
     const proposalText = parsed.proposal || content;
 
     return {

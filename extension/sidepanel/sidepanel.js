@@ -198,29 +198,29 @@ function renderJobCard(job) {
   const duration = job.duration_label || "";
 
   return `
-    <div class="job-card" data-job-id="${job.id}">
+    <div class="job-card" data-job-id="${escapeAttr(job.id)}">
       <div class="job-card-header">
         <div class="job-title">${escapeHtml(job.title || "Untitled")}</div>
-        ${matchScore ? `<div class="score-badge ${scoreClass}">${matchScore}</div>` : ""}
+        ${matchScore ? `<div class="score-badge ${scoreClass}">${escapeHtml(String(matchScore))}</div>` : ""}
       </div>
       <div class="job-card-meta">
         ${budget ? `<span>${escapeHtml(budget)}</span>` : ""}
-        ${job.job_type ? `<span>${job.job_type}</span>` : ""}
+        ${job.job_type ? `<span>${escapeHtml(String(job.job_type))}</span>` : ""}
         ${duration ? `<span>${escapeHtml(duration)}</span>` : ""}
-        ${job.posted_at ? `<span>${timeAgo(job.posted_at)}</span>` : ""}
+        ${job.posted_at ? `<span>${escapeHtml(timeAgo(job.posted_at))}</span>` : ""}
       </div>
       ${clientLocation ? `<div class="job-card-client-row">
         <span class="client-label">Client:</span> ${escapeHtml(clientLocation)}
-        ${clientScore ? ` · <strong>${clientScore}</strong>★` : ""}
+        ${clientScore ? ` · <strong>${escapeHtml(String(clientScore))}</strong>★` : ""}
         ${clientSpend ? ` · $${Number(clientSpend).toLocaleString()} spent` : ""}
         ${paymentVerified ? ' · <span class="verified-badge">✓ Verified</span>' : ""}
       </div>` : ""}
       <div class="job-card-stats">
-        ${clientHires ? `<span>${clientHires} hires</span>` : ""}
-        ${clientAssignments ? `<span>${clientAssignments} jobs</span>` : ""}
-        ${clientHours ? `<span>${Math.round(clientHours)}h logged</span>` : ""}
-        ${clientReviews ? `<span>${clientReviews} reviews</span>` : ""}
-        ${activeAssignments ? `<span>${activeAssignments} active</span>` : ""}
+        ${clientHires ? `<span>${escapeHtml(String(clientHires))} hires</span>` : ""}
+        ${clientAssignments ? `<span>${escapeHtml(String(clientAssignments))} jobs</span>` : ""}
+        ${clientHours ? `<span>${escapeHtml(String(Math.round(clientHours)))}h logged</span>` : ""}
+        ${clientReviews ? `<span>${escapeHtml(String(clientReviews))} reviews</span>` : ""}
+        ${activeAssignments ? `<span>${escapeHtml(String(activeAssignments))} active</span>` : ""}
       </div>
       ${analysis.recommendation ? `<div class="job-card-rec">${escapeHtml(analysis.recommendation)}</div>` : ""}
       <div class="job-card-actions">

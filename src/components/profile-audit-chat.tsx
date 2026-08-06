@@ -13,6 +13,7 @@ import {
   Star,
   Target,
   Wrench,
+  BarChart3,
 } from "lucide-react";
 
 type Message = {
@@ -46,6 +47,12 @@ const QUICK_ACTIONS: { label: string; icon: typeof Sparkles; prompt: string }[] 
     icon: Target,
     prompt:
       "What niche or job types is my profile best positioned for? Where should I focus?",
+  },
+  {
+    label: "Market fit",
+    icon: BarChart3,
+    prompt:
+      "Using the current market trends data, how well does my profile fit today's demand? Rank my skills against in-demand skills and tell me what to add or drop, and whether my rate is aligned with the market.",
   },
 ];
 
@@ -204,8 +211,8 @@ export function ProfileAuditChat({ className }: { className?: string }) {
               </div>
               <p className="text-sm font-medium">Audit your profile with AI</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-[260px] mx-auto leading-relaxed">
-                Get honest feedback on your bio, skills, and portfolio — and what
-                to improve to win more jobs.
+                Get honest feedback on your bio, skills, and portfolio — backed
+                by live market trends data for demand, budgets and pricing.
               </p>
             </div>
           )}

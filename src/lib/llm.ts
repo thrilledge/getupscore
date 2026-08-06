@@ -41,6 +41,17 @@ export function getProviderChain(opts?: LLMChainOptions): LLMProvider[] {
 }
 
 /**
+ * Parse an LLM response body that should contain a JSON object. Strips the
+ * markdown code fences (```json ... ```) that some providers (e.g. deepshi)
+ * wrap around the payload before attempting to parse.
+ */
+export function parseLlmJson<T = any>(content: string): T {
+  const fenced = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const raw = (fenced ? fenced[1] : content).trim();
+  return JSON.parse(raw) as T;
+}
+
+/**
  * POST to each provider in the chain until one succeeds. Retries 429s with
  * exponential backoff (honoring Retry-After). Returns the first ok response
  * with its provider; throws when every provider has failed.
@@ -64,6 +75,7 @@ export async function chatCompletionWithRetry(
           method: "POST",
           headers,
           body: JSON.stringify(bodyFactory(provider)),
+          signal: AbortSignal.timeout(45_000),
         });
       } catch (err) {
         lastError = err instanceof Error ? err.message : "network error";

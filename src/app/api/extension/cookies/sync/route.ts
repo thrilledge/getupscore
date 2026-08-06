@@ -80,23 +80,33 @@ export async function GET(request: Request) {
   if (!isExtensionAuth && expectedSecret && token === expectedSecret) {
     isCron = true;
     const { searchParams } = new URL(request.url);
-    userId = searchParams.get("user_id") || null;
+    userId = searchParams.get("user_id");
   }
 
   if (!isExtensionAuth && !isCron) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Cron callers must always target a specific user — never return the
+  // most recently updated session (that would leak another user's Upwork
+  // cookies, which are equivalent to their account password).
+  if (isCron && !userId) {
+    return NextResponse.json(
+      { error: "user_id is required for cron access" },
+      { status: 400 }
+    );
+  }
+
   const supabase = await createSupabaseAdminClient();
 
-  let query = supabase
+  const query = supabase
     .from("upwork_sessions")
     .select("user_id, cookie_string, domain, captured_at, updated_at")
     .order("updated_at", { ascending: false })
     .limit(1);
 
   if (userId) {
-    query = query.eq("user_id", userId);
+    query.eq("user_id", userId);
   }
 
   const { data, error } = await query.maybeSingle();

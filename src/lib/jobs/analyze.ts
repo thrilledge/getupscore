@@ -1,11 +1,17 @@
-import { chatCompletionWithRetry } from "@/lib/llm";
+import { chatCompletionWithRetry, parseLlmJson } from "@/lib/llm";
+
+function clampScore(value: unknown): number | null {
+  const n = typeof value === "number" ? value : parseFloat(String(value ?? ""));
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
 
 export async function analyzeJob(
   supabase: any,
   job: any,
   dbJobId: string,
   userId: string
-) {
+): Promise<Record<string, any>> {
   const groqApiKey = process.env.GROQ_API_KEY;
   const groqModel = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
@@ -18,21 +24,27 @@ export async function analyzeJob(
     analysisData = serverSideKeywordFallback(job);
   }
 
+  // Clamp scores to the 0-100 INTEGER column bound and drop anything the
+  // DB would reject — an out-of-range LLM value must not silently kill the upsert.
+  const match_score = clampScore(analysisData.match_score);
+  const opportunity_score = clampScore(analysisData.opportunity_score);
+  const win_probability = clampScore(analysisData.win_probability);
+
   const { error: analysisError } = await supabase.from("job_analyses").upsert(
     {
       job_id: dbJobId,
       user_id: userId,
-      match_score: analysisData.match_score,
-      opportunity_score: analysisData.opportunity_score,
-      win_probability: analysisData.win_probability,
+      match_score,
+      opportunity_score,
+      win_probability,
       skills_match: analysisData.skills_match || {},
       budget_fit: analysisData.budget_fit || {},
       client_analysis: analysisData.client_analysis || {},
       competition_analysis: analysisData.competition_analysis || {},
       recommendation: analysisData.recommendation || "consider",
       reasoning: analysisData.reasoning || "",
-      proposal_tips: analysisData.proposal_tips || [],
-      red_flags: analysisData.red_flags || [],
+      proposal_tips: Array.isArray(analysisData.proposal_tips) ? analysisData.proposal_tips.slice(0, 10) : [],
+      red_flags: Array.isArray(analysisData.red_flags) ? analysisData.red_flags.slice(0, 10) : [],
       model_used: process.env.UPSCORE_LLM_MODEL || (groqApiKey ? groqModel : "deepshi-r1"),
     },
     { onConflict: "job_id, user_id", ignoreDuplicates: false }
@@ -42,7 +54,12 @@ export async function analyzeJob(
     console.warn("[Analyze] Insert error:", analysisError.message);
   }
 
-  return analysisData;
+  return {
+    ...analysisData,
+    match_score,
+    opportunity_score,
+    win_probability,
+  };
 }
 
 async function serverSideGroqAnalysis(
@@ -146,18 +163,16 @@ Return JSON only with these exact fields:
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new Error("Empty LLM response");
 
-  try {
-    return JSON.parse(content);
-  } catch {
-    throw new Error("Invalid JSON from LLM");
-  }
+  return parseLlmJson(content);
 }
 
 function serverSideKeywordFallback(job: any): Record<string, any> {
   return {
-    match_score: 50,
-    opportunity_score: 60,
-    win_probability: 55,
+    // Deliberately below the notification thresholds (>=50 gate, 70-75 rule
+    // mins) so a failed LLM call never fires a notification.
+    match_score: 40,
+    opportunity_score: 40,
+    win_probability: 40,
     skills_match: {
       matched_skills: [],
       missing_skills: [],

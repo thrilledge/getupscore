@@ -58,3 +58,16 @@ export async function sendTelegram(
     return { ok: false, error: err.message };
   }
 }
+
+/**
+ * Escape HTML entities so a job title/description can't break parse_mode=HTML
+ * (e.g. "C++ Developer", "Next.js <3" or user-supplied text containing a
+ * stray `<`/`&` — Telegram silently drops the message otherwise).
+ */
+export function escapeTelegramHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}

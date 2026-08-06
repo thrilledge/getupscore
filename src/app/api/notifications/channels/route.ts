@@ -2,9 +2,15 @@ import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/sup
 import { env } from "@/lib/env";
 import crypto from "crypto";
 
-function createSignedState(data: Record<string, unknown>): string {
+/** Returns the Slack state-signing secret, or null when Slack is not configured. */
+function getSlackStateSecret(): string | null {
+  return env.SLACK_SIGNING_SECRET || env.SLACK_CLIENT_SECRET || null;
+}
+
+function createSignedState(data: Record<string, unknown>): string | null {
+  const secret = getSlackStateSecret();
+  if (!secret) return null;
   const payload = Buffer.from(JSON.stringify(data)).toString("base64url");
-  const secret = env.SLACK_SIGNING_SECRET || env.SLACK_CLIENT_SECRET || "fallback";
   const signature = crypto.createHmac("sha256", secret).update(payload).digest("base64url");
   return `${payload}.${signature}`;
 }
@@ -13,7 +19,8 @@ export function verifySignedState(state: string): Record<string, unknown> | null
   try {
     const [payload, signature] = state.split(".");
     if (!payload || !signature) return null;
-    const secret = env.SLACK_SIGNING_SECRET || env.SLACK_CLIENT_SECRET || "fallback";
+    const secret = getSlackStateSecret();
+    if (!secret) return null;
     const expected = crypto.createHmac("sha256", secret).update(payload).digest("base64url");
     if (signature !== expected) return null;
     return JSON.parse(Buffer.from(payload, "base64url").toString());
@@ -39,12 +46,20 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     if (channel_type === "slack") {
-      const redirectUri = `${env.SITE_URL}/api/notifications/channels/callback`;
       const state = createSignedState({
         user_id: user.id,
         channel_type,
         name: name || "Slack Notifications",
       });
+
+      if (!state) {
+        return Response.json(
+          { error: "Slack is not configured on the server" },
+          { status: 500 }
+        );
+      }
+
+      const redirectUri = `${env.SITE_URL}/api/notifications/channels/callback`;
 
       const scope = "incoming-webhook,chat:write,channels:read,users:read";
       const slackAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${env.SLACK_CLIENT_ID}&scope=${scope}&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`;

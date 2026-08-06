@@ -310,6 +310,9 @@ export function toJobInsert(job: FetchedJob) {
     hourly_max: job.hourly_max,
     client_country: job.client_country,
     proposals_count: job.proposals_count,
-    posted_at: job.posted_at ? new Date(job.posted_at).toISOString() : null,
+    posted_at:
+      job.posted_at && !Number.isNaN(Date.parse(job.posted_at))
+        ? new Date(job.posted_at).toISOString()
+        : null,
   };
 }

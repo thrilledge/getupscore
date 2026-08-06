@@ -12,7 +12,7 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import type { NotificationRule } from "@/lib/supabase/database-types";
 import { sendEmail } from "./senders/email";
-import { sendTelegram } from "./senders/telegram";
+import { sendTelegram, escapeTelegramHtml } from "./senders/telegram";
 import { sendSlack } from "./senders/slack";
 import { sendDiscord } from "./senders/discord";
 import { sendWebhook } from "./senders/webhook";
@@ -32,6 +32,8 @@ export interface JobAlertContext {
   winProbability?: number;
   recommendation?: string;
   proposalTips?: string[];
+  /** How many proposals the job already has (competition gate). */
+  proposalsCount?: number;
   /** IDs of the user's active job_filters that matched this job. */
   matchedFilterIds?: string[];
 }
@@ -117,6 +119,12 @@ export async function notifyUser(
 
     if (matchScore < matchMin || oppScore < oppMin) continue;
 
+    // Max proposals (competition) gate — enforced only when both the rule and
+    // the job carry a value.
+    if (rule.max_proposals != null && alert.proposalsCount != null) {
+      if (alert.proposalsCount > rule.max_proposals) continue;
+    }
+
     // 3. Build message payload
     const payload = buildJobAlertPayload(alert, channel);
 
@@ -155,8 +163,10 @@ async function sendToChannel(
       });
 
     case "telegram":
+      // parse_mode=HTML is used upstream, so user-supplied job text must be
+      // entity-escaped or Telegram drops the whole message on a stray `<`/`&`.
       return sendTelegram(config as any, {
-        text: payload.text,
+        text: escapeTelegramHtml(payload.text),
       });
 
     case "slack":

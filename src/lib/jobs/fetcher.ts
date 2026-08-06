@@ -421,7 +421,11 @@ async function fetchUpalerts(query?: string): Promise<FetchResult> {
 
     const jobs: FetcherJob[] = rawJobs.map((j) => {
       const { budget, hourlyMin, hourlyMax } = parseBudgetString(j.budget);
-      const postedAt = j.postedAt ? new Date(j.postedAt).toISOString() : null;
+      // Guard against malformed timestamps — one bad value must not kill the batch.
+      const postedAt =
+        j.postedAt && !Number.isNaN(Date.parse(j.postedAt))
+          ? new Date(j.postedAt).toISOString()
+          : null;
 
       return {
         upwork_job_id: generateUpalertsJobId(j.title, postedAt || j.postedAt),
@@ -710,8 +714,8 @@ function parseBudgetString(budget: string | null): {
 } {
   if (!budget) return { budget: null, hourlyMin: null, hourlyMax: null };
 
-  // Hourly range: "$15-30/hr" or "$4-8/hr"
-  const hourlyMatch = budget.match(/\$(\d+(?:,\d+)?)\s*[-–]\s*\$(\d+(?:,\d+)?)/);
+  // Hourly range: "$15-30/hr", "$15-$30/hr" or "$4-8/hr"
+  const hourlyMatch = budget.match(/\$(\d+(?:,\d+)?)\s*[-–]\s*\$?(\d+(?:,\d+)?)\s*\/hr/i);
   if (hourlyMatch) {
     return {
       budget: null,
@@ -721,13 +725,14 @@ function parseBudgetString(budget: string | null): {
   }
 
   // Single hourly: "$5/hr"
-  const singleHourlyMatch = budget.match(/\$(\d+(?:,\d+)?)\/hr/);
+  const singleHourlyMatch = budget.match(/\$(\d+(?:,\d+)?)\/hr/i);
   if (singleHourlyMatch) {
     const rate = parseFloat(singleHourlyMatch[1].replace(/,/g, ""));
     return { budget: null, hourlyMin: rate, hourlyMax: rate };
   }
 
-  // Fixed price: "$500 Fixed" or "$2,000 Fixed"
+  // Fixed price: "$500 Fixed" or "$2,000 Fixed" (only reachable when the
+  // string carries no "/hr" suffix, so hourly jobs never land here)
   const fixedMatch = budget.match(/\$(\d+(?:,\d+)?)/);
   if (fixedMatch) {
     return {

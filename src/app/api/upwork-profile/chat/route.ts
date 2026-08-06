@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { streamChat, type ChatMessage } from "@/lib/chat-stream";
+import { formatMarketContext } from "@/lib/market-context";
+import type { MarketTrends } from "@/lib/market-trends";
 
 export const dynamic = "force-dynamic";
 
@@ -27,19 +29,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Last message must be from the user" }, { status: 400 });
   }
 
-  const { data: profile } = await supabase
-    .from("upwork_profiles")
-    .select(
-      "title, bio, skills, portfolio, hourly_rate, total_earnings, total_jobs_done, client_rating, upwork_url"
-    )
-    .eq("user_id", user.id)
-    .single();
+  const [profileResult, trendsResult] = await Promise.all([
+    supabase
+      .from("upwork_profiles")
+      .select(
+        "title, bio, skills, portfolio, hourly_rate, total_earnings, total_jobs_done, client_rating, upwork_url"
+      )
+      .eq("user_id", user.id)
+      .single(),
+    createSupabaseAdminClient().rpc("get_market_trends", { p_days: 30 }),
+  ]);
 
-  const systemPrompt = buildProfileAuditSystemPrompt(profile);
+  const profile = profileResult.data;
+  const marketContext =
+    trendsResult.data && !trendsResult.error
+      ? formatMarketContext(trendsResult.data as unknown as MarketTrends, 30)
+      : null;
+
+  const systemPrompt = buildProfileAuditSystemPrompt(profile, marketContext);
   return streamChat(systemPrompt, messages, undefined, 1500);
 }
 
-function buildProfileAuditSystemPrompt(profile: Record<string, unknown> | null): string {
+function buildProfileAuditSystemPrompt(
+  profile: Record<string, unknown> | null,
+  marketContext: string | null
+): string {
   const portfolio = profile?.portfolio as { title: string; description?: string }[] | null;
   const portfolioPreview = Array.isArray(portfolio)
     ? portfolio
@@ -65,8 +79,11 @@ function buildProfileAuditSystemPrompt(profile: Record<string, unknown> | null):
 === FREELANCER PROFILE (the logged-in user) ===
 ${profile ? fields.join("\n") : "No profile has been synced yet. Be honest about that and explain how to sync it (install the extension and visit the Upwork profile page)."}
 
+${marketContext ? marketContext : "=== MARKET TRENDS CONTEXT ===\n(Not available right now. Note this briefly if the user asks about demand, pricing, or niche, and give general advice instead.)"}
+
 === BEHAVIOR ===
 - Answer questions about this profile: its strengths, weaknesses, how to improve the bio, headline, skills, and portfolio, and what niche or job types it is best positioned for.
+- Use the MARKET TRENDS CONTEXT as your source of truth for demand, pricing and client signals: rank the user's skills against the top in-demand skills, suggest whether their hourly rate is aligned with median budgets/hourly rates, and recommend skills to add or drop based on demand. If a signal is absent from the context, do not invent numbers.
 - Be specific and reference the actual profile data above. If a field is missing, say so and suggest what the user should add — never invent earnings, ratings, or past work.
 - Give actionable, concrete advice a freelancer can apply today (rewrite examples welcome, clearly marked as suggestions).
 - Keep answers concise (under ~350 words) unless the user asks for something longer.
