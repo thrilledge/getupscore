@@ -206,7 +206,7 @@ function normalizeProfile(data) {
       ? portfolioItems.slice(0, 20).map((item) => ({
             title: item.title || "",
             description: (item.description || "").slice(0, 1000),
-            url: item.url || "",
+            url: item.url || item.projectUrl || item.project_url || item.link || item.website || item.externalUrl || item.previewLink || "",
             images: Array.isArray(item.images)
               ? item.images.map((img) => (typeof img === "string" ? img : img?.url || img?.src || "")).filter(Boolean)
               : [],

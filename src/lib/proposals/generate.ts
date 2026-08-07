@@ -291,8 +291,9 @@ Question: ${input.answerQuestion}
 FORMAT:
 - Plain text only — no markdown, no bullet points, no headers, no labels
 - Concise: 40 to 100 words
-- Direct and specific. Use the freelancer's real skills/experience from the profile above only where they genuinely answer the question.
-- If the question asks for something the profile cannot support (e.g., specific portfolio URLs), state honestly and briefly what you can provide instead. Never invent past work.`);
+- Direct and specific. Use the freelancer's real skills/experience from the FREELANCER PROFILE and PORTFOLIO sections above only where they genuinely answer the question.
+- If the question asks for past work, examples, or links (e.g., "share 2-3 websites you built"), cite the most relevant items listed in the PORTFOLIO section above and include each item's Link URL verbatim when one is present. Never invent a link, website, or project that is not in the profile.
+- If nothing in the profile fits the question, say so honestly in one short line, then point to the closest related capability from the profile. Never fabricate experience.`);
   } else {
     sections.push(`
 === WRITING DIRECTIVE ===

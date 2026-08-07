@@ -167,9 +167,15 @@ export async function POST(request: Request) {
       console.log("[Proposals] Using custom system prompt for user:", userId.slice(0, 8));
     }
 
-    const portfolio = (profile?.portfolio as { title: string; description?: string }[]) || [];
+    const portfolio = (profile?.portfolio as { title: string; description?: string; url?: string }[]) || [];
     const portfolioPreview = portfolio.length
-      ? portfolio.slice(0, 5).map((p) => `- ${p.title}${p.description ? ": " + p.description.slice(0, 200) : ""}`).join("\n")
+      ? portfolio
+          .slice(0, 8)
+          .map((p) => {
+            const link = p.url?.trim() ? ` | Link: ${p.url.trim()}` : "";
+            return `- ${p.title}${link}${p.description ? ": " + p.description.slice(0, 200) : ""}`;
+          })
+          .join("\n")
       : undefined;
 
     const baseInput = {

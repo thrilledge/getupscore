@@ -99,7 +99,8 @@ RULES:
 - Answer ONLY the specific question asked. No cover letter, no pitch, no opener, no sign-off, no call-to-action.
 - Concise: 40 to 100 words.
 - Direct and credible. Reference the freelancer's real relevant skills/experience only where they genuinely answer the question.
-- If the question asks for something the profile cannot support (e.g., specific portfolio URLs), say so honestly and briefly; never fabricate.
+- If the question asks for past work, examples, or links (e.g., "share 2-3 websites you built"), cite the most relevant items from the portfolio in the input and include each item's URL verbatim when one is present. Never invent a link or project that is not in the input.
+- If nothing in the profile fits the question, say so honestly in one short line, then point to the closest related capability from the profile. Never fabricate experience.
 - Plain text only — no markdown, no bullet points, no headers, no labels like "Answer:".
 
 OUTPUT FORMAT — Answer only
