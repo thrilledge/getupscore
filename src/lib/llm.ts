@@ -13,18 +13,11 @@ export interface LLMChainOptions {
 }
 
 /**
- * Provider chain: DeepSeek proxy first (no rate limit pain, no key needed),
- * then Groq as fallback when a key is configured.
+ * Provider chain: Groq first when a key is configured (fast first token),
+ * then DeepSeek proxy as fallback (no rate limit pain, no key needed).
  */
 export function getProviderChain(opts?: LLMChainOptions): LLMProvider[] {
   const chain: LLMProvider[] = [];
-
-  chain.push({
-    name: "deepshi",
-    baseUrl: process.env.UPSCORE_LLM_BASE_URL || "https://deepshi-proxy.vercel.app/v1",
-    apiKey: process.env.UPSCORE_LLM_API_KEY || "",
-    model: process.env.UPSCORE_LLM_MODEL || "deepshi-r1",
-  });
 
   const groqKey = opts?.explicitApiKey || process.env.GROQ_API_KEY;
   if (groqKey) {
@@ -36,6 +29,13 @@ export function getProviderChain(opts?: LLMChainOptions): LLMProvider[] {
       groqStyle: true,
     });
   }
+
+  chain.push({
+    name: "deepshi",
+    baseUrl: process.env.UPSCORE_LLM_BASE_URL || "https://deepshi-proxy.vercel.app/v1",
+    apiKey: process.env.UPSCORE_LLM_API_KEY || "",
+    model: process.env.UPSCORE_LLM_MODEL || "deepshi-r1",
+  });
 
   return chain;
 }

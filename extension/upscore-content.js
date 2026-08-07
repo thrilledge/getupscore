@@ -267,14 +267,17 @@ function findApplyTextareas() {
     "#cover-letter .air3-textarea.inner-textarea",
     "#cover-letter textarea",
     ".cover-letter-area .air3-textarea.inner-textarea",
+    ".cover-letter-area textarea",
     'textarea[aria-labelledby="cover_letter_label"]',
-    ".fe-proposal-additional-details textarea",
     'textarea[name="cover_letter"]',
     'textarea[id="cover_letter"]',
     '[data-qa="cover-letter-textarea"]',
   ];
   for (const sel of selectors) {
-    document.querySelectorAll(sel).forEach((el) => found.add(el));
+    document.querySelectorAll(sel).forEach((el) => {
+      el.dataset.upscoreRole = "cover-letter";
+      found.add(el);
+    });
   }
 
   // Additional question textareas — every visible textarea in the apply form.
@@ -299,34 +302,46 @@ function findApplyTextareas() {
 /** Pull the question text shown next to a textarea (for question-specific answers). */
 function getQuestionText(textarea) {
   try {
+    // 1. aria-labelledby → element id
     const labelledBy = textarea.getAttribute("aria-labelledby");
     if (labelledBy) {
       const label = document.getElementById(labelledBy);
       if (label?.textContent?.trim()) return label.textContent.trim().slice(0, 300);
     }
 
-    const labelSelectors = "label, .air3-form-label, .label, [class*='label'], h2, h3, .title, strong";
-
-    // Upwork questions live in a wrapper element — grab the label inside it.
-    const container = textarea.closest(
-      ".fe-proposal-question, .air3-form-control, .fe-question, .air3-form-question, .question, .air3-form-group, [class*='question'], [class*='Question']"
-    );
-    if (container) {
-      const label = container.querySelector(labelSelectors);
-      if (label?.textContent?.trim()) return label.textContent.trim().slice(0, 300);
+    // 2. Associated <label for="..."> elements
+    if (textarea.labels?.length) {
+      for (const l of textarea.labels) {
+        if (l?.textContent?.trim()) return l.textContent.trim().slice(0, 300);
+      }
     }
 
-    // Fallback: label in the immediate parent / grandparent
-    const parent = textarea.parentElement;
-    if (parent) {
-      const label = parent.querySelector(labelSelectors);
+    // 3. aria-label / placeholder / name attributes
+    const attr = textarea.getAttribute("aria-label") || textarea.getAttribute("placeholder") || textarea.getAttribute("name");
+    if (attr && attr.trim() && attr.trim().length > 5 && !/^upscore/.test(attr)) {
+      return attr.trim().slice(0, 300);
+    }
+
+    // 4. Walk up ancestors looking for a label/heading near the field
+    const labelSelectors = "label, .air3-form-label, .label, [class*='label'], h2, h3, .title, strong, legend";
+    let el = textarea;
+    for (let depth = 0; el && depth < 6; depth++) {
+      el = el.parentElement;
+      if (!el) continue;
+      const label = el.querySelector(labelSelectors);
       if (label?.textContent?.trim()) return label.textContent.trim().slice(0, 300);
     }
-    const grandParent = parent?.parentElement;
-    if (grandParent) {
-      const label = grandParent.querySelector(labelSelectors);
-      if (label?.textContent?.trim()) return label.textContent.trim().slice(0, 300);
+
+    // 5. Last resort: nearest label element anywhere before the textarea in
+    //    document order (covers grid/flex layouts where the label is a sibling
+    //    container, not an ancestor).
+    let nearest = null;
+    for (const l of document.querySelectorAll(labelSelectors)) {
+      if (l.textContent?.trim() && (l.compareDocumentPosition(textarea) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+        nearest = l;
+      }
     }
+    if (nearest?.textContent?.trim()) return nearest.textContent.trim().slice(0, 300);
 
     return "";
   } catch {
@@ -360,12 +375,13 @@ function setBtnState(btn, label, state) {
 }
 
 function resetBtnState(btn) {
-  btn.textContent = "Write with AI";
+  btn.textContent = btn.dataset.idleLabel || "Write with AI";
   delete btn.dataset.state;
   btn.disabled = false;
 }
 
 async function generateProposalIntoTextarea(btn, textarea, jobDetails, question) {
+  setBtnState(btn, question ? "Answering..." : "Writing...", "loading");
   const settings = await getExtensionSettings();
   if (!settings.apiToken) {
     setBtnState(btn, "Not connected — open Settings", "error");
@@ -411,7 +427,7 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
     try {
       const data = await response.json();
       if (data.proposal) {
-        setTextareaValue(textarea, textarea.value + data.proposal);
+        setTextareaValue(textarea, textarea.value + data.proposal.replace(/[*_`]/g, ""));
         setBtnState(btn, data.score ? `Written! Score ${data.score}` : "Written!", "done");
         setTimeout(() => resetBtnState(btn), 4000);
       } else {
@@ -425,12 +441,14 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
     return;
   }
 
-  setBtnState(btn, "Writing...", "loading");
+  setBtnState(btn, question ? "Answering..." : "Writing...", "loading");
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
   let score = null;
+
+  const stripMarkdown = (s) => String(s).replace(/[*_`]/g, "");
 
   try {
     while (true) {
@@ -447,7 +465,7 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
         try {
           const parsed = JSON.parse(json);
           if (typeof parsed.text === "string") {
-            setTextareaValue(textarea, textarea.value + parsed.text);
+            setTextareaValue(textarea, textarea.value + stripMarkdown(parsed.text));
           }
           if (parsed.score !== undefined) score = parsed.score;
         } catch { /* ignore */ }
@@ -501,7 +519,25 @@ function injectApplyButton() {
       transition: "opacity 0.15s",
     });
 
-    const question = getQuestionText(textarea);
+    const detectedQuestion = getQuestionText(textarea);
+    const isCoverLetter =
+      textarea.dataset.upscoreRole === "cover-letter" && /cover letter/i.test(detectedQuestion);
+    const question = isCoverLetter ? "" : detectedQuestion;
+    if (!isCoverLetter) {
+      console.log(
+        "[UpScore] textarea", textarea.id || textarea.name || "(no id)",
+        "| label found:", question ? "YES" : "NO",
+        "| question:", question ? JSON.stringify(question) : "(none)"
+      );
+    }
+    const idleLabel = question ? "Write answer" : "Write with AI";
+    btn.dataset.idleLabel = idleLabel;
+    btn.textContent = idleLabel;
+    btn.title = question
+      ? "Write answer for: " + question
+      : isCoverLetter
+        ? "Write cover letter proposal"
+        : "No label detected - question field? Right-click > Inspect";
 
     btn.addEventListener("click", async () => {
       if (!contextOk()) {
@@ -522,7 +558,7 @@ function injectApplyButton() {
       }
 
       if (!jobDetails) {
-        setBtnState(btn, "Fetching job...", "loading");
+        setBtnState(btn, question ? "Answering..." : "Fetching job...", "loading");
         try {
           const apiResult = await fetchJobFromApi(jobUrl);
           let failReason = "";

@@ -237,12 +237,20 @@ export async function POST(request: Request) {
       }
 
       // ── STEP 2: Analyze the job (even if save failed — we have rich data) ──
+      // Streaming path: fire-and-forget so the proposal starts immediately.
+      // The analysis is still saved for the side panel / history.
       let analysisData: Record<string, any> | null = null;
       if (dbJobId) {
-        try {
-          analysisData = await analyzeJob(supabase, jobRecord, dbJobId, userId);
-        } catch (analyzeErr: any) {
-          console.warn("[Proposals] Analysis error:", analyzeErr.message);
+        if (stream) {
+          analyzeJob(supabase, jobRecord, dbJobId, userId).catch((analyzeErr: any) => {
+            console.warn("[Proposals] Background analysis error:", analyzeErr.message);
+          });
+        } else {
+          try {
+            analysisData = await analyzeJob(supabase, jobRecord, dbJobId, userId);
+          } catch (analyzeErr: any) {
+            console.warn("[Proposals] Analysis error:", analyzeErr.message);
+          }
         }
       }
 

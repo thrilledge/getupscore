@@ -116,10 +116,15 @@ export async function streamProposal(
         let buffer = "";
         let proposalText = "";
 
+        // Upwork proposals must be plain text — strip markdown emphasis leaks
+        // (bold/italic/backticks) that models add despite the prompt rules.
+        const stripMarkdown = (s: string): string => s.replace(/[*_`]/g, "");
+
         const emit = (chunk: string) => {
           if (!chunk) return;
-          proposalText += chunk;
-          send("proposal", { text: chunk });
+          const clean = stripMarkdown(chunk);
+          proposalText += clean;
+          send("proposal", { text: clean });
         };
 
         // Groq (reasoning_format: parsed) puts reasoning in delta.reasoning and
@@ -510,6 +515,8 @@ function cleanProposal(raw: string): string {
     })
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
+    // Strip markdown emphasis (bold/italic/backticks) — plain text output only.
+    .replace(/[*_`]/g, "")
     .trim();
 
   return text;
