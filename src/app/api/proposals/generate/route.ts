@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { generateProposal, streamProposal } from "@/lib/proposals/generate";
 import { analyzeJob } from "@/lib/jobs/analyze";
+import { resolveUserIdFromBearer } from "@/lib/supabase/verify-bearer";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -113,14 +114,7 @@ export async function POST(request: Request) {
     let userId: string | null = null;
 
     if (authHeader.startsWith("Bearer ")) {
-      const token = authHeader.slice(7).trim();
-      const supabase = await createSupabaseAdminClient();
-      const { data } = await supabase
-        .from("api_tokens")
-        .select("user_id")
-        .eq("token", token)
-        .single();
-      if (data) userId = data.user_id;
+      userId = await resolveUserIdFromBearer(authHeader.slice(7).trim());
     } else {
       const supabase = await createSupabaseAdminClient();
       const { data: { user } } = await supabase.auth.getUser();

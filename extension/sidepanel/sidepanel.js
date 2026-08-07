@@ -21,7 +21,6 @@ const VIEW_TITLES = {
 
 let currentView = "dashboard";
 let savedJobsCache = [];
-let token = null;
 let apiUrl = null;
 
 function showView(name) {
@@ -42,15 +41,31 @@ const statusDot = $("statusDot");
 
 // ─── Settings refs ───
 const apiUrlInput = $("apiUrl");
-const apiTokenInput = $("apiToken");
-const btnToggleToken = $("btnToggleToken");
+const btnOpenOptions = $("btnOpenOptions");
 const btnTestConnection = $("btnTestConnection");
 const btnSave = $("btnSave");
 const connectionStatus = $("connectionStatus");
 
+// ─── Auth helpers (token lives in the background service worker) ───
+function getAuthToken() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: "GET_AUTH_TOKEN" }, (res) => {
+      resolve(res?.ok ? res.token : null);
+    });
+  });
+}
+
+function getAuthState() {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: "GET_AUTH_STATE" }, resolve);
+  });
+}
+
 // ─── API helper ───
 async function apiCall(path, options = {}) {
-  if (!token || !apiUrl) throw new Error("Not connected");
+  if (!apiUrl) throw new Error("Not connected");
+  const token = await getAuthToken();
+  if (!token) throw new Error("Not signed in — open extension options");
   const response = await fetch(`${apiUrl}${path}`, {
     ...options,
     headers: {
@@ -69,12 +84,16 @@ async function apiCall(path, options = {}) {
 // ─── Init ───
 document.addEventListener("DOMContentLoaded", async () => {
   // Load settings from storage
-  const result = await chrome.storage.sync.get(["upscore_api_url", "upscore_api_token"]);
+  const result = await chrome.storage.sync.get(["upscore_api_url"]);
   apiUrl = result.upscore_api_url || "https://getupscore.vercel.app";
-  token = result.upscore_api_token || null;
   apiUrlInput.value = apiUrl;
-  apiTokenInput.value = token || "";
-  setConnectionStatus(token ? "connected" : "disconnected", token ? "Configured" : "Not connected");
+
+  const auth = await getAuthState();
+  if (auth?.authenticated) {
+    setConnectionStatus("connected", auth.user?.email ? `Signed in as ${auth.user.email}` : "Signed in");
+  } else {
+    setConnectionStatus("disconnected", "Not signed in");
+  }
 
   // View switching
   $("btnSettings")?.addEventListener("click", () => showView("settings"));
@@ -89,8 +108,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   $("btnViewSavedJobs")?.addEventListener("click", () => { showView("savedjobs"); loadSavedJobs(); });
 
   // Settings
-  btnToggleToken.addEventListener("click", () => {
-    apiTokenInput.type = apiTokenInput.type === "password" ? "text" : "password";
+  btnOpenOptions.addEventListener("click", () => {
+    chrome.runtime.openOptionsPage();
   });
   btnTestConnection.addEventListener("click", testConnection);
   btnSave.addEventListener("click", saveSettings);
@@ -133,7 +152,8 @@ function updateConnectionStatus(connected, message) {
 // ═══  ANALYTICS  ═══
 // ══════════════════════════════════════════════════════════
 async function loadAnalytics() {
-  if (!token) return;
+  const auth = await getAuthState();
+  if (!auth?.authenticated) return;
   try {
     const data = await apiCall("/api/extension/analytics");
     $("statSavedJobs").textContent = data.savedJobs ?? 0;
@@ -149,7 +169,8 @@ async function loadAnalytics() {
 // ═══  SAVED JOBS  ═══
 // ══════════════════════════════════════════════════════════
 async function loadSavedJobs() {
-  if (!token) return;
+  const auth = await getAuthState();
+  if (!auth?.authenticated) return;
   const list = $("jobsList");
   const loading = $("jobsLoading");
   const empty = $("jobsEmpty");
@@ -240,10 +261,15 @@ function setConnectionStatus(state, message) {
 }
 
 async function testConnection() {
-  const t = apiTokenInput.value.trim();
   const u = apiUrlInput.value.trim() || "https://getupscore.vercel.app";
+  const auth = await getAuthState();
+  if (!auth?.authenticated) {
+    setConnectionStatus("disconnected", "Not signed in — open extension options.");
+    return;
+  }
+  const t = await getAuthToken();
   if (!t) {
-    setConnectionStatus("disconnected", "Please enter an API token.");
+    setConnectionStatus("disconnected", "Not signed in — open extension options.");
     return;
   }
   setConnectionStatus("idle", "Testing connection...");
@@ -265,14 +291,12 @@ async function testConnection() {
 }
 
 async function saveSettings() {
-  const t = apiTokenInput.value.trim();
   const u = apiUrlInput.value.trim() || "https://getupscore.vercel.app";
-  await chrome.storage.sync.set({ upscore_api_token: t, upscore_api_url: u });
+  await chrome.storage.sync.set({ upscore_api_url: u });
   chrome.runtime.sendMessage({
     type: "SETTINGS_UPDATED",
-    settings: { api_token: t, api_url: u },
+    settings: { api_url: u },
   });
-  token = t;
   apiUrl = u;
   setTimeout(() => testConnection(), 500);
   const originalText = btnSave.textContent;

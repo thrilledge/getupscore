@@ -1,8 +1,10 @@
 /**
  * Extension API authentication utility.
- * Validates Bearer token from Authorization header and returns the user ID.
+ * Validates the Authorization Bearer header and returns the user ID.
+ * Accepts both legacy per-device API tokens and Supabase session JWTs
+ * (extension sign-in with the dashboard account).
  */
-import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { resolveUserIdFromBearer } from "@/lib/supabase/verify-bearer";
 
 export type AuthResult =
   | { user_id: string; error?: undefined; status?: undefined }
@@ -10,7 +12,6 @@ export type AuthResult =
 
 /**
  * Validate the Bearer token from the request's Authorization header.
- * Looks up the token in the api_tokens table using the admin client.
  */
 export async function authenticateRequest(
   request: Request
@@ -21,31 +22,13 @@ export async function authenticateRequest(
   }
 
   const token = authHeader.slice(7).trim();
-  if (!token || token.length < 16) {
-    return { error: "Invalid token format", status: 401 };
-  }
 
   try {
-    const supabase = await createSupabaseAdminClient();
-
-    const { data, error } = await supabase
-      .from("api_tokens")
-      .select("user_id")
-      .eq("token", token)
-      .single();
-
-    if (error || !data || !data.user_id) {
+    const userId = await resolveUserIdFromBearer(token);
+    if (!userId) {
       return { error: "Invalid or expired token", status: 401 };
     }
-
-    // Update last_used_at asynchronously (don't block the request)
-    supabase
-      .from("api_tokens")
-      .update({ last_used_at: new Date().toISOString() })
-      .eq("token", token)
-      .then();
-
-    return { user_id: data.user_id };
+    return { user_id: userId };
   } catch (err) {
     console.error("[Extension Auth] Error:", err);
     return { error: "Authentication service unavailable", status: 500 };

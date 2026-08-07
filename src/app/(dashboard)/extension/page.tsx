@@ -51,8 +51,8 @@ export default function ExtensionPage() {
             },
             {
               step: 4,
-              title: "Configure API token",
-              desc: "Generate a token in Settings, then paste it into the extension options.",
+              title: "Sign in",
+              desc: "Open the extension options and sign in with this same dashboard account.",
             },
           ].map(({ step, title, desc }) => (
             <div key={step} className="flex items-start gap-4">
@@ -72,7 +72,7 @@ export default function ExtensionPage() {
         <Link href="/settings">
           <Button size="lg">
             <Key className="size-4 mr-2" />
-            Generate API Token
+            API Token (optional)
           </Button>
         </Link>
         <Link href="/upwork-profile">

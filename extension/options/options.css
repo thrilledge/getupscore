@@ -138,6 +138,9 @@ body {
 .btn-success { background: var(--accent-green); color: white; }
 .btn-success:hover { background: #38a85c; }
 
+.btn-secondary { background: var(--surface-hover); color: var(--text); }
+.btn-secondary:hover { background: var(--border); }
+
 .connection-status {
   display: flex;
   align-items: center;

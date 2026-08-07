@@ -349,14 +349,29 @@ function getQuestionText(textarea) {
   }
 }
 
-function getExtensionSettings() {
+function getAuthTokenFromBackground() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(["upscore_api_url", "upscore_api_token", "upscore_proposal_rules"], (res) => {
-      resolve({
-        apiUrl: (res.upscore_api_url || "https://getupscore.vercel.app").replace(/\/+$/, ""),
-        apiToken: res.upscore_api_token || null,
-        rules: res.upscore_proposal_rules || "",
+    try {
+      chrome.runtime.sendMessage({ type: "GET_AUTH_TOKEN" }, (res) => {
+        if (chrome.runtime.lastError) return resolve(null);
+        resolve(res?.ok ? res.token : null);
       });
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
+function getExtensionSettings() {
+  return new Promise(async (resolve) => {
+    const res = await new Promise((r) =>
+      chrome.storage.sync.get(["upscore_api_url", "upscore_proposal_rules"], r)
+    );
+    const apiToken = await getAuthTokenFromBackground();
+    resolve({
+      apiUrl: (res.upscore_api_url || "https://getupscore.vercel.app").replace(/\/+$/, ""),
+      apiToken,
+      rules: res.upscore_proposal_rules || "",
     });
   });
 }
@@ -384,7 +399,7 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
   setBtnState(btn, question ? "Answering..." : "Writing...", "loading");
   const settings = await getExtensionSettings();
   if (!settings.apiToken) {
-    setBtnState(btn, "Not connected — open Settings", "error");
+    setBtnState(btn, "Not signed in — open extension options", "error");
     setTimeout(() => resetBtnState(btn), 3000);
     return;
   }

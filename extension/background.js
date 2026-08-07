@@ -1,3 +1,10 @@
+import {
+  login as authLogin,
+  logout as authLogout,
+  getAccessToken,
+  getAuthState,
+} from "./lib/auth-manager.js";
+
 const DEFAULT_API_URL = "https://getupscore.vercel.app";
 
 let state = {
@@ -6,6 +13,7 @@ let state = {
   apiToken: null,
   apiUrl: DEFAULT_API_URL,
   upworkCookies: false,
+  user: null,
 };
 
 chrome.runtime.onInstalled.addListener(async () => {
@@ -69,6 +77,44 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       });
       return true;
 
+    // ─── Account / auth ───
+    case "GET_AUTH_STATE":
+      getAuthState().then((auth) => {
+        sendResponse(auth);
+      });
+      return true;
+
+    case "GET_AUTH_TOKEN":
+      resolveAuthToken().then((token) => {
+        if (token) sendResponse({ ok: true, token });
+        else sendResponse({ ok: false, error: "Not signed in" });
+      });
+      return true;
+
+    case "AUTH_LOGIN":
+      authLogin(state.apiUrl, msg.email, msg.password)
+        .then((session) => {
+          state.user = session.user || null;
+          state.connected = true;
+          state.statusMessage = state.user?.email
+            ? `Signed in as ${state.user.email}`
+            : "Signed in";
+          broadcastState();
+          sendResponse({ ok: true, user: state.user });
+        })
+        .catch((err) => sendResponse({ ok: false, error: err.message }));
+      return true;
+
+    case "AUTH_LOGOUT":
+      authLogout().then(() => {
+        state.user = null;
+        state.connected = !!state.apiToken;
+        state.statusMessage = state.connected ? "Connected (legacy token)" : "Not signed in";
+        broadcastState();
+        sendResponse({ ok: true });
+      });
+      return true;
+
     default:
       sendResponse({ error: "Unknown message type" });
   }
@@ -79,8 +125,15 @@ async function loadSettings() {
   const result = await chrome.storage.sync.get(["upscore_api_token", "upscore_api_url"]);
   state.apiToken = result.upscore_api_token || null;
   state.apiUrl = result.upscore_api_url || DEFAULT_API_URL;
-  state.connected = !!state.apiToken;
-  state.statusMessage = state.connected ? "Connected" : "Not configured";
+
+  const auth = await getAuthState();
+  state.user = auth.user || null;
+  state.connected = auth.authenticated || !!state.apiToken;
+  state.statusMessage = auth.authenticated
+    ? (auth.user?.email ? `Signed in as ${auth.user.email}` : "Signed in")
+    : state.apiToken
+      ? "Connected (legacy token)"
+      : "Not signed in";
 }
 
 function handleSettingsUpdate(settings) {
@@ -92,19 +145,36 @@ function handleSettingsUpdate(settings) {
     state.apiUrl = settings.api_url;
     chrome.storage.sync.set({ upscore_api_url: settings.api_url });
   }
-  state.connected = !!state.apiToken;
+  state.connected = state.connected || !!state.apiToken;
   state.statusMessage = state.connected ? "Connected" : "Not configured";
   broadcastState();
 }
 
+/**
+ * Prefer the signed-in session token; fall back to a legacy API token so
+ * existing installs keep working until they sign in.
+ */
+async function resolveAuthToken() {
+  const sessionToken = await getAccessToken(state.apiUrl);
+  if (sessionToken) return sessionToken;
+  if (state.apiToken) return state.apiToken;
+  return null;
+}
+
 async function postToServer(endpoint, body) {
-  if (!state.connected || !state.apiToken) return;
+  const token = await resolveAuthToken();
+  if (!token) {
+    state.connected = false;
+    state.statusMessage = "Not signed in — open extension options";
+    broadcastState();
+    return { ok: false, error: "Not signed in" };
+  }
   try {
     const response = await fetch(`${state.apiUrl}${endpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${state.apiToken}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(body),
     });
@@ -141,12 +211,13 @@ async function handleCapturedProfile(profile) {
 }
 
 async function handleSyncCookiesFromServer() {
-  if (!state.connected || !state.apiToken) return { ok: false, error: "Not connected" };
+  const token = await resolveAuthToken();
+  if (!token) return { ok: false, error: "Not signed in" };
   try {
     const response = await fetch(`${state.apiUrl}/api/extension/cookies/sync`, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${state.apiToken}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
     });

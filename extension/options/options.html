@@ -29,29 +29,39 @@
     </div>
 
     <section class="card">
-      <h2>API Connection</h2>
-      <p class="desc">Connect this extension to your UpScore account. The server handles all job scraping and analysis.</p>
+      <h2>Account</h2>
+      <p class="desc">Sign in with your UpScore dashboard account. The extension uses the same account for syncing and AI proposals.</p>
 
-      <div class="field">
-        <label for="apiUrl">API URL</label>
-        <input type="url" id="apiUrl" placeholder="http://localhost:3000" />
+      <div id="authSignedOut">
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <input type="password" id="password" autocomplete="current-password" />
+        </div>
+        <button id="btnLogin" class="btn btn-primary">Sign in</button>
       </div>
 
-      <div class="field">
-        <label for="apiToken">API Token</label>
-        <div class="token-input">
-          <input type="password" id="apiToken" placeholder="Paste your API token from UpScore Settings" />
-          <button id="btnToggleToken" class="btn-icon" title="Show/Hide">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-            </svg>
-          </button>
-        </div>
+      <div id="authSignedIn" style="display:none">
+        <p class="desc">Signed in as <strong id="authEmail"></strong></p>
+        <button id="btnLogout" class="btn btn-secondary">Sign out</button>
       </div>
 
       <div class="connection-status" id="connectionStatus">
         <span class="dot disconnected"></span>
-        <span>Not connected</span>
+        <span>Not signed in</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Server</h2>
+      <p class="desc">Where the extension sends sync and proposal requests.</p>
+
+      <div class="field">
+        <label for="apiUrl">API URL</label>
+        <input type="url" id="apiUrl" placeholder="https://getupscore.vercel.app" />
       </div>
 
       <button id="btnTestConnection" class="btn btn-primary">Test Connection</button>
