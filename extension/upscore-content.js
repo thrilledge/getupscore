@@ -84,7 +84,24 @@ window.addEventListener("message", (event) => {
     const profile = normalizeProfile(event.data.data);
     if (profile.title) {
       if (contextOk()) {
-        chrome.runtime.sendMessage({ type: "PROFILE_CAPTURED", profile });
+        showProfileToast("Syncing Upwork profile...", "info", 0);
+        chrome.runtime.sendMessage({ type: "PROFILE_CAPTURED", profile }, (res) => {
+          if (!res?.ok && res?.error === "Not signed in") {
+            showProfileToast("Sign in to sync your profile", "error");
+            return;
+          }
+          if (!res?.ok) {
+            showProfileToast("Profile sync failed", "error");
+            return;
+          }
+          if (res.changed && res.changed.length > 0) {
+            showProfileToast("Profile synced — updates saved", "success");
+          } else if (res.created) {
+            showProfileToast("Profile synced", "success");
+          } else {
+            showProfileToast("Profile already up to date", "success");
+          }
+        });
       }
     }
   }
@@ -139,6 +156,55 @@ function fetchJobFromApi(jobUrl) {
       requestJobDetails("fetchJobFromApi", { ciphertext, token }).then(resolve);
     });
   });
+}
+
+let profileToastTimer = null;
+function showProfileToast(message, type = "info", duration = 3500) {
+  let toast = document.getElementById("upscore-profile-toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "upscore-profile-toast";
+    Object.assign(toast.style, {
+      position: "fixed",
+      top: "16px",
+      left: "50%",
+      transform: "translateX(-50%)",
+      zIndex: "2147483647",
+      padding: "10px 16px",
+      borderRadius: "10px",
+      fontFamily: "system-ui, -apple-system, sans-serif",
+      fontSize: "13px",
+      fontWeight: "600",
+      color: "#fff",
+      boxShadow: "0 4px 16px rgba(15, 23, 42, 0.25)",
+      display: "flex",
+      alignItems: "center",
+      gap: "8px",
+      transition: "opacity 0.2s",
+    });
+    document.documentElement.appendChild(toast);
+  }
+  const colors = {
+    info: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+    success: "linear-gradient(135deg, #16a34a 0%, #22c55e 100%)",
+    error: "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)",
+  };
+  toast.style.background = colors[type] || colors.info;
+  toast.textContent = message;
+  toast.style.display = "flex";
+  toast.style.opacity = "1";
+  if (profileToastTimer) clearTimeout(profileToastTimer);
+  if (duration > 0) {
+    profileToastTimer = setTimeout(() => {
+      toast.style.opacity = "0";
+      setTimeout(() => { toast.style.display = "none"; }, 250);
+    }, duration);
+  }
+}
+
+function syncProfileToast() {
+  if (!detectProfilePage()) return;
+  showProfileToast("Syncing Upwork profile...", "info", 0);
 }
 
 function normalizeProfile(data) {
@@ -232,13 +298,13 @@ function normalizeProfile(data) {
       captured_at: new Date().toISOString(),
     };
   } catch (err) {
-    console.error("[UpScore] normalizeProfile error:", err);
+    console.error("[Get UpScore] normalizeProfile error:", err);
     return {};
   }
 }
 
 function detectProfilePage() {
-  return window.location.href.match(/\/freelancers\/~/);
+  return window.location.href.match(/\/freelancers\/(~|me\/?)/);
 }
 
 function detectJobPage() {
@@ -399,8 +465,9 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
   setBtnState(btn, question ? "Answering..." : "Writing...", "loading");
   const settings = await getExtensionSettings();
   if (!settings.apiToken) {
-    setBtnState(btn, "Not signed in — open extension options", "error");
-    setTimeout(() => resetBtnState(btn), 3000);
+    resetBtnState(btn);
+    pendingGenerate = { btn, textarea, jobDetails, question };
+    showSignInPopup();
     return;
   }
 
@@ -498,6 +565,146 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
 
 let applyBtnCounter = 0;
 
+let pendingGenerate = null;
+
+function dashboardUrl(path) {
+  return new Promise((resolve) => {
+    try {
+      chrome.storage.sync.get(["upscore_api_url"], (res) => {
+        const base = (res.upscore_api_url || "https://getupscore.vercel.app").replace(/\/+$/, "");
+        resolve(base + path);
+      });
+    } catch {
+      resolve("https://getupscore.vercel.app" + path);
+    }
+  });
+}
+
+function showSignInPopup() {
+  if (document.getElementById("upscore-signin-popup")) return;
+
+  const popup = document.createElement("div");
+  popup.id = "upscore-signin-popup";
+  Object.assign(popup.style, {
+    position: "fixed",
+    inset: "0",
+    zIndex: "2147483647",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(15, 23, 42, 0.55)",
+  });
+
+  const card = document.createElement("div");
+  Object.assign(card.style, {
+    background: "#ffffff",
+    color: "#0f172a",
+    width: "360px",
+    maxWidth: "calc(100vw - 32px)",
+    borderRadius: "16px",
+    padding: "28px",
+    boxShadow: "0 20px 50px rgba(0,0,0,0.3)",
+    textAlign: "center",
+    boxSizing: "border-box",
+    position: "relative",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+  });
+
+  const close = document.createElement("button");
+  close.type = "button";
+  close.textContent = "×";
+  close.title = "Close";
+  Object.assign(close.style, {
+    position: "absolute",
+    top: "8px",
+    right: "10px",
+    border: "none",
+    background: "none",
+    fontSize: "24px",
+    cursor: "pointer",
+    color: "#64748b",
+    lineHeight: "1",
+    padding: "4px",
+  });
+  close.addEventListener("click", () => {
+    pendingGenerate = null;
+    removeSignInPopup();
+  });
+
+  const logo = document.createElement("div");
+  logo.textContent = "U";
+  Object.assign(logo.style, {
+    width: "48px",
+    height: "48px",
+    borderRadius: "14px",
+    margin: "0 auto 12px",
+    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "22px",
+    fontWeight: "700",
+  });
+
+  const title = document.createElement("h2");
+  title.textContent = "Sign In";
+  Object.assign(title.style, { margin: "0 0 8px", fontSize: "20px", fontWeight: "700" });
+
+  const welcome = document.createElement("p");
+  welcome.textContent = "Sign in with your Get UpScore dashboard account to continue.";
+  Object.assign(welcome.style, { margin: "0 0 16px", color: "#475569", fontSize: "14px", lineHeight: "1.5" });
+
+  const signInBtn = document.createElement("button");
+  signInBtn.type = "button";
+  signInBtn.id = "upscore-login-btn";
+  signInBtn.textContent = "Sign in on Dashboard";
+  Object.assign(signInBtn.style, {
+    display: "block",
+    width: "100%",
+    padding: "12px",
+    borderRadius: "10px",
+    border: "none",
+    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+    color: "#fff",
+    fontSize: "15px",
+    fontWeight: "600",
+    cursor: "pointer",
+  });
+  signInBtn.addEventListener("click", () => {
+    dashboardUrl("/login").then((u) => window.open(u, "_blank", "noopener,noreferrer"));
+  });
+
+  const hint = document.createElement("p");
+  hint.textContent = "After signing in, this window closes automatically and your proposal is generated.";
+  Object.assign(hint.style, { margin: "10px 0 0", color: "#64748b", fontSize: "12px", lineHeight: "1.5" });
+
+  const register = document.createElement("p");
+  Object.assign(register.style, { margin: "14px 0 0", color: "#475569", fontSize: "13px" });
+  register.innerHTML = 'Don&apos;t have an account? <a href="#" style="color:#2563eb;font-weight:600;text-decoration:none">Register</a>';
+  register.querySelector("a").addEventListener("click", (e) => {
+    e.preventDefault();
+    dashboardUrl("/signup?from=extension").then((u) => window.open(u, "_blank", "noopener,noreferrer"));
+  });
+
+  const terms = document.createElement("p");
+  Object.assign(terms.style, { margin: "10px 0 0", color: "#94a3b8", fontSize: "11px", lineHeight: "1.5" });
+  terms.innerHTML = 'By signing in you agree to our <a href="#" style="color:#94a3b8;text-decoration:underline">Terms &amp; Conditions</a>.';
+  terms.querySelector("a").addEventListener("click", (e) => {
+    e.preventDefault();
+    window.open("https://getupscore.vercel.app", "_blank", "noopener,noreferrer");
+  });
+
+  card.append(close, logo, title, welcome, signInBtn, hint, register, terms);
+  popup.appendChild(card);
+  document.documentElement.appendChild(popup);
+}
+
+function removeSignInPopup() {
+  const el = document.getElementById("upscore-signin-popup");
+  if (el) el.remove();
+}
+
 function injectApplyButton() {
   if (!detectApplyPage()) return;
 
@@ -540,7 +747,7 @@ function injectApplyButton() {
     const question = isCoverLetter ? "" : detectedQuestion;
     if (!isCoverLetter) {
       console.log(
-        "[UpScore] textarea", textarea.id || textarea.name || "(no id)",
+        "[Get UpScore] textarea", textarea.id || textarea.name || "(no id)",
         "| label found:", question ? "YES" : "NO",
         "| question:", question ? JSON.stringify(question) : "(none)"
       );
@@ -632,12 +839,40 @@ function extractAndSend() {
   return Promise.resolve();
 }
 
+function onAuthAvailable() {
+  removeSignInPopup();
+  const pending = pendingGenerate;
+  pendingGenerate = null;
+  if (pending) {
+    generateProposalIntoTextarea(pending.btn, pending.textarea, pending.jobDetails, pending.question);
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
     case "GET_COOKIES":
       captureCookies();
       sendResponse({ ok: true });
       break;
+    case "GET_MY_PROFILE_URL": {
+      let url = null;
+      const candidates = [
+        document.querySelector(".nav-user-info-link"),
+        document.querySelector("a[data-testid='my-profile-link']"),
+        document.querySelector("a[href*='/freelancers/~']"),
+        document.querySelector("a[href*='/freelancers/']"),
+        document.querySelector("link[rel='canonical']"),
+      ];
+      for (const el of candidates) {
+        const href = el?.href;
+        if (href && /\/freelancers\/(~|me\/)/.test(href) && !/\/proposals\//.test(href)) {
+          url = href;
+          break;
+        }
+      }
+      sendResponse({ ok: !!url, url });
+      break;
+    }
     case "EXTRACT_PAGE":
       extractAndSend();
       sendResponse({ ok: true });
@@ -649,6 +884,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return true;
     case "INSERT_PORTFOLIO":
       injectMainWorld("insertPortfolioOnApply", { portfolio: msg.portfolio || [] });
+      sendResponse({ ok: true });
+      break;
+    case "AUTH_UPDATED":
+      if (msg.authenticated) onAuthAvailable();
       sendResponse({ ok: true });
       break;
   }

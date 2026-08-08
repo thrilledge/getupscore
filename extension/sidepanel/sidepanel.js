@@ -14,7 +14,7 @@ const navEls = {};
 for (const v of VIEWS) navEls[v] = $(NAV_IDS[v]);
 
 const VIEW_TITLES = {
-  dashboard: "UpScore",
+  dashboard: "Get UpScore",
   savedjobs: "Saved Jobs",
   settings: "Settings",
 };
@@ -32,7 +32,7 @@ function showView(name) {
   // Hide back button — nav tabs are the primary navigation
   $("btnBack").style.display = "none";
   // Update title
-  $("appTitle").textContent = VIEW_TITLES[name] || "UpScore";
+  $("appTitle").textContent = VIEW_TITLES[name] || "Get UpScore";
 }
 
 // ─── Status refs ───
@@ -40,11 +40,13 @@ const statusText = $("statusText");
 const statusDot = $("statusDot");
 
 // ─── Settings refs ───
-const apiUrlInput = $("apiUrl");
-const btnOpenOptions = $("btnOpenOptions");
-const btnTestConnection = $("btnTestConnection");
-const btnSave = $("btnSave");
-const connectionStatus = $("connectionStatus");
+const btnSignIn = $("btnSignIn");
+const btnSignUp = $("btnSignUp");
+const btnSignOut = $("btnSignOut");
+const spAuthSignedOut = $("spAuthSignedOut");
+const spAuthSignedIn = $("spAuthSignedIn");
+const spAuthEmail = $("spAuthEmail");
+const spAuthMsg = $("spAuthMsg");
 
 // ─── Auth helpers (token lives in the background service worker) ───
 function getAuthToken() {
@@ -65,7 +67,7 @@ function getAuthState() {
 async function apiCall(path, options = {}) {
   if (!apiUrl) throw new Error("Not connected");
   const token = await getAuthToken();
-  if (!token) throw new Error("Not signed in — open extension options");
+  if (!token) throw new Error("Not signed in — sign in to continue");
   const response = await fetch(`${apiUrl}${path}`, {
     ...options,
     headers: {
@@ -86,14 +88,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Load settings from storage
   const result = await chrome.storage.sync.get(["upscore_api_url"]);
   apiUrl = result.upscore_api_url || "https://getupscore.vercel.app";
-  apiUrlInput.value = apiUrl;
 
   const auth = await getAuthState();
-  if (auth?.authenticated) {
-    setConnectionStatus("connected", auth.user?.email ? `Signed in as ${auth.user.email}` : "Signed in");
-  } else {
-    setConnectionStatus("disconnected", "Not signed in");
-  }
+  renderAuthUI(auth);
 
   // View switching
   $("btnSettings")?.addEventListener("click", () => showView("settings"));
@@ -106,25 +103,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   // Quick actions
   $("btnViewSavedJobs")?.addEventListener("click", () => { showView("savedjobs"); loadSavedJobs(); });
+  $("btnSyncProfile")?.addEventListener("click", syncProfile);
 
   // Settings
-  btnOpenOptions.addEventListener("click", () => {
-    chrome.runtime.openOptionsPage();
-  });
-  btnTestConnection.addEventListener("click", testConnection);
-  btnSave.addEventListener("click", saveSettings);
+  btnSignIn.addEventListener("click", signIn);
+  btnSignOut.addEventListener("click", signOut);
 
   // Listen for background state
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === "STATUS_UPDATE") {
       updateConnectionStatus(msg.connected, msg.message);
+      getAuthState().then(renderAuthUI);
     }
   });
 
   // Initial load
   requestState();
-  loadAnalytics();
-  setInterval(loadAnalytics, 30000);
 });
 
 function requestState() {
@@ -145,23 +139,6 @@ function updateConnectionStatus(connected, message) {
   } else {
     statusDot.classList.add("error");
     statusText.textContent = message || "Error";
-  }
-}
-
-// ══════════════════════════════════════════════════════════
-// ═══  ANALYTICS  ═══
-// ══════════════════════════════════════════════════════════
-async function loadAnalytics() {
-  const auth = await getAuthState();
-  if (!auth?.authenticated) return;
-  try {
-    const data = await apiCall("/api/extension/analytics");
-    $("statSavedJobs").textContent = data.savedJobs ?? 0;
-    $("statAnalyses").textContent = data.totalAnalyses ?? 0;
-    $("statProposals").textContent = data.totalProposals ?? 0;
-    $("statFilters").textContent = data.activeFilters ?? 0;
-  } catch {
-    // Not connected yet
   }
 }
 
@@ -254,54 +231,50 @@ function renderJobCard(job) {
 // ══════════════════════════════════════════════════════════
 // ═══  SETTINGS  ═══
 // ══════════════════════════════════════════════════════════
-function setConnectionStatus(state, message) {
-  const dot = connectionStatus.querySelector(".dot");
-  dot.className = `dot ${state}`;
-  connectionStatus.querySelector("span:last-child").textContent = message;
+
+let wasSignedIn = null;
+
+function renderAuthUI(auth) {
+  const signedIn = !!auth?.authenticated;
+  spAuthSignedOut.style.display = signedIn ? "none" : "";
+  spAuthSignedIn.style.display = signedIn ? "" : "none";
+  spAuthMsg.textContent = "";
+
+  if (signedIn) {
+    spAuthEmail.textContent = `Signed in as ${auth.user?.email || "your account"}`;
+  }
+  btnSignUp.href = `${(apiUrl || "https://getupscore.vercel.app").replace(/\/+$/, "")}/signup`;
+
+  // Logged-out users only get Settings — Dashboard & Saved Jobs need an account.
+  navEls.dashboard.style.display = signedIn ? "" : "none";
+  navEls.savedjobs.style.display = signedIn ? "" : "none";
+
+  if (wasSignedIn !== signedIn) {
+    if (!signedIn && currentView !== "settings") showView("settings");
+    wasSignedIn = signedIn;
+  }
 }
 
-async function testConnection() {
-  const u = apiUrlInput.value.trim() || "https://getupscore.vercel.app";
-  const auth = await getAuthState();
-  if (!auth?.authenticated) {
-    setConnectionStatus("disconnected", "Not signed in — open extension options.");
-    return;
-  }
-  const t = await getAuthToken();
-  if (!t) {
-    setConnectionStatus("disconnected", "Not signed in — open extension options.");
-    return;
-  }
-  setConnectionStatus("idle", "Testing connection...");
-  try {
-    const response = await fetch(`${u}/api/extension/heartbeat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` },
-    });
-    if (response.ok) {
-      const data = await response.json();
-      setConnectionStatus("connected", `Connected! Server v${data.version}`);
-    } else {
-      const data = await response.json().catch(() => ({}));
-      setConnectionStatus("error", data.error || `Server responded with ${response.status}`);
+function signIn() {
+  const url = `${(apiUrl || "https://getupscore.vercel.app").replace(/\/+$/, "")}/login`;
+  chrome.tabs.create({ url });
+  spAuthMsg.textContent = "Sign in on the dashboard tab — this panel connects automatically.";
+}
+
+function syncProfile() {
+  chrome.runtime.sendMessage({ type: "OPEN_MY_PROFILE" }, (res) => {
+    if (!res?.ok) {
+      statusText.textContent = "Open Upwork and sign in first";
+      statusDot.className = "dot error";
     }
-  } catch (err) {
-    setConnectionStatus("error", `Cannot reach server: ${err.message}`);
-  }
+  });
 }
 
-async function saveSettings() {
-  const u = apiUrlInput.value.trim() || "https://getupscore.vercel.app";
-  await chrome.storage.sync.set({ upscore_api_url: u });
-  chrome.runtime.sendMessage({
-    type: "SETTINGS_UPDATED",
-    settings: { api_url: u },
+async function signOut() {
+  await new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: "AUTH_LOGOUT" }, resolve);
   });
-  apiUrl = u;
-  setTimeout(() => testConnection(), 500);
-  const originalText = btnSave.textContent;
-  btnSave.textContent = "Saved!";
-  setTimeout(() => { btnSave.textContent = originalText; }, 2000);
+  renderAuthUI({ authenticated: false });
 }
 
 // ══════════════════════════════════════════════════════════

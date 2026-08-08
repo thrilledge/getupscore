@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UpScore — Extension Settings</title>
+  <title>Get UpScore — Extension Settings</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
@@ -23,25 +23,18 @@
         </svg>
       </div>
       <div>
-        <h1>UpScore Extension</h1>
+        <h1>Get UpScore Extension</h1>
         <p class="subtitle">Configure your API connection</p>
       </div>
     </div>
 
     <section class="card">
       <h2>Account</h2>
-      <p class="desc">Sign in with your UpScore dashboard account. The extension uses the same account for syncing and AI proposals.</p>
+      <p class="desc">Sign in with your Get UpScore dashboard account. The extension uses the same account for syncing and AI proposals.</p>
 
       <div id="authSignedOut">
-        <div class="field">
-          <label for="email">Email</label>
-          <input type="email" id="email" placeholder="you@example.com" autocomplete="email" />
-        </div>
-        <div class="field">
-          <label for="password">Password</label>
-          <input type="password" id="password" autocomplete="current-password" />
-        </div>
-        <button id="btnLogin" class="btn btn-primary">Sign in</button>
+        <p class="desc" style="margin:0 0 12px">Sign in with your Get UpScore dashboard account. After signing in, the extension connects automatically — no tokens needed.</p>
+        <button id="btnLogin" class="btn btn-primary">Sign in on Dashboard</button>
       </div>
 
       <div id="authSignedIn" style="display:none">
@@ -55,23 +48,10 @@
       </div>
     </section>
 
-    <section class="card">
-      <h2>Server</h2>
-      <p class="desc">Where the extension sends sync and proposal requests.</p>
-
-      <div class="field">
-        <label for="apiUrl">API URL</label>
-        <input type="url" id="apiUrl" placeholder="https://getupscore.vercel.app" />
-      </div>
-
-      <button id="btnTestConnection" class="btn btn-primary">Test Connection</button>
-      <button id="btnSave" class="btn btn-success">Save Settings</button>
-    </section>
-
     <section class="card about">
       <h2>About</h2>
-      <p class="desc">UpScore Extension v1.0.0</p>
-      <p class="desc">Captures Upwork cookies for server-side scraping and displays synced data from your UpScore dashboard.</p>
+      <p class="desc">Get UpScore Extension v1.0.0</p>
+      <p class="desc">Captures Upwork cookies for server-side scraping and displays synced data from your Get UpScore dashboard.</p>
     </section>
   </div>
 

@@ -37,19 +37,38 @@ export async function POST(request: Request) {
 
     const { data: existing } = await supabase
       .from("upwork_profiles")
-      .select("id")
+      .select("*")
       .eq("user_id", userId)
       .maybeSingle();
 
     let result;
+    let created = false;
+    const changed: string[] = [];
+
     if (existing) {
-      result = await supabase
-        .from("upwork_profiles")
-        .update(profile as any)
-        .eq("id", existing.id)
-        .select()
-        .single();
+      const merged: Record<string, unknown> = {};
+      for (const field of Object.keys(profile)) {
+        const next = profile[field];
+        const prev = (existing as Record<string, unknown>)[field];
+        const same = JSON.stringify(next) === JSON.stringify(prev);
+        if (!same) {
+          merged[field] = next;
+          changed.push(field);
+        }
+      }
+      if (Object.keys(merged).length > 0) {
+        result = await supabase
+          .from("upwork_profiles")
+          .update(merged as any)
+          .eq("id", existing.id)
+          .select()
+          .single();
+      } else {
+        result = { data: existing, error: null };
+      }
     } else {
+      created = true;
+      changed.push(...Object.keys(profile).filter((f) => f !== "user_id"));
       result = await supabase
         .from("upwork_profiles")
         .insert(profile as any)
@@ -62,7 +81,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: result.error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, profile: result.data });
+    return NextResponse.json({ ok: true, profile: result.data, created, changed });
   } catch (err) {
     console.error("[Extension Profile] Error:", err);
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });

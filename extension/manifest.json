@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "UpScore",
+  "name": "Get UpScore",
   "version": "1.0.0",
   "description": "AI-powered Upwork opportunity finder — job alerts, scoring, and proposals.",
   "homepage_url": "https://getupscore.vercel.app",
@@ -19,6 +19,7 @@
   "host_permissions": [
     "https://getupscore.vercel.app/*",
     "https://*.upscore.app/*",
+    "https://getupscore.com/*",
     "https://www.upwork.com/*"
   ],
   "content_scripts": [
@@ -26,6 +27,11 @@
       "matches": ["https://www.upwork.com/*"],
       "js": ["upscore-content.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["https://getupscore.vercel.app/*", "https://*.upscore.app/*", "https://getupscore.com/*"],
+      "js": ["dashboard-bridge.js"],
+      "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
@@ -35,7 +41,7 @@
     }
   ],
   "action": {
-    "default_title": "UpScore — Open Sidebar",
+    "default_title": "Get UpScore — Open Sidebar",
     "default_icon": {
       "16": "icons/icon-16.png",
       "48": "icons/icon-48.png",

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>UpScore</title>
+  <title>Get UpScore</title>
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 
@@ -22,7 +22,7 @@
     <div class="brand">
       <div class="brand-logo">U</div>
       <div>
-        <h1 id="appTitle">UpScore</h1>
+        <h1 id="appTitle">Get UpScore</h1>
         <div class="tagline">AI-powered Upwork assistant</div>
       </div>
     </div>
@@ -89,26 +89,6 @@
       </div>
     </div>
 
-    <!-- Quick Stats -->
-    <div class="stats-grid" id="statsGrid">
-      <div class="stat-card" data-stat="savedJobs">
-        <span class="stat-number" id="statSavedJobs">—</span>
-        <span class="stat-label">Saved Jobs</span>
-      </div>
-      <div class="stat-card" data-stat="analyses">
-        <span class="stat-number" id="statAnalyses">—</span>
-        <span class="stat-label">Analyses</span>
-      </div>
-      <div class="stat-card" data-stat="proposals">
-        <span class="stat-number" id="statProposals">—</span>
-        <span class="stat-label">Proposals</span>
-      </div>
-      <div class="stat-card" data-stat="filters">
-        <span class="stat-number" id="statFilters">—</span>
-        <span class="stat-label">Filters</span>
-      </div>
-    </div>
-
     <!-- Quick Actions -->
     <section class="section">
       <div class="section-header">
@@ -121,7 +101,24 @@
         </div>
       </div>
       <div class="section-body">
-        <button class="action-btn" id="btnViewSavedJobs">
+        <button class="action-btn" id="btnSyncProfile">
+          <span class="action-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </span>
+          <span class="action-text">
+            <span class="action-title">Sync Profile</span>
+            <span class="action-desc">Open your Upwork profile to sync it</span>
+          </span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" class="action-arrow">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+        <button class="action-btn" id="btnViewSavedJobs" style="margin-top:8px">
           <span class="action-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
               stroke-linecap="round" stroke-linejoin="round">
@@ -160,7 +157,7 @@
           </svg>
           <div>
             <strong>Everything syncs automatically</strong>
-            <span>Open any Upwork job or your freelancer profile and UpScore captures the details in the background — no buttons needed.</span>
+            <span>Open any Upwork job or your freelancer profile and Get UpScore captures the details in the background — no buttons needed.</span>
           </div>
         </div>
       </div>
@@ -209,39 +206,20 @@
         </div>
       </div>
       <div class="section-body">
-        <div class="field">
-          <label for="apiUrl">Server URL</label>
-          <input type="url" id="apiUrl" placeholder="https://getupscore.vercel.app" />
+        <div id="spAuthSignedOut" style="display:none">
+          <p class="desc" style="margin:0 0 12px">Sign in with your Get UpScore dashboard account. After signing in, the extension connects automatically — no tokens needed.</p>
+          <div class="settings-actions">
+            <button id="btnSignIn" class="btn btn-primary">Sign in on Dashboard</button>
+            <a id="btnSignUp" class="btn btn-secondary" href="#" target="_blank" rel="noopener noreferrer">Create account</a>
+          </div>
         </div>
-        <p class="desc" style="margin-top:10px;margin-bottom:0">
-          Sign in with your UpScore dashboard account to connect.
-        </p>
-        <button id="btnOpenOptions" class="btn btn-primary" style="width:100%;margin-top:10px">Sign in / Account</button>
-        <div class="connection-status" id="connectionStatus" style="margin-top:10px">
-          <span class="dot"></span>
-          <span>Not connected</span>
-        </div>
-        <div class="settings-actions">
-          <button id="btnTestConnection" class="btn btn-secondary">Test Connection</button>
-          <button id="btnSave" class="btn btn-primary">Save URL</button>
-        </div>
-      </div>
-    </section>
 
-    <section class="section">
-      <div class="section-header">
-        <div class="section-title">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="16" x2="12" y2="12" />
-            <line x1="12" y1="8" x2="12.01" y2="8" />
-          </svg>
-          <span>About</span>
+        <div id="spAuthSignedIn" style="display:none">
+          <p class="desc" id="spAuthEmail" style="margin:0 0 10px"></p>
+          <button id="btnSignOut" class="btn btn-secondary btn-full">Sign out</button>
         </div>
-      </div>
-      <div class="section-body">
-        <p class="desc">UpScore v1.0.0 — AI-powered Upwork assistant.</p>
+
+        <p class="desc" id="spAuthMsg" style="margin:10px 0 0;color:#dc2626"></p>
       </div>
     </section>
 
