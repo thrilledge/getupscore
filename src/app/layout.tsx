@@ -1,20 +1,24 @@
 import type { Metadata } from "next";
-import { Poppins, Montserrat } from "next/font/google";
+import localFont from "next/font/local";
 import { Providers } from "@/components/providers";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { env } from "@/lib/env";
 import "./globals.css";
 
-const poppins = Poppins({
+const poppins = localFont({
   variable: "--font-heading",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  src: [
+    { path: "./fonts/Poppins-400.woff2", weight: "400" },
+    { path: "./fonts/Poppins-500.woff2", weight: "500" },
+    { path: "./fonts/Poppins-600.woff2", weight: "600" },
+    { path: "./fonts/Poppins-700.woff2", weight: "700" },
+  ],
 });
 
-const montserrat = Montserrat({
+const montserrat = localFont({
   variable: "--font-sans",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  src: "./fonts/Montserrat-Variable.woff2",
+  weight: "300 700",
 });
 
 export const metadata: Metadata = {
