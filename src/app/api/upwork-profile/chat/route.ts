@@ -37,19 +37,37 @@ export async function POST(request: Request) {
       )
       .eq("user_id", user.id)
       .single(),
-    Promise.resolve(
-      createSupabaseAdminClient().rpc("get_market_trends", { p_days: 30 })
-    ).catch(() => ({ data: null, error: { message: "market trends unavailable" } })),
+    (async () => {
+      try {
+        const admin = createSupabaseAdminClient();
+        return await admin.rpc("get_market_trends", { p_days: 30 });
+      } catch (err) {
+        console.warn("[Chat] Market trends unavailable:", err instanceof Error ? err.message : err);
+        return { data: null, error: { message: "market trends unavailable" } };
+      }
+    })(),
   ]);
 
   const profile = profileResult.data;
-  const marketContext =
-    trendsResult.data && !trendsResult.error
-      ? formatMarketContext(trendsResult.data as unknown as MarketTrends, 30)
-      : null;
+  let marketContext: string | null = null;
+  try {
+    if (trendsResult.data && !trendsResult.error) {
+      marketContext = formatMarketContext(trendsResult.data as unknown as MarketTrends, 30);
+    }
+  } catch (err) {
+    console.warn("[Chat] Could not format market context:", err instanceof Error ? err.message : err);
+  }
 
-  const systemPrompt = buildProfileAuditSystemPrompt(profile, marketContext);
-  return streamChat(systemPrompt, messages, undefined, 1500);
+  try {
+    const systemPrompt = buildProfileAuditSystemPrompt(profile, marketContext);
+    return streamChat(systemPrompt, messages, undefined, 1500);
+  } catch (err) {
+    console.error("[Chat] Failed to start stream:", err instanceof Error ? err.message : err);
+    return NextResponse.json(
+      { error: "Failed to start the AI chat. Please try again." },
+      { status: 500 }
+    );
+  }
 }
 
 function buildProfileAuditSystemPrompt(
