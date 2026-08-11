@@ -85,7 +85,7 @@ export async function GET(request: Request) {
         model_used,
         analyzed_at
       )
-    `, { count: "exact" });
+    `, { count: "estimated" });
 
   if (ids) {
     const idList = ids.split(",").map((id) => id.trim()).filter(Boolean);

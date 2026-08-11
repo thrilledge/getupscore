@@ -37,7 +37,9 @@ export async function POST(request: Request) {
       )
       .eq("user_id", user.id)
       .single(),
-    createSupabaseAdminClient().rpc("get_market_trends", { p_days: 30 }),
+    Promise.resolve(
+      createSupabaseAdminClient().rpc("get_market_trends", { p_days: 30 })
+    ).catch(() => ({ data: null, error: { message: "market trends unavailable" } })),
   ]);
 
   const profile = profileResult.data;

@@ -16,22 +16,22 @@ export async function GET(request: Request) {
 
     const { count: savedJobs } = await supabase
       .from("saved_jobs")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", userId);
 
     const { count: totalProposals } = await supabase
       .from("proposals")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", userId);
 
     const { count: totalAnalyses } = await supabase
       .from("job_analyses")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", userId);
 
     const { count: activeFilters } = await supabase
       .from("job_filters")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", userId)
       .eq("is_active", true);
 

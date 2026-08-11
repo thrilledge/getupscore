@@ -13,24 +13,24 @@ export async function GET() {
     // Get total job counts
     const { count: totalJobs } = await supabase
       .from("jobs")
-      .select("*", { count: "exact", head: true });
+      .select("*", { count: "estimated", head: true });
 
     // Jobs added in last 24h
     const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
     const { count: recentJobs } = await supabase
       .from("jobs")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .gte("created_at", oneDayAgo);
 
     // Total analyses
     const { count: totalAnalyses } = await supabase
       .from("job_analyses")
-      .select("*", { count: "exact", head: true });
+      .select("*", { count: "estimated", head: true });
 
     // Analyses in last 24h
     const { count: recentAnalyses } = await supabase
       .from("job_analyses")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .gte("analyzed_at", oneDayAgo);
 
     // Last analysis time
@@ -43,13 +43,13 @@ export async function GET() {
     // Active filters count
     const { count: activeFilters } = await supabase
       .from("job_filters")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("is_active", true);
 
     // Active notification rules count
     const { count: activeRules } = await supabase
       .from("notification_rules")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("is_active", true);
 
     return NextResponse.json({

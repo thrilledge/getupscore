@@ -42,14 +42,14 @@ async function fetchJobs() {
       return { jobs: [] as LiveJob[], totalJobs: 0, jobs24h: 0 };
     }
 
-    // Total + 24h counts for the stats band (approximate, no count query to keep it light)
+    // Total + 24h counts for the stats band (estimated, no full count scan)
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { count: totalJobs } = await supabase
       .from("jobs")
-      .select("id", { count: "exact", head: true });
+      .select("id", { count: "estimated", head: true });
     const { count: jobs24h } = await supabase
       .from("jobs")
-      .select("id", { count: "exact", head: true })
+      .select("id", { count: "estimated", head: true })
       .gte("posted_at", since);
 
     return {

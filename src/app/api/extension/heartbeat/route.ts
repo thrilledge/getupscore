@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const supabase = await createSupabaseAdminClient();
     const { count } = await supabase
       .from("job_filters")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", userId)
       .eq("is_active", true);
     filterCount = count ?? 0;

@@ -17,39 +17,39 @@ export async function GET() {
   try {
     const { count: savedJobs } = await admin
       .from("saved_jobs")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", user.id);
 
     const { count: totalAnalyses } = await admin
       .from("job_analyses")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", user.id);
 
     const { count: activeFilters } = await admin
       .from("job_filters")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", user.id)
       .eq("is_active", true);
 
     const { count: activeRules } = await admin
       .from("notification_rules")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", user.id)
       .eq("is_active", true);
 
     const { count: totalProposals } = await admin
       .from("proposals")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", user.id);
 
     const { count: totalNotifications } = await admin
       .from("notifications")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", user.id);
 
     const { count: totalChannels } = await admin
       .from("notification_channels")
-      .select("*", { count: "exact", head: true })
+      .select("*", { count: "estimated", head: true })
       .eq("user_id", user.id);
 
     // Saved jobs' skills
