@@ -2,39 +2,23 @@
 """
 Upwork Job Ingester — single endpoint fetches jobs + client details.
 Runs as a cron job every 5 minutes on EC2.
-Also cleans up jobs older than 10 days.
+
+Cleanup of old jobs is handled by the Vercel cron
+(/api/cron/cleanup → cleanup_old_jobs RPC, 90-day retention).
+This script no longer deletes anything, so user data referenced
+by job_analyses / saved_jobs / proposals / notifications can never
+be cascade-deleted by the ingester.
 """
 import json
 import os
 import sys
-from datetime import datetime, timedelta, timezone
 from urllib.request import Request, urlopen
 
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 API_BASE = "http://localhost:8000/jobs/ingest"
-JOB_RETENTION_DAYS = 10
 PAGE_SIZE = 50
 MAX_PAGES = 10
-
-
-def delete_old_jobs(supabase_url, service_key, days):
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
-    url = f"{supabase_url}/rest/v1/jobs?created_at=lt.{cutoff}&select=upwork_job_id"
-    try:
-        req = Request(url, method="DELETE", headers={
-            "apikey": service_key,
-            "Authorization": f"Bearer {service_key}",
-            "Prefer": "return=minimal",
-        })
-        with urlopen(req, timeout=60) as resp:
-            status = resp.status
-        if status in (200, 204):
-            print(f"Cleanup: deleted jobs older than {days} days")
-        else:
-            print(f"WARN: Cleanup status {status}")
-    except Exception as e:
-        print(f"WARN: Cleanup error: {e}")
 
 
 def fetch_ingest_page(offset, count, max_details=20):
@@ -124,8 +108,6 @@ def main():
     if not supabase_url or not service_key:
         print("ERROR: SUPABASE_URL and SUPABASE_SERVICE_KEY must be set")
         sys.exit(1)
-
-    delete_old_jobs(supabase_url, service_key, JOB_RETENTION_DAYS)
 
     print("Fetching existing job IDs from Supabase...")
     existing_ids = get_existing_ids(supabase_url, service_key)

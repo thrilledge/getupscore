@@ -860,6 +860,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_jobs: {
+        Args: {
+          p_days: number
+          p_batch: number
+        }
+        Returns: Json
+      }
       get_market_trends: {
         Args: {
           p_days: number
