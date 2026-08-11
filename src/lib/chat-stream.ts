@@ -22,7 +22,8 @@ export async function streamChat(
   systemPrompt: string,
   messages: ChatMessage[],
   saveProposal?: SaveProposal,
-  maxTokens = 2000
+  maxTokens = 2000,
+  debugEvent?: unknown
 ): Promise<Response> {
   const encoder = new TextEncoder();
 
@@ -31,6 +32,10 @@ export async function streamChat(
       const send = (data: unknown) => {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
+
+      if (debugEvent !== undefined) {
+        send({ debug: debugEvent });
+      }
 
       let fullContent = "";
 

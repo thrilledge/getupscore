@@ -40,7 +40,14 @@ export async function POST(request: Request) {
     (async () => {
       try {
         const admin = createSupabaseAdminClient();
-        return await admin.rpc("get_market_trends", { p_days: 30 });
+        const result = await admin.rpc("get_market_trends", { p_days: 30 });
+        if (result.error) {
+          console.warn(
+            "[Chat] Market trends RPC error:",
+            JSON.stringify({ message: result.error.message, code: result.error.code, details: result.error.details, hint: result.error.hint })
+          );
+        }
+        return result;
       } catch (err) {
         console.warn("[Chat] Market trends unavailable:", err instanceof Error ? err.message : err);
         return { data: null, error: { message: "market trends unavailable" } };
@@ -50,17 +57,21 @@ export async function POST(request: Request) {
 
   const profile = profileResult.data;
   let marketContext: string | null = null;
+  let debugError: unknown = null;
   try {
     if (trendsResult.data && !trendsResult.error) {
       marketContext = formatMarketContext(trendsResult.data as unknown as MarketTrends, 30);
+    } else {
+      debugError = trendsResult.error ?? "no data, no error";
     }
   } catch (err) {
     console.warn("[Chat] Could not format market context:", err instanceof Error ? err.message : err);
+    debugError = err;
   }
 
   try {
     const systemPrompt = buildProfileAuditSystemPrompt(profile, marketContext);
-    return streamChat(systemPrompt, messages, undefined, 1500);
+    return streamChat(systemPrompt, messages, undefined, 1500, debugError);
   } catch (err) {
     console.error("[Chat] Failed to start stream:", err instanceof Error ? err.message : err);
     return NextResponse.json(
