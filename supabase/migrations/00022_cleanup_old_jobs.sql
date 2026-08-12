@@ -9,7 +9,7 @@
 --
 --   This migration:
 --     1. Adds cleanup_old_jobs RPC that deletes ONLY
---        unreferenced jobs older than p_days (default 90),
+--        unreferenced jobs older than p_days (default 30),
 --        protecting any job still referenced by user data.
 --     2. Deletes in batches (p_batch, default 500) so each
 --        RPC call is a short transaction — the Vercel cron
@@ -19,7 +19,7 @@
 -- ──────────────────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION public.cleanup_old_jobs(
-  p_days integer DEFAULT 90,
+  p_days integer DEFAULT 30,
   p_batch integer DEFAULT 500
 )
 RETURNS json
@@ -28,7 +28,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_days integer := GREATEST(COALESCE(p_days, 90), 1);
+  v_days integer := GREATEST(COALESCE(p_days, 30), 1);
   v_batch integer := GREATEST(COALESCE(p_batch, 500), 1);
   v_cutoff timestamptz := now() - make_interval(days => v_days);
   v_deleted integer;

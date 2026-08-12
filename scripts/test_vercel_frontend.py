@@ -8,7 +8,7 @@ from playwright.async_api import async_playwright
 
 EMAIL = "usamaadeel1183@gmail.com"
 PASSWORD = "@Usama#Adeel183"
-FRONTEND = "https://getupscore.vercel.app"
+FRONTEND = "https://www.getupscore.com/"
 
 
 async def main():

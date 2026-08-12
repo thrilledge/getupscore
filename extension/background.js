@@ -6,7 +6,7 @@ import {
   setSession as authSetSession,
 } from "./lib/auth-manager.js";
 
-const DEFAULT_API_URL = "https://getupscore.vercel.app";
+const DEFAULT_API_URL = "https://www.getupscore.com/";
 
 let state = {
   connected: false,
@@ -153,7 +153,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         state.apiToken = null;
         state.connected = false;
         state.statusMessage = "Not signed in";
-        await chrome.storage.sync.remove("upscore_api_token").catch(() => {});
+        await chrome.storage.sync.remove("upscore_api_token").catch(() => { });
         broadcastState();
         broadcastAuth();
         sendResponse({ ok: true });
@@ -295,7 +295,7 @@ function getAllVisibleCookies() {
 }
 
 const CANDIDATE_URLS = [
-  "https://getupscore.vercel.app/",
+  "https://www.getupscore.com//",
   "https://upscore.app/",
   "https://www.upscore.app/",
   "https://getupscore.com/",
@@ -491,17 +491,17 @@ function broadcastState() {
     connected: state.connected,
     message: state.statusMessage,
     upworkCookies: state.upworkCookies,
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 function broadcastAuth() {
   chrome.runtime.sendMessage({
     type: "AUTH_UPDATED",
     authenticated: state.connected && !!state.user,
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
-chrome.alarms.create("upscore-session-import", { periodInMinutes: 0.5 }).catch(() => {});
+chrome.alarms.create("upscore-session-import", { periodInMinutes: 0.5 }).catch(() => { });
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== "upscore-session-import") return;
   const imported = await importSessionFromCookies();

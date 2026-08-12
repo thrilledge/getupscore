@@ -1,4 +1,4 @@
-export type MarketRange = 7 | 30 | 90;
+export type MarketRange = 7 | 30;
 
 export interface MarketTrendsMeta {
   periodDays: number;
@@ -94,7 +94,6 @@ export interface MarketTrends {
 export const RANGES: Array<{ value: MarketRange; label: string }> = [
   { value: 7, label: "7D" },
   { value: 30, label: "30D" },
-  { value: 90, label: "90D" },
 ];
 
 // Chart palette — uses the app's accent colors so charts match the theme.

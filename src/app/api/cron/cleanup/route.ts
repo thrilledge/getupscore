@@ -3,7 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
-const RETENTION_DAYS = 90;
+const RETENTION_DAYS = 30;
 const BATCH_SIZE = 500;
 
 export async function GET(request: Request) {

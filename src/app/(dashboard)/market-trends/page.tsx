@@ -123,9 +123,7 @@ export default function MarketTrendsPage() {
                 <ToggleGroupItem
                   key={r.value}
                   value={String(r.value)}
-                  disabled={r.value === 90}
-                  className={cn("px-3", r.value === 90 && "cursor-not-allowed opacity-40")}
-                  title={r.value === 90 ? "90-day window coming soon" : `${r.value} day window`}
+                  className="px-3"
                 >
                   {r.label}
                 </ToggleGroupItem>
