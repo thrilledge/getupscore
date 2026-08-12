@@ -49,7 +49,7 @@ async function injectMainWorld(operation, params = {}) {
 
     window.postMessage({ type: "__upscore_exec", operation, params }, "*");
   } catch (err) {
-  
+
   }
 }
 
@@ -218,12 +218,12 @@ function normalizeProfile(data) {
 
     const skills = Array.isArray(src.skills)
       ? src.skills.map((s) => {
-          if (typeof s === "string") return s;
-          if (s?.prettyName && typeof s.prettyName === "string") return s.prettyName;
-          if (s?.name && typeof s.name === "string") return s.name;
-          if (s?.node?.prettyName) return s.node.prettyName;
-          return String(s);
-        }).filter(Boolean)
+        if (typeof s === "string") return s;
+        if (s?.prettyName && typeof s.prettyName === "string") return s.prettyName;
+        if (s?.name && typeof s.name === "string") return s.name;
+        if (s?.node?.prettyName) return s.node.prettyName;
+        return String(s);
+      }).filter(Boolean)
       : [];
 
     const hourlyRate = stats.hourlyRate?.node?.amount
@@ -270,16 +270,16 @@ function normalizeProfile(data) {
     }
     const portfolio = portfolioItems.length
       ? portfolioItems.slice(0, 20).map((item) => ({
-            title: item.title || "",
-            description: (item.description || "").slice(0, 1000),
-            url: item.url || item.projectUrl || item.project_url || item.link || item.website || item.externalUrl || item.previewLink || "",
-            images: Array.isArray(item.images)
-              ? item.images.map((img) => (typeof img === "string" ? img : img?.url || img?.src || "")).filter(Boolean)
-              : [],
-            skills: Array.isArray(item.skills)
-              ? item.skills.map((s) => typeof s === "string" ? s : s?.prettyName || s?.name || "")
-              : [],
-          })).filter((i) => i.title)
+        title: item.title || "",
+        description: (item.description || "").slice(0, 1000),
+        url: item.url || item.projectUrl || item.project_url || item.link || item.website || item.externalUrl || item.previewLink || "",
+        images: Array.isArray(item.images)
+          ? item.images.map((img) => (typeof img === "string" ? img : img?.url || img?.src || "")).filter(Boolean)
+          : [],
+        skills: Array.isArray(item.skills)
+          ? item.skills.map((s) => typeof s === "string" ? s : s?.prettyName || s?.name || "")
+          : [],
+      })).filter((i) => i.title)
       : [];
 
     return {
@@ -435,7 +435,7 @@ function getExtensionSettings() {
     );
     const apiToken = await getAuthTokenFromBackground();
     resolve({
-      apiUrl: (res.upscore_api_url || "https://getupscore.vercel.app").replace(/\/+$/, ""),
+      apiUrl: (res.upscore_api_url || "https://www.getupscore.com").replace(/\/+$/, ""),
       apiToken,
       rules: res.upscore_proposal_rules || "",
     });
@@ -571,11 +571,11 @@ function dashboardUrl(path) {
   return new Promise((resolve) => {
     try {
       chrome.storage.sync.get(["upscore_api_url"], (res) => {
-        const base = (res.upscore_api_url || "https://getupscore.vercel.app").replace(/\/+$/, "");
+        const base = (res.upscore_api_url || "https://www.getupscore.com").replace(/\/+$/, "");
         resolve(base + path);
       });
     } catch {
-      resolve("https://getupscore.vercel.app" + path);
+      resolve("https://www.getupscore.com" + path);
     }
   });
 }
@@ -688,7 +688,7 @@ function showSignInPopup() {
   terms.innerHTML = 'By signing in you agree to our <a href="#" style="color:#94a3b8;text-decoration:underline">Terms &amp; Conditions</a>.';
   terms.querySelector("a").addEventListener("click", (e) => {
     e.preventDefault();
-    window.open("https://getupscore.vercel.app", "_blank", "noopener,noreferrer");
+    window.open("https://www.getupscore.com", "_blank", "noopener,noreferrer");
   });
 
   card.append(close, logo, title, welcome, signInBtn, hint, register, terms);
@@ -903,14 +903,14 @@ if (document.readyState === "loading") {
     setTimeout(() => {
       captureCookies();
       injectApplyButton();
-      extractAndSend().catch(() => {});
+      extractAndSend().catch(() => { });
     }, 2000);
   });
 } else {
   setTimeout(() => {
     captureCookies();
     injectApplyButton();
-    extractAndSend().catch(() => {});
+    extractAndSend().catch(() => { });
   }, 2000);
 }
 
@@ -923,7 +923,7 @@ const observer = new MutationObserver(() => {
     setTimeout(() => {
       captureCookies();
       injectApplyButton();
-      extractAndSend().catch(() => {});
+      extractAndSend().catch(() => { });
     }, 2000);
   }
 });

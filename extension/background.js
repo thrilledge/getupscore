@@ -295,7 +295,7 @@ function getAllVisibleCookies() {
 }
 
 const CANDIDATE_URLS = [
-  "https://www.getupscore.com//",
+  "https://www.getupscore.com/",
   "https://upscore.app/",
   "https://www.upscore.app/",
   "https://getupscore.com/",

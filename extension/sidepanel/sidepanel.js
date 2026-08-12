@@ -87,7 +87,7 @@ async function apiCall(path, options = {}) {
 document.addEventListener("DOMContentLoaded", async () => {
   // Load settings from storage
   const result = await chrome.storage.sync.get(["upscore_api_url"]);
-  apiUrl = result.upscore_api_url || "https://getupscore.vercel.app";
+  apiUrl = result.upscore_api_url || "https://www.getupscore.com";
 
   const auth = await getAuthState();
   renderAuthUI(auth);
@@ -243,7 +243,7 @@ function renderAuthUI(auth) {
   if (signedIn) {
     spAuthEmail.textContent = `Signed in as ${auth.user?.email || "your account"}`;
   }
-  btnSignUp.href = `${(apiUrl || "https://getupscore.vercel.app").replace(/\/+$/, "")}/signup`;
+  btnSignUp.href = `${(apiUrl || "https://www.getupscore.com").replace(/\/+$/, "")}/signup`;
 
   // Logged-out users only get Settings — Dashboard & Saved Jobs need an account.
   navEls.dashboard.style.display = signedIn ? "" : "none";
@@ -256,7 +256,7 @@ function renderAuthUI(auth) {
 }
 
 function signIn() {
-  const url = `${(apiUrl || "https://getupscore.vercel.app").replace(/\/+$/, "")}/login`;
+  const url = `${(apiUrl || "https://www.getupscore.com").replace(/\/+$/, "")}/login`;
   chrome.tabs.create({ url });
   spAuthMsg.textContent = "Sign in on the dashboard tab — this panel connects automatically.";
 }
