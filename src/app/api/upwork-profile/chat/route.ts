@@ -57,21 +57,17 @@ export async function POST(request: Request) {
 
   const profile = profileResult.data;
   let marketContext: string | null = null;
-  let debugError: unknown = null;
   try {
     if (trendsResult.data && !trendsResult.error) {
       marketContext = formatMarketContext(trendsResult.data as unknown as MarketTrends, 30);
-    } else {
-      debugError = trendsResult.error ?? "no data, no error";
     }
   } catch (err) {
     console.warn("[Chat] Could not format market context:", err instanceof Error ? err.message : err);
-    debugError = err;
   }
 
   try {
     const systemPrompt = buildProfileAuditSystemPrompt(profile, marketContext);
-    return streamChat(systemPrompt, messages, undefined, 1500, debugError);
+    return streamChat(systemPrompt, messages, undefined, 1500);
   } catch (err) {
     console.error("[Chat] Failed to start stream:", err instanceof Error ? err.message : err);
     return NextResponse.json(

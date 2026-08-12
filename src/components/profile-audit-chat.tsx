@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -22,6 +24,50 @@ type Message = {
 };
 
 const STORAGE_PREFIX = "upscore-profile-audit-chat-";
+
+const mdComponents: Components = {
+  p: ({ children }) => <p className="my-1 last:mb-0">{children}</p>,
+  h1: ({ children }) => <h1 className="text-base font-semibold mt-2 mb-1">{children}</h1>,
+  h2: ({ children }) => <h2 className="text-[15px] font-semibold mt-2 mb-1">{children}</h2>,
+  h3: ({ children }) => <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>,
+  h4: ({ children }) => <h4 className="text-sm font-semibold mt-2 mb-1">{children}</h4>,
+  ul: ({ children }) => <ul className="list-disc pl-4 my-1 space-y-0.5">{children}</ul>,
+  ol: ({ children }) => <ol className="list-decimal pl-4 my-1 space-y-0.5">{children}</ol>,
+  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+  em: ({ children }) => <em>{children}</em>,
+  a: ({ href, children }) => (
+    <a href={href} target="_blank" rel="noreferrer noopener" className="text-accent-blue underline underline-offset-2 break-all">
+      {children}
+    </a>
+  ),
+  code: ({ children }) => (
+    <code className="rounded bg-black/10 dark:bg-white/10 px-1 py-0.5 font-mono text-[12.5px] break-all">
+      {children}
+    </code>
+  ),
+  pre: ({ children }) => (
+    <pre className="rounded-lg bg-black/10 dark:bg-white/10 p-2.5 my-2 overflow-x-auto text-[12.5px] font-mono leading-relaxed">
+      {children}
+    </pre>
+  ),
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-muted-foreground/30 pl-3 my-1 italic text-muted-foreground">
+      {children}
+    </blockquote>
+  ),
+  hr: () => <hr className="my-2 border-muted-foreground/20" />,
+  table: ({ children }) => (
+    <div className="my-2 overflow-x-auto">
+      <table className="border-collapse text-[12.5px]">{children}</table>
+    </div>
+  ),
+  thead: ({ children }) => <thead className="bg-black/5 dark:bg-white/5">{children}</thead>,
+  th: ({ children }) => (
+    <th className="border border-muted-foreground/25 px-2 py-1 text-left font-semibold">{children}</th>
+  ),
+  td: ({ children }) => <td className="border border-muted-foreground/25 px-2 py-1">{children}</td>,
+};
 
 const QUICK_ACTIONS: { label: string; icon: typeof Sparkles; prompt: string }[] = [
   {
@@ -222,13 +268,21 @@ export function ProfileAuditChat({ className }: { className?: string }) {
             return (
               <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed break-words ${
                     isUser
                       ? "bg-accent-blue text-white rounded-br-md"
                       : "bg-muted text-foreground rounded-bl-md"
                   }`}
                 >
-                  {msg.content || (streaming && i === messages.length - 1 ? "…" : "")}
+                  {isUser ? (
+                    <span className="whitespace-pre-wrap">{msg.content}</span>
+                  ) : (
+                    <div className="chat-md">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                        {msg.content || (streaming && i === messages.length - 1 ? "…" : "")}
+                      </ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -26,22 +26,22 @@ export function formatMarketContext(trends: MarketTrends, days = 30): string {
     return `${name}: ${count} jobs (${pct} vs prior week)`;
   };
 
-  const topSkills = trends.skills.slice(0, 12);
+  const topSkills = (trends.skills ?? []).slice(0, 12);
   if (topSkills.length) {
     lines.push("Top skills by demand: " + topSkills.map((s) => skillLine(s.name, s.count, s.deltaPct)).join(" | "));
   }
 
-  const cats = trends.categories.slice(0, 8);
+  const cats = (trends.categories ?? []).slice(0, 8);
   if (cats.length) {
     lines.push("Top categories: " + cats.map((c) => `${c.name} (${c.n})`).join(", "));
   }
 
-  const subs = trends.subcategories.slice(0, 8);
+  const subs = (trends.subcategories ?? []).slice(0, 8);
   if (subs.length) {
     lines.push("Top subcategories: " + subs.map((c) => `${c.name} (${c.n})`).join(", "));
   }
 
-  if (trends.budgetBands.length) {
+  if ((trends.budgetBands ?? []).length) {
     const total = trends.budgetBands.reduce((acc, b) => acc + b.n, 0);
     const bands = trends.budgetBands
       .map((b) => `${b.band} ${total ? Math.round((b.n / total) * 100) : 0}%`)
@@ -49,7 +49,7 @@ export function formatMarketContext(trends: MarketTrends, days = 30): string {
     lines.push(`Budget distribution: ${bands}`);
   }
 
-  if (trends.hourlyBands.length) {
+  if ((trends.hourlyBands ?? []).length) {
     const total = trends.hourlyBands.reduce((acc, b) => acc + b.n, 0);
     const bands = trends.hourlyBands
       .map((b) => `${b.band} ${total ? Math.round((b.n / total) * 100) : 0}%`)
@@ -57,7 +57,7 @@ export function formatMarketContext(trends: MarketTrends, days = 30): string {
     lines.push(`Hourly distribution: ${bands}`);
   }
 
-  const geo = trends.geography.slice(0, 6);
+  const geo = (trends.geography ?? []).slice(0, 6);
   if (geo.length) {
     lines.push("Client locations: " + geo.map((g) => `${g.name} (${g.n})`).join(", "));
   }
