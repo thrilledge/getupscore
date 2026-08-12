@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { env } from "@/lib/env";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Briefcase } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export function CtaFooter() {
   return (
@@ -45,10 +45,13 @@ export function CtaFooter() {
       <footer className="border-t border-border/40 py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6">
           <div className="flex items-center gap-2.5">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
-              <Briefcase className="size-4" />
-            </span>
-            <span className="font-heading font-bold">{env.APP_NAME}</span>
+            <img
+              src="/getupscore-logo.png"
+              alt={env.APP_NAME}
+              width={110}
+              height={22}
+              className="h-5.5 w-auto"
+            />
           </div>
           <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} {env.APP_NAME}. AI-powered Upwork opportunity finder.

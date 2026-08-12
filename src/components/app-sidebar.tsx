@@ -88,9 +88,13 @@ export function AppSidebar() {
               render={<Link href="/dashboard" />}
               className="group-data-[collapsible=icon]:!p-0! transition-all duration-300 rounded-xl pt-0 pb-0"
             >
-              <div className="flex aspect-square size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary via-primary/95 to-primary/80 text-primary-foreground font-bold shadow-sm ring-1 ring-primary/20 transition-all duration-300 group-hover:scale-105 group-hover:shadow-md">
-                <span className="text-lg">{env.APP_NAME.charAt(0)}</span>
-              </div>
+              <img
+                src="/getupscore-logo-icon.png"
+                alt={env.APP_NAME}
+                width={36}
+                height={36}
+                className="size-9 rounded-xl object-contain bg-white/10 p-0.5 ring-1 ring-primary/20 transition-all duration-300 group-hover:scale-105 group-hover:shadow-md"
+              />
               <div className="flex flex-col gap-0.5 leading-none transition-all duration-300 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:delay-0">
                 <span className="font-heading font-semibold tracking-tight text-[15px]">{env.APP_NAME}</span>
                 {/* <span className="text-[11px] text-muted-foreground/60 font-medium tracking-wide">

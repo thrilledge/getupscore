@@ -631,20 +631,16 @@ function showSignInPopup() {
     removeSignInPopup();
   });
 
-  const logo = document.createElement("div");
-  logo.textContent = "U";
+  const logo = document.createElement("img");
+  logo.src = chrome.runtime.getURL("icons/getupscore-logo-icon.png");
+  logo.alt = "Get UpScore";
   Object.assign(logo.style, {
     width: "48px",
     height: "48px",
     borderRadius: "14px",
     margin: "0 auto 12px",
-    background: "linear-gradient(135deg, #2563eb 0%, #6634c0 100%)",
-    color: "#fff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "22px",
-    fontWeight: "700",
+    display: "block",
+    objectFit: "contain",
   });
 
   const title = document.createElement("h2");

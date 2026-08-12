@@ -1,19 +1,19 @@
 import Link from "next/link";
 import { env } from "@/lib/env";
 import { Button } from "@/components/ui/button";
-import { Briefcase } from "lucide-react";
 
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-sm">
-            <Briefcase className="size-4.5" />
-          </span>
-          <span className="font-heading text-lg font-bold tracking-tight">
-            {env.APP_NAME}
-          </span>
+          <img
+            src="/getupscore-logo.png"
+            alt={env.APP_NAME}
+            width={120}
+            height={24}
+            className="h-7 w-auto"
+          />
         </Link>
 
         <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">

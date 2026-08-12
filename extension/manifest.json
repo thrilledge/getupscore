@@ -36,7 +36,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["lib/main-world.js"],
+      "resources": ["lib/main-world.js", "icons/getupscore-logo-icon.png", "icons/getupscore-logo.png"],
       "matches": ["https://www.upwork.com/*"]
     }
   ],

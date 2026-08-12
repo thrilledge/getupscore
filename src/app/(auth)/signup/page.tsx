@@ -47,8 +47,8 @@ export default function SignupPage() {
   return (
     <Card className="border-border/50 shadow-xl bg-card/80 backdrop-blur-sm">
       <CardHeader className="space-y-1 text-center pb-6">
-        <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-sm">
-          <span className="text-xl font-bold font-heading">{env.APP_NAME.charAt(0)}</span>
+        <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-white/10 shadow-sm">
+          <img src="/getupscore-logo-icon.png" alt={env.APP_NAME} width={40} height={40} className="size-10 object-contain" />
         </div>
         <CardTitle className="text-2xl font-bold font-heading tracking-tight">{env.APP_NAME}</CardTitle>
         <CardDescription>Create a new account</CardDescription>
