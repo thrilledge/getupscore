@@ -185,7 +185,7 @@ function showProfileToast(message, type = "info", duration = 3500) {
     document.documentElement.appendChild(toast);
   }
   const colors = {
-    info: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+    info: "linear-gradient(135deg, #2563eb 0%, #6634c0 100%)",
     success: "linear-gradient(135deg, #16a34a 0%, #22c55e 100%)",
     error: "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)",
   };
@@ -638,7 +638,7 @@ function showSignInPopup() {
     height: "48px",
     borderRadius: "14px",
     margin: "0 auto 12px",
-    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+    background: "linear-gradient(135deg, #2563eb 0%, #6634c0 100%)",
     color: "#fff",
     display: "flex",
     alignItems: "center",
@@ -665,7 +665,7 @@ function showSignInPopup() {
     padding: "12px",
     borderRadius: "10px",
     border: "none",
-    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+    background: "linear-gradient(135deg, #2563eb 0%, #6634c0 100%)",
     color: "#fff",
     fontSize: "15px",
     fontWeight: "600",
@@ -728,7 +728,7 @@ function injectApplyButton() {
       gap: "6px",
       margin: "0 0 8px",
       padding: "7px 14px",
-      background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+      background: "linear-gradient(135deg, #2563eb 0%, #6634c0 100%)",
       color: "#ffffff",
       border: "none",
       borderRadius: "6px",

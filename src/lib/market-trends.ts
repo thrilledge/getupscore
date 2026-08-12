@@ -101,7 +101,7 @@ export const CHART_COLORS = [
   "oklch(0.6 0.12 250)",   // accent-blue
   "oklch(0.65 0.18 145)",  // accent-green
   "oklch(0.75 0.18 75)",   // accent-amber
-  "oklch(0.6 0.15 290)",   // accent-purple
+  "oklch(0.473 0.203 293.3)",  // accent-purple
   "oklch(0.7 0.16 20)",    // warm red
   "oklch(0.68 0.12 190)",  // teal
 ];
