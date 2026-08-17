@@ -72,10 +72,13 @@ BEGIN
   ),
   enriched AS (
     SELECT m.*,
-      coalesce(la.analyses, '[]'::json) AS job_analyses
+      CASE WHEN la.analyses IS NOT NULL
+        THEN json_build_array(la.analyses)
+        ELSE '[]'::json
+      END AS job_analyses
     FROM matched m
     LEFT JOIN LATERAL (
-      SELECT json_agg(json_build_object(
+      SELECT json_build_object(
         'match_score', ja.match_score,
         'opportunity_score', ja.opportunity_score,
         'win_probability', ja.win_probability,
@@ -89,7 +92,7 @@ BEGIN
         'red_flags', ja.red_flags,
         'model_used', ja.model_used,
         'analyzed_at', ja.analyzed_at
-      )) AS analyses
+      ) AS analyses
       FROM job_analyses ja WHERE ja.job_id = m.id
       ORDER BY ja.analyzed_at DESC NULLS LAST
       LIMIT 1
