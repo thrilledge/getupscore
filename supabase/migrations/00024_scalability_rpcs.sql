@@ -9,6 +9,9 @@
 -- ──────────────────────────────────────────────────────────
 
 -- ── 1. search_jobs: filtered, paginated job search ──────
+-- Uses CTE to scan table ONCE (not twice for COUNT + data).
+-- LEFT JOIN LATERAL for analyses instead of correlated subquery.
+-- 25s statement_timeout to survive cold-plan first calls.
 CREATE OR REPLACE FUNCTION public.search_jobs(
   p_search text DEFAULT NULL,
   p_job_type text DEFAULT NULL,
@@ -30,34 +33,13 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_total bigint;
-  v_rows json;
+  v_result json;
 BEGIN
-  -- Count total matching rows
-  SELECT count(*) INTO v_total
-  FROM jobs j
-  WHERE
-    -- Text search uses trigram index
-    (p_search IS NULL OR p_search = '' OR
-      j.title ILIKE '%' || p_search || '%' OR
-      j.description ILIKE '%' || p_search || '%')
-    AND (p_job_type IS NULL OR upper(replace(j.job_type, ' ', '')) = upper(replace(p_job_type, ' ', '')))
-    AND (p_tier IS NULL OR j.contractor_tier = p_tier)
-    AND (p_budget_min IS NULL OR j.budget >= p_budget_min)
-    AND (p_budget_max IS NULL OR j.budget <= p_budget_max)
-    AND (p_hourly_min IS NULL OR j.hourly_min >= p_hourly_min)
-    AND (p_hourly_max IS NULL OR j.hourly_max <= p_hourly_max)
-    AND (p_skill IS NULL OR p_skill = '' OR j.skills @> ARRAY[p_skill])
-    AND (p_country IS NULL OR p_country = '' OR j.client_country ILIKE '%' || p_country || '%')
-    AND (p_category IS NULL OR j.category = p_category)
-    AND (p_ids IS NULL OR array_length(p_ids, 1) IS NULL OR j.id::text = ANY(p_ids));
+  PERFORM set_config('statement_timeout', '25000', true);
 
-  -- Fetch matching rows with analyses
-  SELECT coalesce(json_agg(row_to_json(t)), '[]'::json)
-  INTO v_rows
-  FROM (
+  WITH matched AS (
     SELECT
-      j.id, j.upwork_job_id, j.title, j.description, j.url,
+      j.id, j.upwork_job_id, j.title, j.url,
       j.posted_at, j.budget, j.hourly_min, j.hourly_max,
       j.job_type, j.contractor_tier, j.duration_label, j.duration_weeks,
       j.skills, j.client_country, j.client_name, j.client_rating,
@@ -69,25 +51,7 @@ BEGIN
       j.hours_per_week, j.proposals_count, j.total_invited, j.total_hired,
       j.payment_verified, j.category, j.source, j.client_recent_history,
       j.created_at,
-      -- Subquery for analyses
-      coalesce((
-        SELECT json_agg(json_build_object(
-          'match_score', ja.match_score,
-          'opportunity_score', ja.opportunity_score,
-          'win_probability', ja.win_probability,
-          'skills_match', ja.skills_match,
-          'budget_fit', ja.budget_fit,
-          'client_analysis', ja.client_analysis,
-          'competition_analysis', ja.competition_analysis,
-          'recommendation', ja.recommendation,
-          'reasoning', ja.reasoning,
-          'proposal_tips', ja.proposal_tips,
-          'red_flags', ja.red_flags,
-          'model_used', ja.model_used,
-          'analyzed_at', ja.analyzed_at
-        ))
-        FROM job_analyses ja WHERE ja.job_id = j.id
-      ), '[]'::json) AS job_analyses
+      count(*) OVER() AS full_count
     FROM jobs j
     WHERE
       (p_search IS NULL OR p_search = '' OR
@@ -105,12 +69,40 @@ BEGIN
       AND (p_ids IS NULL OR array_length(p_ids, 1) IS NULL OR j.id::text = ANY(p_ids))
     ORDER BY j.posted_at DESC NULLS LAST
     LIMIT p_limit OFFSET p_offset
-  ) t;
+  ),
+  enriched AS (
+    SELECT m.*,
+      coalesce(la.analyses, '[]'::json) AS job_analyses
+    FROM matched m
+    LEFT JOIN LATERAL (
+      SELECT json_agg(json_build_object(
+        'match_score', ja.match_score,
+        'opportunity_score', ja.opportunity_score,
+        'win_probability', ja.win_probability,
+        'skills_match', ja.skills_match,
+        'budget_fit', ja.budget_fit,
+        'client_analysis', ja.client_analysis,
+        'competition_analysis', ja.competition_analysis,
+        'recommendation', ja.recommendation,
+        'reasoning', ja.reasoning,
+        'proposal_tips', ja.proposal_tips,
+        'red_flags', ja.red_flags,
+        'model_used', ja.model_used,
+        'analyzed_at', ja.analyzed_at
+      )) AS analyses
+      FROM job_analyses ja WHERE ja.job_id = m.id
+      ORDER BY ja.analyzed_at DESC NULLS LAST
+      LIMIT 1
+    ) la ON true
+  )
+  SELECT json_build_object(
+    'jobs', coalesce(json_agg((row_to_json(e))::jsonb - 'full_count'), '[]'::json),
+    'total', max(full_count)
+  )
+  INTO v_result
+  FROM enriched e;
 
-  RETURN json_build_object(
-    'jobs', v_rows,
-    'total', v_total
-  );
+  RETURN v_result;
 END;
 $$;
 

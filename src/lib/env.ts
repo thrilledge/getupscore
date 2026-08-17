@@ -36,8 +36,9 @@ export const env = {
   // Auth
   SITE_URL: getEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3000"),
 
-  // Redis
-  REDIS_URL: getEnv("REDIS_URL", "redis://localhost:6379"),
+  // Redis (Upstash)
+  UPSTASH_REDIS_REST_URL: getEnv("UPSTASH_REDIS_REST_URL"),
+  UPSTASH_REDIS_REST_TOKEN: getEnv("UPSTASH_REDIS_REST_TOKEN"),
 
   // OpenAI
   OPENAI_API_KEY: getEnv("OPENAI_API_KEY"),

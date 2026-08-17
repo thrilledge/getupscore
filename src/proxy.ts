@@ -13,6 +13,6 @@ export const config = {
      * - api/extension/* (extension API routes authenticated via Bearer token)
      * - api/notifications/send (authenticated via Bearer token)
      */
-    "/((?!_next/static|_next/image|favicon.ico|public|api/webhooks|api/jobs/cron|api/extension/|api/notifications/send|api/proposals/generate).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public|api/webhooks|api/inngest|api/jobs/cron|api/extension/|api/notifications/send|api/proposals/generate).*)",
   ],
 };

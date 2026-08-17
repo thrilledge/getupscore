@@ -1,78 +1,149 @@
 /**
- * Lightweight in-memory cache with TTL.
+ * Cache layer — Upstash Redis primary, in-memory fallback.
  *
- * Works within a single Vercel serverless function instance. Multiple
- * requests that hit the same warm instance share the cache, cutting
- * redundant DB calls. When the function cold-starts, the cache is empty
- * and repopulates naturally.
- *
- * For cross-instance caching, swap get/set with Redis/Upstash later.
+ * - Redis: cross-instance, persistent, shared across cold starts
+ * - In-memory: fallback when Redis is not configured, or during local dev
  */
+
+import { redis } from "@/lib/redis";
+
+// ─── In-memory fallback ────────────────────────────────────
 
 interface CacheEntry<T> {
   value: T;
   expiresAt: number;
 }
 
-const store = new Map<string, CacheEntry<unknown>>();
+const memStore = new Map<string, CacheEntry<unknown>>();
 
-// Periodically prune expired entries (max once per 60s)
 let lastPrune = 0;
 function maybePrune() {
   const now = Date.now();
   if (now - lastPrune < 60_000) return;
   lastPrune = now;
-  for (const [key, entry] of store) {
-    if (entry.expiresAt <= now) store.delete(key);
+  for (const [key, entry] of memStore) {
+    if (entry.expiresAt <= now) memStore.delete(key);
   }
 }
 
-export function cacheGet<T>(key: string): T | null {
+// ─── Redis helpers ─────────────────────────────────────────
+
+async function redisGet<T>(key: string): Promise<T | null> {
+  if (!redis) return null;
+  try {
+    const raw = await redis.get<string>(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+async function redisSet(key: string, value: unknown, ttlSec: number): Promise<void> {
+  if (!redis) return;
+  try {
+    await redis.set(key, JSON.stringify(value), { ex: ttlSec });
+  } catch {
+    // Swallow — cache failure must not break the request
+  }
+}
+
+async function redisDel(key: string): Promise<void> {
+  if (!redis) return;
+  try {
+    await redis.del(key);
+  } catch {
+    // Swallow
+  }
+}
+
+async function redisScanDel(prefix: string): Promise<number> {
+  if (!redis) return 0;
+  try {
+    // Use keys for simplicity — works fine for small key spaces (<10k)
+    const keys = await redis.keys(`${prefix}*`);
+    if (keys.length > 0) {
+      await redis.del(...keys);
+    }
+    return keys.length;
+  } catch {
+    return 0;
+  }
+}
+
+// ─── Public API ────────────────────────────────────────────
+
+export async function cacheGet<T>(key: string): Promise<T | null> {
+  // 1. Try Redis
+  const redisVal = await redisGet<T>(key);
+  if (redisVal !== null) return redisVal;
+
+  // 2. Fallback to memory
   maybePrune();
-  const entry = store.get(key) as CacheEntry<T> | undefined;
+  const entry = memStore.get(key) as CacheEntry<T> | undefined;
   if (!entry) return null;
   if (entry.expiresAt <= Date.now()) {
-    store.delete(key);
+    memStore.delete(key);
     return null;
   }
   return entry.value;
 }
 
-export function cacheSet<T>(key: string, value: T, ttlMs: number): void {
-  store.set(key, { value, expiresAt: Date.now() + ttlMs });
+export async function cacheSet<T>(key: string, value: T, ttlMs: number): Promise<void> {
+  const ttlSec = Math.ceil(ttlMs / 1000);
+
+  // Write to both stores in parallel
+  await Promise.all([
+    redisSet(key, value, ttlSec),
+    Promise.resolve().then(() => {
+      memStore.set(key, { value, expiresAt: Date.now() + ttlMs });
+    }),
+  ]);
 }
 
-export function cacheInvalidate(prefix: string): number {
-  let count = 0;
-  for (const key of store.keys()) {
-    if (key.startsWith(prefix)) {
-      store.delete(key);
-      count++;
-    }
-  }
-  return count;
+export async function cacheInvalidate(prefix: string): Promise<number> {
+  // Invalidate both stores
+  const [redisCount] = await Promise.all([
+    redisScanDel(prefix),
+    Promise.resolve().then(() => {
+      let count = 0;
+      for (const key of memStore.keys()) {
+        if (key.startsWith(prefix)) {
+          memStore.delete(key);
+          count++;
+        }
+      }
+      return count;
+    }),
+  ]);
+  return redisCount;
 }
 
 /**
  * Cache-aside helper: return cached value or call fn, cache the result, return it.
  */
-export async function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
-  const hit = cacheGet<T>(key);
+export async function cached<T>(
+  key: string,
+  ttlMs: number,
+  fn: () => Promise<T>
+): Promise<T> {
+  const hit = await cacheGet<T>(key);
   if (hit !== null) return hit;
   const value = await fn();
-  cacheSet(key, value, ttlMs);
+  await cacheSet(key, value, ttlMs);
   return value;
 }
 
-// TTL presets
+// ─── TTL presets ───────────────────────────────────────────
+
 export const TTL = {
-  /** Jobs listing — refreshed often but not on every 30s poll */
+  /** Jobs listing — refreshed often */
   JOBS_LIST: 15_000,
-  /** Dashboard stats — polled every 60s by frontend */
+  /** Dashboard stats */
   STATS: 30_000,
-  /** Suggestions — typed infrequently, data changes slowly */
+  /** Suggestions — typed infrequently */
   SUGGESTIONS: 5 * 60_000,
-  /** Analytics — user-specific, short TTL */
+  /** Analytics — user-specific */
   ANALYTICS: 30_000,
   /** Single job detail */
   JOB_DETAIL: 20_000,
