@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { inngest } from "@/lib/inngest/client";
 import {
   mapVibeworkerJobsToInserts,
   type VibeworkerResponse,
@@ -79,6 +80,7 @@ export async function POST(request: Request) {
 
     const scores = payload.scores || [];
     let scoreCount = 0;
+    const scoreInserts: { job_id: string; user_id: string; match_score: number; opportunity_score: number; win_probability: number; recommendation: string }[] = [];
 
     if (scores.length > 0) {
       const upworkIdToDbId = new Map<string, string>();
@@ -95,16 +97,18 @@ export async function POST(request: Request) {
         }
       }
 
-      const scoreInserts = scores
-        .filter((s) => upworkIdToDbId.has(s.upwork_job_id))
-        .map((s) => ({
-          job_id: upworkIdToDbId.get(s.upwork_job_id)!,
+      for (const s of scores) {
+        const dbId = upworkIdToDbId.get(s.upwork_job_id);
+        if (!dbId) continue;
+        scoreInserts.push({
+          job_id: dbId,
           user_id: s.user_id,
           match_score: s.score,
           opportunity_score: 0,
           win_probability: 0,
           recommendation: `Static match (${s.score}/100) via filter ${s.filter_id}`,
-        }));
+        });
+      }
 
       if (scoreInserts.length > 0) {
         const { error: scoreErr } = await supabase
@@ -125,6 +129,23 @@ export async function POST(request: Request) {
       `[Vibeworker] ${newJobIds.length} new, ${skipped} skipped, ${scoreCount} scored out of ${inserts.length} received`
     );
 
+    const analyzeEvents = (scoreInserts || [])
+      .map((s: any) => ({
+        name: "app/jobs.analyze" as const,
+        data: { jobId: s.job_id, userId: s.user_id },
+      }));
+
+    if (analyzeEvents.length > 0) {
+      try {
+        for (let i = 0; i < analyzeEvents.length; i += 50) {
+          await inngest.send(analyzeEvents.slice(i, i + 50));
+        }
+        console.log(`[Vibeworker] Sent ${analyzeEvents.length} analysis events to Inngest`);
+      } catch (e: any) {
+        console.warn("[Vibeworker] Failed to send Inngest events:", e.message);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       timestamp: new Date().toISOString(),
@@ -132,6 +153,7 @@ export async function POST(request: Request) {
       newJobs: newJobIds.length,
       skipped,
       scored: scoreCount,
+      analyzeQueued: analyzeEvents.length,
     });
   } catch (err: any) {
     console.error("[Vibeworker] Fatal error:", err);

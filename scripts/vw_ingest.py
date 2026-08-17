@@ -398,7 +398,7 @@ def main():
                     "filter_id": sc["filter_id"],
                 })
 
-        jobs_to_send.append(mapped)
+        jobs_to_send.append(job)
 
     log(f"Static scoring: {len(jobs_to_send)} passed, {total_skipped} skipped, {len(all_scores)} score rows")
 

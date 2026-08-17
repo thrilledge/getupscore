@@ -29,6 +29,9 @@ import {
   Clock,
   DollarSign,
   Briefcase,
+  MapPin,
+  Shield,
+  TrendingUp,
 } from "lucide-react";
 
 type JobItem = {
@@ -54,6 +57,8 @@ type JobItem = {
   client_total_assignments: number | null;
   client_total_hires: number | null;
   client_total_spend: number | null;
+  client_hire_rate: number | null;
+  client_payment_verified: boolean | null;
   client_member_since: string | null;
   client_industry: string | null;
   proposals_count: number | null;
@@ -348,9 +353,10 @@ export default function JobsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/40">
-                  <th className="text-left font-semibold text-muted-foreground px-5 py-3.5 w-[38%]">Job</th>
-                  <th className="text-left font-semibold text-muted-foreground px-5 py-3.5 w-[13%]">Type</th>
-                  <th className="text-left font-semibold text-muted-foreground px-5 py-3.5 w-[28%]">Budget & Workload</th>
+                  <th className="text-left font-semibold text-muted-foreground px-5 py-3.5 w-[22%]">Job</th>
+                  <th className="text-left font-semibold text-muted-foreground px-5 py-3.5 w-[10%]">Type</th>
+                  <th className="text-left font-semibold text-muted-foreground px-5 py-3.5 w-[18%]">Budget & Workload</th>
+                  <th className="text-left font-semibold text-muted-foreground px-5 py-3.5 w-[20%]">Client</th>
                   <th className="text-right font-semibold text-muted-foreground px-5 py-3.5 w-[13%]">Posted</th>
                   <th className="w-[8%] px-5 py-3.5"></th>
                 </tr>
@@ -412,7 +418,7 @@ export default function JobsPage() {
                             variant="secondary"
                             className="text-[11px] px-2 py-0.5 font-medium rounded-full"
                           >
-                            {job.job_type === "HOURLY" ? "Hourly" : job.job_type === "FIXED" ? "Fixed" : "—"}
+                            {job.job_type?.toLowerCase() === "hourly" ? "Hourly" : job.job_type?.toLowerCase() === "fixed" ? "Fixed" : job.job_type || "—"}
                           </Badge>
                         </div>
                       </td>
@@ -436,6 +442,37 @@ export default function JobsPage() {
                                 {job.duration_label ? ` · ${job.duration_label}` : ""}
                               </span>
                             </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="space-y-1">
+                          {job.client_country && (
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="size-3 text-muted-foreground/60 shrink-0" />
+                              <span className="text-xs text-muted-foreground">{job.client_country}</span>
+                            </div>
+                          )}
+                          {job.client_total_spend != null && (
+                            <div className="flex items-center gap-1.5">
+                              <DollarSign className="size-3 text-muted-foreground/60 shrink-0" />
+                              <span className="text-xs font-medium tabular-nums">${job.client_total_spend.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {job.client_hire_rate != null && (
+                            <div className="flex items-center gap-1.5">
+                              <TrendingUp className="size-3 text-muted-foreground/60 shrink-0" />
+                              <span className="text-xs text-muted-foreground">{job.client_hire_rate}% hire rate</span>
+                            </div>
+                          )}
+                          {job.client_payment_verified && (
+                            <div className="flex items-center gap-1.5">
+                              <Shield className="size-3 text-green-500 shrink-0" />
+                              <span className="text-xs text-green-600">Verified</span>
+                            </div>
+                          )}
+                          {!job.client_country && job.client_total_spend == null && job.client_hire_rate == null && (
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </div>
                       </td>

@@ -76,6 +76,7 @@ type Job = {
   client_rating: number | null;
   client_total_assignments: number | null;
   client_total_hires: number | null;
+  client_hire_rate: number | null;
   client_total_spend: number | null;
   client_member_since: string | null;
   client_industry: string | null;
@@ -458,10 +459,10 @@ export default function JobDetailPage() {
                       <p className="text-base font-bold tabular-nums">${job.client_total_spend.toLocaleString()}</p>
                     </div>
                   )}
-                  {job.client_total_hires != null && (
+                  {job.client_hire_rate != null && (
                     <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Hires</p>
-                      <p className="text-base font-bold tabular-nums">{job.client_total_hires}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Hire Rate</p>
+                      <p className="text-base font-bold tabular-nums">{job.client_hire_rate}%</p>
                     </div>
                   )}
                   {job.client_total_jobs_with_hires != null && (

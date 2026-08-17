@@ -12,6 +12,8 @@
 -- Uses CTE to scan table ONCE (not twice for COUNT + data).
 -- LEFT JOIN LATERAL for analyses instead of correlated subquery.
 -- 25s statement_timeout to survive cold-plan first calls.
+-- p_search supports comma-separated terms (OR match).
+-- Includes job_scores data from static pre-filter scoring.
 CREATE OR REPLACE FUNCTION public.search_jobs(
   p_search text DEFAULT NULL,
   p_job_type text DEFAULT NULL,
@@ -34,8 +36,15 @@ SET search_path = public
 AS $$
 DECLARE
   v_result json;
+  v_search_terms text[];
 BEGIN
   PERFORM set_config('statement_timeout', '25000', true);
+
+  IF p_search IS NOT NULL AND p_search != '' THEN
+    SELECT array_agg(trim(t)) INTO v_search_terms
+    FROM unnest(string_to_array(p_search, ',')) t
+    WHERE trim(t) != '';
+  END IF;
 
   WITH matched AS (
     SELECT
@@ -54,9 +63,12 @@ BEGIN
       count(*) OVER() AS full_count
     FROM jobs j
     WHERE
-      (p_search IS NULL OR p_search = '' OR
-        j.title ILIKE '%' || p_search || '%' OR
-        j.description ILIKE '%' || p_search || '%')
+      (v_search_terms IS NULL OR array_length(v_search_terms, 1) IS NULL OR
+        EXISTS (
+          SELECT 1 FROM unnest(v_search_terms) term
+          WHERE j.title ILIKE '%' || term || '%'
+             OR j.description ILIKE '%' || term || '%'
+        ))
       AND (p_job_type IS NULL OR upper(replace(j.job_type, ' ', '')) = upper(replace(p_job_type, ' ', '')))
       AND (p_tier IS NULL OR j.contractor_tier = p_tier)
       AND (p_budget_min IS NULL OR j.budget >= p_budget_min)
@@ -75,7 +87,8 @@ BEGIN
       CASE WHEN la.analyses IS NOT NULL
         THEN json_build_array(la.analyses)
         ELSE '[]'::json
-      END AS job_analyses
+      END AS job_analyses,
+      COALESCE(sc.scores, '[]'::json) AS job_scores
     FROM matched m
     LEFT JOIN LATERAL (
       SELECT json_build_object(
@@ -97,6 +110,18 @@ BEGIN
       ORDER BY ja.analyzed_at DESC NULLS LAST
       LIMIT 1
     ) la ON true
+    LEFT JOIN LATERAL (
+      SELECT json_agg(json_build_object(
+        'id', js.id,
+        'match_score', js.match_score,
+        'opportunity_score', js.opportunity_score,
+        'win_probability', js.win_probability,
+        'recommendation', js.recommendation,
+        'user_id', js.user_id,
+        'created_at', js.created_at
+      ) ORDER BY js.created_at DESC) AS scores
+      FROM job_scores js WHERE js.job_id = m.id
+    ) sc ON true
   )
   SELECT json_build_object(
     'jobs', coalesce(json_agg((row_to_json(e))::jsonb - 'full_count'), '[]'::json),
