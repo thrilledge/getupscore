@@ -77,15 +77,19 @@ export const processCronJobs = inngest.createFunction(
       await cacheInvalidate("system:");
     });
 
-    // Step 3: Fan out analysis events for each new job × each user
+    // Step 3: Static pre-filter → only promising jobs go to AI
     if (newJobIds.length > 0) {
-      await step.run("fan-out-analysis", async () => {
+      await step.run("static-prefilter-and-fanout", async () => {
         const supabase = createSupabaseAdminClient();
+        const { staticScore } = await import("@/lib/jobs/static-score");
 
-        const { data: activeFilters } = await supabase
+        const { data: allFilters } = await supabase
           .from("job_filters")
-          .select("user_id")
+          .select("*")
           .eq("is_active", true);
+
+        const filters = (allFilters || []) as any[];
+        if (filters.length === 0) return;
 
         const { data: ruleUsers } = await supabase
           .from("notification_rules")
@@ -93,22 +97,56 @@ export const processCronJobs = inngest.createFunction(
           .eq("is_active", true);
 
         const userIdSet = new Set<string>();
-        for (const f of activeFilters || []) userIdSet.add(f.user_id);
+        for (const f of filters) userIdSet.add(f.user_id);
         for (const r of ruleUsers || []) userIdSet.add(r.user_id);
-
         const userIds = [...userIdSet];
         if (userIds.length === 0) return;
 
         const jobIds = newJobIds.slice(0, 100);
-        const events = [];
-        for (const jobId of jobIds) {
+        const events: { name: "app/jobs.analyze"; data: { jobId: string; userId: string } }[] = [];
+        let passed = 0;
+        let skipped = 0;
+
+        const { data: jobRows } = await supabase
+          .from("jobs")
+          .select("id, title, description, skills, budget, hourly_min, hourly_max, job_type, client_country, client_location_country, client_total_spend, proposals_count, category, subcategory")
+          .in("id", jobIds);
+
+        for (const job of jobRows || []) {
           for (const userId of userIds) {
-            events.push({
-              name: "app/jobs.analyze" as const,
-              data: { jobId, userId },
-            });
+            const userFilters = filters.filter((f: any) => f.user_id === userId);
+            const result = staticScore(
+              {
+                title: job.title,
+                description: job.description,
+                skills: job.skills || [],
+                budget: job.budget,
+                hourly_min: job.hourly_min,
+                hourly_max: job.hourly_max,
+                job_type: job.job_type,
+                client_country: job.client_country,
+                client_location_country: job.client_location_country,
+                client_total_spend: job.client_total_spend,
+                proposals_count: job.proposals_count,
+                category: job.category,
+                subcategory: job.subcategory,
+              },
+              userFilters
+            );
+
+            if (result.pass) {
+              events.push({
+                name: "app/jobs.analyze" as const,
+                data: { jobId: job.id, userId },
+              });
+              passed++;
+            } else {
+              skipped++;
+            }
           }
         }
+
+        console.log(`[StaticFilter] ${passed} passed, ${skipped} skipped out of ${jobRows?.length || 0} jobs × ${userIds.length} users`);
 
         for (let i = 0; i < events.length; i += 50) {
           await inngest.send(events.slice(i, i + 50));
@@ -130,7 +168,7 @@ export const analyzeJobFunction = inngest.createFunction(
   {
     id: "analyze-job",
     retries: 3,
-    concurrency: { limit: 10 },
+    concurrency: { limit: 5 },
     triggers: [{ event: "app/jobs.analyze" }],
   },
   async ({ event, step }) => {
@@ -223,6 +261,7 @@ export const processExtensionSync = inngest.createFunction(
     for (const jobData of jobs) {
       await step.run(`process-job-${jobData.upwork_job_id}`, async () => {
         const supabase = createSupabaseAdminClient();
+        const { staticScore } = await import("@/lib/jobs/static-score");
 
         const { data: jobRow, error: jobErr } = await supabase
           .from("jobs")
@@ -235,6 +274,36 @@ export const processExtensionSync = inngest.createFunction(
 
         if (jobErr || !jobRow) return { ok: false, error: jobErr?.message };
         const dbJobId = jobRow.id;
+
+        const { data: userFilters } = await supabase
+          .from("job_filters")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("is_active", true);
+
+        const filters = (userFilters || []) as any[];
+        const staticResult = staticScore(
+          {
+            title: jobData.jobRecord.title || null,
+            description: jobData.jobRecord.description || null,
+            skills: jobData.jobRecord.skills || [],
+            budget: jobData.jobRecord.budget || null,
+            hourly_min: jobData.jobRecord.hourly_min || null,
+            hourly_max: jobData.jobRecord.hourly_max || null,
+            job_type: jobData.jobRecord.job_type || null,
+            client_country: jobData.jobRecord.client_country || null,
+            client_location_country: jobData.jobRecord.client_location_country || null,
+            client_total_spend: jobData.jobRecord.client_total_spend || null,
+            proposals_count: jobData.jobRecord.proposals_count || null,
+            category: jobData.jobRecord.category || null,
+            subcategory: jobData.jobRecord.subcategory || null,
+          },
+          filters
+        );
+
+        if (!staticResult.pass && filters.length > 0) {
+          return { ok: true, dbJobId, skipped: "static_filter" };
+        }
 
         let analysis: Record<string, any> | null = null;
 
