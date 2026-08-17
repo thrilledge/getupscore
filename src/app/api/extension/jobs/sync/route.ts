@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authenticateRequest } from "@/app/api/extension/auth";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { analyzeJob } from "@/lib/jobs/analyze";
+import { cacheInvalidate } from "@/lib/cache";
 
 const MAX_JOBS_PER_REQUEST = 20; // Reduced to accommodate analysis data
 
@@ -130,14 +131,7 @@ export async function POST(request: Request) {
 
       const dbJobId = jobData.id;
 
-      // Run server-side AI analysis using the rich DOM data
-      try {
-        await analyzeJob(supabase, jobRecord, dbJobId, userId);
-      } catch (analyzeErr: any) {
-        console.warn("[Extension Jobs] Analysis error:", analyzeErr.message);
-      }
-
-      // If AI analysis is provided, store it in job_analyses
+      // Skip server-side analysis if client already provided one
       if (job.analysis && typeof job.analysis === "object") {
         const a = job.analysis;
 
@@ -204,6 +198,13 @@ export async function POST(request: Request) {
             console.warn("[Extension Jobs] Notification error:", notifErr.message);
           }
         }
+      } else {
+        // No client-side analysis provided — run server-side
+        try {
+          await analyzeJob(supabase, jobRecord, dbJobId, userId);
+        } catch (analyzeErr: any) {
+          console.warn("[Extension Jobs] Analysis error:", analyzeErr.message);
+        }
       }
 
       // Create/update job_scores entry for this user (marks as captured)
@@ -226,6 +227,10 @@ export async function POST(request: Request) {
 
       syncedCount++;
     }
+
+    // Invalidate jobs listing cache after sync
+    cacheInvalidate("jobs:");
+    cacheInvalidate("system:");
 
     return NextResponse.json({ count: syncedCount });
   } catch (err) {

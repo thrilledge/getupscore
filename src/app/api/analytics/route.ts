@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
+import { cached, TTL } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -11,48 +12,19 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const admin = createSupabaseAdminClient() as any;
+  const admin = createSupabaseAdminClient();
 
   try {
-    const { count: savedJobs } = await admin
-      .from("saved_jobs")
-      .select("*", { count: "estimated", head: true })
-      .eq("user_id", user.id);
+    // Single RPC call replaces 7 sequential count queries
+    const stats = await cached(`analytics:${user.id}`, TTL.ANALYTICS, async () => {
+      const { data, error } = await admin.rpc("get_dashboard_stats" as any, {
+        p_user_id: user.id,
+      } as any);
+      if (error) throw error;
+      return data as any;
+    });
 
-    const { count: totalAnalyses } = await admin
-      .from("job_analyses")
-      .select("*", { count: "estimated", head: true })
-      .eq("user_id", user.id);
-
-    const { count: activeFilters } = await admin
-      .from("job_filters")
-      .select("*", { count: "estimated", head: true })
-      .eq("user_id", user.id)
-      .eq("is_active", true);
-
-    const { count: activeRules } = await admin
-      .from("notification_rules")
-      .select("*", { count: "estimated", head: true })
-      .eq("user_id", user.id)
-      .eq("is_active", true);
-
-    const { count: totalProposals } = await admin
-      .from("proposals")
-      .select("*", { count: "estimated", head: true })
-      .eq("user_id", user.id);
-
-    const { count: totalNotifications } = await admin
-      .from("notifications")
-      .select("*", { count: "estimated", head: true })
-      .eq("user_id", user.id);
-
-    const { count: totalChannels } = await admin
-      .from("notification_channels")
-      .select("*", { count: "estimated", head: true })
-      .eq("user_id", user.id);
-
-    // Saved jobs' skills
+    // Top skills from saved jobs — parallel with stats if not cached
     const { data: savedJobsData } = await admin
       .from("saved_jobs")
       .select("job_id")
@@ -83,13 +55,13 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      savedJobs: savedJobs ?? 0,
-      totalAnalyses: totalAnalyses ?? 0,
-      activeFilters: activeFilters ?? 0,
-      activeRules: activeRules ?? 0,
-      totalProposals: totalProposals ?? 0,
-      totalNotifications: totalNotifications ?? 0,
-      totalChannels: totalChannels ?? 0,
+      savedJobs: stats?.savedJobs ?? 0,
+      totalAnalyses: stats?.totalAnalyses ?? 0,
+      activeFilters: stats?.activeFilters ?? 0,
+      activeRules: stats?.activeRules ?? 0,
+      totalProposals: stats?.totalProposals ?? 0,
+      totalNotifications: stats?.totalNotifications ?? 0,
+      totalChannels: stats?.totalChannels ?? 0,
       topSkills,
     });
   } catch (err: any) {

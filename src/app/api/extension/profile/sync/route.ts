@@ -50,6 +50,10 @@ export async function POST(request: Request) {
       for (const field of Object.keys(profile)) {
         const next = profile[field];
         const prev = (existing as Record<string, unknown>)[field];
+        // Skip overwriting a non-null existing value with null/empty
+        if (next === null || next === undefined || next === "") {
+          if (prev !== null && prev !== undefined && prev !== "") continue;
+        }
         const same = JSON.stringify(next) === JSON.stringify(prev);
         if (!same) {
           merged[field] = next;

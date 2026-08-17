@@ -1,0 +1,62 @@
+{
+  "manifest_version": 3,
+  "name": "Get UpScore",
+  "version": "1.0.1",
+  "description": "AI-powered Upwork opportunity finder — job alerts, scoring, and proposals.",
+  "homepage_url": "https://getupscore.vercel.app",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": [
+    "storage",
+    "alarms",
+    "sidePanel",
+    "cookies",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "https://getupscore.vercel.app/*",
+    "https://*.upscore.app/*",
+    "https://getupscore.com/*",
+    "https://www.upwork.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.upwork.com/*"],
+      "js": ["upscore-content.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://getupscore.vercel.app/*", "https://*.upscore.app/*", "https://getupscore.com/*"],
+      "js": ["dashboard-bridge.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["lib/main-world.js"],
+      "matches": ["https://www.upwork.com/*"]
+    }
+  ],
+  "action": {
+    "default_title": "Get UpScore — Open Sidebar",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  }
+}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { cached, TTL } from "@/lib/cache";
 
 /**
  * GET /api/jobs/status
@@ -10,61 +11,25 @@ export async function GET() {
   try {
     const supabase = await createSupabaseAdminClient();
 
-    // Get total job counts
-    const { count: totalJobs } = await supabase
-      .from("jobs")
-      .select("*", { count: "estimated", head: true });
-
-    // Jobs added in last 24h
-    const oneDayAgo = new Date(Date.now() - 86400000).toISOString();
-    const { count: recentJobs } = await supabase
-      .from("jobs")
-      .select("*", { count: "estimated", head: true })
-      .gte("created_at", oneDayAgo);
-
-    // Total analyses
-    const { count: totalAnalyses } = await supabase
-      .from("job_analyses")
-      .select("*", { count: "estimated", head: true });
-
-    // Analyses in last 24h
-    const { count: recentAnalyses } = await supabase
-      .from("job_analyses")
-      .select("*", { count: "estimated", head: true })
-      .gte("analyzed_at", oneDayAgo);
-
-    // Last analysis time
-    const { data: lastAnalysis } = await supabase
-      .from("job_analyses")
-      .select("analyzed_at")
-      .order("analyzed_at", { ascending: false })
-      .limit(1);
-
-    // Active filters count
-    const { count: activeFilters } = await supabase
-      .from("job_filters")
-      .select("*", { count: "estimated", head: true })
-      .eq("is_active", true);
-
-    // Active notification rules count
-    const { count: activeRules } = await supabase
-      .from("notification_rules")
-      .select("*", { count: "estimated", head: true })
-      .eq("is_active", true);
+    // Single RPC replaces 6 sequential count queries
+    const stats = await cached("system:status", TTL.STATS, async () => {
+      const { data, error } = await supabase.rpc("get_system_stats" as any);
+      if (error) throw error;
+      return data as any;
+    });
 
     return NextResponse.json({
       ok: true,
       timestamp: new Date().toISOString(),
       stats: {
-        total_jobs: totalJobs ?? 0,
-        recent_jobs_24h: recentJobs ?? 0,
-        total_analyses: totalAnalyses ?? 0,
-        recent_analyses_24h: recentAnalyses ?? 0,
-        active_filters: activeFilters ?? 0,
-        active_rules: activeRules ?? 0,
+        total_jobs: stats?.total_jobs ?? 0,
+        recent_jobs_24h: stats?.recent_jobs_24h ?? 0,
+        total_analyses: stats?.total_analyses ?? 0,
+        recent_analyses_24h: stats?.recent_analyses_24h ?? 0,
+        active_filters: stats?.active_filters ?? 0,
+        active_rules: stats?.active_rules ?? 0,
       },
-      last_analysis:
-        lastAnalysis?.[0]?.analyzed_at || null,
+      last_analysis: stats?.last_analysis || null,
     });
   } catch (err: any) {
     console.error("[Job Status] Error:", err);

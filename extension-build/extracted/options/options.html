@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Get UpScore — Extension Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <svg width="28" height="28" viewBox="0 0 128 128">
+          <defs>
+            <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#2563eb"/>
+              <stop offset="100%" stop-color="#7c3aed"/>
+            </linearGradient>
+          </defs>
+          <rect width="128" height="128" rx="24" fill="url(#g1)"/>
+          <text x="64" y="82" text-anchor="middle" font-family="system-ui" font-weight="900" font-size="64" fill="white">U</text>
+          <circle cx="96" cy="40" r="12" fill="#22c55e"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Get UpScore Extension</h1>
+        <p class="subtitle">Configure your API connection</p>
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>Account</h2>
+      <p class="desc">Sign in with your Get UpScore dashboard account. The extension uses the same account for syncing and AI proposals.</p>
+
+      <div id="authSignedOut">
+        <p class="desc" style="margin:0 0 12px">Sign in with your Get UpScore dashboard account. After signing in, the extension connects automatically — no tokens needed.</p>
+        <button id="btnLogin" class="btn btn-primary">Sign in on Dashboard</button>
+      </div>
+
+      <div id="authSignedIn" style="display:none">
+        <p class="desc">Signed in as <strong id="authEmail"></strong></p>
+        <button id="btnLogout" class="btn btn-secondary">Sign out</button>
+      </div>
+
+      <div class="connection-status" id="connectionStatus">
+        <span class="dot disconnected"></span>
+        <span>Not signed in</span>
+      </div>
+    </section>
+
+    <section class="card about">
+      <h2>About</h2>
+      <p class="desc">Get UpScore Extension v1.0.0</p>
+      <p class="desc">Captures Upwork cookies for server-side scraping and displays synced data from your Get UpScore dashboard.</p>
+    </section>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
