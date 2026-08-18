@@ -5,7 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
 import { toast } from "sonner";
-import type { NotificationRule, JobFilter, NotificationChannel } from "@/lib/supabase/database-types";
+import type {
+  NotificationRule,
+  JobFilter,
+  NotificationChannel,
+} from "@/lib/supabase/database-types";
 import { toggleRule, deleteRule } from "@/actions/rules";
 import { RuleFormDialog } from "@/components/rule-form";
 import { Badge } from "@/components/ui/badge";
@@ -30,30 +34,32 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Power,
-  PowerOff,
-  Loader2,
+  BarChart3,
   Bell,
   Filter,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Power,
+  PowerOff,
   Target,
-  BarChart3,
+  Trash2,
   Users,
 } from "lucide-react";
 
 interface RuleCardProps {
   rule: NotificationRule;
+
   /** Pre-resolved channel name to avoid extra query */
   channelName?: string;
+
   /** Pre-resolved filter name */
   filterName?: string;
+
   onSuccess?: () => void;
 }
 
@@ -63,32 +69,52 @@ export function RuleCard({
   filterName,
   onSuccess,
 }: RuleCardProps) {
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] =
+    useState(false);
+
+  const [showDeleteDialog, setShowDeleteDialog] =
+    useState(false);
+
   const [deleting, setDeleting] = useState(false);
   const [toggling, setToggling] = useState(false);
 
   async function handleToggle() {
     setToggling(true);
-    const result = await toggleRule(rule.id, !rule.is_active);
+
+    const result = await toggleRule(
+      rule.id,
+      !rule.is_active
+    );
+
     setToggling(false);
 
     if (!result.success) {
-      toast.error(result.error ?? "Failed to toggle rule.");
+      toast.error(
+        result.error ?? "Failed to toggle rule."
+      );
       return;
     }
 
-    toast.success(rule.is_active ? "Rule paused." : "Rule activated.");
+    toast.success(
+      rule.is_active
+        ? "Rule paused."
+        : "Rule activated."
+    );
+
     onSuccess?.();
   }
 
   async function handleDelete() {
     setDeleting(true);
+
     const result = await deleteRule(rule.id);
+
     setDeleting(false);
 
     if (!result.success) {
-      toast.error(result.error ?? "Failed to delete rule.");
+      toast.error(
+        result.error ?? "Failed to delete rule."
+      );
       return;
     }
 
@@ -100,156 +126,243 @@ export function RuleCard({
   return (
     <>
       <Card
-        className={`group relative overflow-hidden border-border/60 bg-card transition-all duration-300 hover:shadow-lg hover:border-border/100 hover:-translate-y-0.5 ${
-          !rule.is_active ? "opacity-60" : ""
-        }`}
-      >
-        {/* Accent bar */}
-        <div
-          className={`absolute top-0 left-0 h-1 w-full transition-colors duration-300 ${
-            rule.is_active
-              ? "bg-gradient-to-r from-accent-purple via-accent-purple/80 to-accent-purple/60"
-              : "bg-muted-foreground/20"
+        className={`group relative h-full gap-0 overflow-hidden rounded-2xl border py-0 transition-all duration-300 ${rule.is_active
+            ? "border-[#00C98B]/25 bg-white shadow-[0_10px_30px_rgba(0,0,0,0.05)] hover:-translate-y-1 hover:border-[#00C98B]/50 hover:shadow-[0_18px_42px_rgba(0,201,139,0.1)]"
+            : "border-black/10 bg-white opacity-70 shadow-[0_8px_24px_rgba(0,0,0,0.04)] hover:-translate-y-1 hover:opacity-100"
           }`}
+      >
+        {/* Top Accent */}
+        <div
+          className={`h-1 w-full ${rule.is_active
+              ? "bg-[#00C98B]"
+              : "bg-black/15"
+            }`}
         />
 
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base font-heading font-semibold tracking-tight">
-                  {channelName ?? "Unknown Channel"}
-                </CardTitle>
-                {filterName && (
-                  <>
-                    <span className="text-muted-foreground/30">→</span>
-                    <span className="text-sm text-muted-foreground">
-                      {filterName}
-                    </span>
-                  </>
-                )}
-                {!filterName && (
+        {/* Card Header */}
+        <CardHeader className="p-5 pb-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <div
+                className={`flex size-10 shrink-0 items-center justify-center rounded-xl border transition-colors duration-300 ${rule.is_active
+                    ? "border-[#00C98B]/20 bg-[#00C98B]/10 text-[#00C98B] group-hover:bg-[#00C98B] group-hover:text-[#0A0A0A]"
+                    : "border-black/10 bg-black/5 text-black/35"
+                  }`}
+              >
+                <Bell className="size-[18px]" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="truncate font-heading text-sm font-bold tracking-tight text-[#0A0A0A]">
+                    {channelName ?? "Unknown Channel"}
+                  </CardTitle>
+
                   <Badge
                     variant="outline"
-                    className="text-[10px] px-1.5 py-0 h-5 font-medium border-accent-amber/30 text-accent-amber bg-accent-amber/5"
+                    className={`h-5 rounded-full px-2 text-[9px] font-bold ${rule.is_active
+                        ? "border-[#00C98B]/25 bg-[#00C98B]/10 text-[#007A56]"
+                        : "border-black/10 bg-black/5 text-black/45"
+                      }`}
                   >
-                    All filters
+                    <span
+                      className={`mr-1.5 size-1.5 rounded-full ${rule.is_active
+                          ? "bg-[#00C98B]"
+                          : "bg-black/30"
+                        }`}
+                    />
+
+                    {rule.is_active
+                      ? "Active"
+                      : "Paused"}
                   </Badge>
-                )}
-                <Badge
-                  variant={rule.is_active ? "default" : "secondary"}
-                  className="text-[10px] px-2 py-0 h-5 font-medium"
-                >
-                  {rule.is_active ? "Active" : "Paused"}
-                </Badge>
+                </div>
+
+                <CardDescription className="mt-2">
+                  {filterName ? (
+                    <div className="flex min-w-0 items-center gap-2 text-[11px] text-black/45">
+                      <Filter className="size-3 shrink-0 text-[#00C98B]" />
+
+                      <span className="truncate">
+                        {filterName}
+                      </span>
+                    </div>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="h-5 rounded-full border-black/10 bg-black/5 px-2 text-[9px] font-medium text-black/45"
+                    >
+                      <Filter className="mr-1 size-2.5" />
+                      All filters
+                    </Badge>
+                  )}
+                </CardDescription>
               </div>
-              <CardDescription className="text-xs flex items-center gap-2">
-                <Bell className="size-3" />
-                <span>{channelName ?? "—"}</span>
-                {filterName && (
-                  <>
-                    <Filter className="size-3" />
-                    <span>{filterName}</span>
-                  </>
-                )}
-              </CardDescription>
             </div>
 
+            {/* Action Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Open rule actions"
+                    className="size-8 shrink-0 rounded-lg text-black/45 opacity-100 hover:bg-[#0A0A0A] hover:text-[#00C98B] sm:opacity-0 sm:group-hover:opacity-100"
                   />
                 }
               >
                 <MoreHorizontal className="size-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 rounded-xl p-1.5">
-                <DropdownMenuLabel className="text-xs font-medium text-muted-foreground px-2 py-1.5">
-                  Actions
+
+              <DropdownMenuContent
+                align="end"
+                className="w-44 rounded-xl border-black/10 bg-white p-1.5 shadow-[0_18px_50px_rgba(0,0,0,0.14)]"
+              >
+                <DropdownMenuLabel className="px-2.5 py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-black/40">
+                  Rule actions
                 </DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => setShowEditDialog(true)}>
-                  <Pencil className="size-3.5 mr-2" />
-                  Edit
+
+                <DropdownMenuItem
+                  onClick={() =>
+                    setShowEditDialog(true)
+                  }
+                  className="cursor-pointer rounded-lg px-2.5 py-2 text-xs text-[#0A0A0A] focus:bg-[#00C98B]/10 focus:text-[#0A0A0A]"
+                >
+                  <Pencil className="mr-2 size-3.5 text-[#00C98B]" />
+                  Edit rule
                 </DropdownMenuItem>
+
                 <DropdownMenuItem
                   onClick={handleToggle}
                   disabled={toggling}
-                  className="cursor-pointer"
+                  className="cursor-pointer rounded-lg px-2.5 py-2 text-xs text-[#0A0A0A] focus:bg-[#00C98B]/10 focus:text-[#0A0A0A]"
                 >
                   {toggling ? (
-                    <Loader2 className="size-3.5 mr-2 animate-spin" />
+                    <Loader2 className="mr-2 size-3.5 animate-spin text-[#00C98B]" />
                   ) : rule.is_active ? (
-                    <PowerOff className="size-3.5 mr-2" />
+                    <PowerOff className="mr-2 size-3.5 text-[#00C98B]" />
                   ) : (
-                    <Power className="size-3.5 mr-2" />
+                    <Power className="mr-2 size-3.5 text-[#00C98B]" />
                   )}
-                  {rule.is_active ? "Pause" : "Activate"}
+
+                  {rule.is_active
+                    ? "Pause rule"
+                    : "Activate rule"}
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
+
+                <DropdownMenuSeparator className="my-1 bg-black/10" />
+
                 <DropdownMenuItem
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="text-destructive cursor-pointer focus:text-destructive focus:bg-destructive/10"
+                  onClick={() =>
+                    setShowDeleteDialog(true)
+                  }
+                  className="cursor-pointer rounded-lg px-2.5 py-2 text-xs text-[#0A0A0A] focus:bg-black/5 focus:text-[#0A0A0A]"
                 >
-                  <Trash2 className="size-3.5 mr-2" />
-                  Delete
+                  <Trash2 className="mr-2 size-3.5 text-black/50" />
+                  Delete rule
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </CardHeader>
 
-        <CardContent className="pb-3">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg bg-muted/30 p-2.5 text-center">
-              <div className="flex items-center justify-center gap-1 text-accent-blue mb-1">
-                <Target className="size-3.5" />
-              </div>
-              <p className="text-lg font-bold font-heading tracking-tight">
+        {/* Channel to Filter Mapping */}
+        <CardContent className="px-5 pb-4">
+          <div className="flex min-w-0 items-center gap-2 rounded-xl border border-black/5 bg-[#F7F8F8] px-3 py-2.5">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <Bell className="size-3.5 shrink-0 text-[#00C98B]" />
+
+              <span className="truncate text-[11px] font-medium text-black/60">
+                {channelName ?? "Unknown Channel"}
+              </span>
+            </div>
+
+            <span className="shrink-0 text-xs text-black/20">
+              →
+            </span>
+
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+              <Filter className="size-3.5 shrink-0 text-[#00C98B]" />
+
+              <span className="truncate text-[11px] font-medium text-black/60">
+                {filterName ?? "All filters"}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+
+        {/* Rule Scores */}
+        <CardContent className="px-5 pb-4">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-xl border border-black/5 bg-white px-2 py-3 text-center shadow-[0_4px_14px_rgba(0,0,0,0.03)]">
+              <Target className="mx-auto size-3.5 text-[#00C98B]" />
+
+              <p className="mt-1.5 font-heading text-base font-bold leading-none tracking-tight text-[#0A0A0A]">
                 {rule.match_score_min}
               </p>
-              <p className="text-[10px] text-muted-foreground/70">
+
+              <p className="mt-1 text-[9px] leading-tight text-black/40">
                 Min match
               </p>
             </div>
-            <div className="rounded-lg bg-muted/30 p-2.5 text-center">
-              <div className="flex items-center justify-center gap-1 text-accent-amber mb-1">
-                <BarChart3 className="size-3.5" />
-              </div>
-              <p className="text-lg font-bold font-heading tracking-tight">
+
+            <div className="rounded-xl border border-black/5 bg-white px-2 py-3 text-center shadow-[0_4px_14px_rgba(0,0,0,0.03)]">
+              <BarChart3 className="mx-auto size-3.5 text-[#00C98B]" />
+
+              <p className="mt-1.5 font-heading text-base font-bold leading-none tracking-tight text-[#0A0A0A]">
                 {rule.opportunity_score_min}
               </p>
-              <p className="text-[10px] text-muted-foreground/70">
-                Min opportunity
+
+              <p className="mt-1 text-[9px] leading-tight text-black/40">
+                Opportunity
               </p>
             </div>
-            <div className="rounded-lg bg-muted/30 p-2.5 text-center">
-              <div className="flex items-center justify-center gap-1 text-accent-green mb-1">
-                <Users className="size-3.5" />
-              </div>
-              <p className="text-lg font-bold font-heading tracking-tight">
+
+            <div className="rounded-xl border border-black/5 bg-white px-2 py-3 text-center shadow-[0_4px_14px_rgba(0,0,0,0.03)]">
+              <Users className="mx-auto size-3.5 text-[#00C98B]" />
+
+              <p className="mt-1.5 font-heading text-base font-bold leading-none tracking-tight text-[#0A0A0A]">
                 {rule.max_proposals}
               </p>
-              <p className="text-[10px] text-muted-foreground/70">
+
+              <p className="mt-1 text-[9px] leading-tight text-black/40">
                 Max proposals
               </p>
             </div>
           </div>
         </CardContent>
 
-        <CardFooter className="pt-0">
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground/60">
-            <span>
-              Created{" "}
-              {new Date(rule.created_at).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
-          </div>
+        {/* Card Footer */}
+        <CardFooter className="mt-auto flex items-center justify-between gap-3 border-t border-black/5 px-5 py-3">
+          <span className="text-[10px] text-black/40">
+            Created{" "}
+            {new Date(
+              rule.created_at
+            ).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleToggle}
+            disabled={toggling}
+            className="h-7 rounded-lg px-2.5 text-[10px] font-semibold text-[#0A0A0A] hover:bg-[#00C98B]/10 hover:text-[#007A56]"
+          >
+            {toggling ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : rule.is_active ? (
+              <PowerOff className="size-3" />
+            ) : (
+              <Power className="size-3" />
+            )}
+
+            {rule.is_active ? "Pause" : "Activate"}
+          </Button>
         </CardFooter>
       </Card>
 
@@ -262,32 +375,69 @@ export function RuleCard({
       />
 
       {/* Delete Confirmation */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-heading">Delete Rule</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this rule? This action cannot be
-              undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
+      <Dialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+      >
+        <DialogContent className="w-[calc(100%-1.25rem)] overflow-hidden rounded-2xl border-black/10 bg-white p-0 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:max-w-md [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:top-4 [&_[data-slot=dialog-close]]:text-white/60 [&_[data-slot=dialog-close]]:hover:bg-white/10 [&_[data-slot=dialog-close]]:hover:text-white">
+          <div className="relative overflow-hidden bg-[#0A0A0A] px-5 pb-5 pt-6 pr-14 sm:px-6 sm:pr-14">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-12 -top-14 size-36 rounded-full bg-[#00C98B]/15 blur-3xl"
+            />
+
+            <DialogHeader className="relative text-left">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#00C98B]/25 bg-[#00C98B]/10 text-[#00C98B]">
+                  <Trash2 className="size-4" />
+                </div>
+
+                <div>
+                  <DialogTitle className="font-heading text-lg font-bold text-white">
+                    Delete this rule?
+                  </DialogTitle>
+
+                  <DialogDescription className="mt-1.5 text-xs leading-relaxed text-white/50">
+                    This action permanently removes the
+                    notification rule and cannot be undone.
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 bg-white px-5 py-4 sm:px-6">
             <Button
+              type="button"
               variant="outline"
-              onClick={() => setShowDeleteDialog(false)}
+              onClick={() =>
+                setShowDeleteDialog(false)
+              }
               disabled={deleting}
+              className="h-9 w-24 rounded-lg border-black/15 bg-white px-3 text-xs font-semibold text-[#0A0A0A] shadow-none hover:bg-black/5"
             >
               Cancel
             </Button>
+
             <Button
-              variant="destructive"
+              type="button"
               onClick={handleDelete}
               disabled={deleting}
+              className="h-9 min-w-32 rounded-lg bg-[#0A0A0A] px-4 text-xs font-semibold text-white hover:bg-[#00C98B] hover:text-[#0A0A0A]"
             >
-              {deleting && <Loader2 className="size-4 mr-2 animate-spin" />}
-              Delete
+              {deleting ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="size-3.5" />
+                  Delete rule
+                </>
+              )}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </>

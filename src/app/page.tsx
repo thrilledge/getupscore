@@ -2,7 +2,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { SiteHeader } from "@/components/landing/site-header";
 import { Hero } from "@/components/landing/hero";
 import { LiveJobs, type LiveJob } from "@/components/landing/live-jobs";
-import { StatsBand } from "@/components/landing/stats-band";
+// import { StatsBand } from "@/components/landing/stats-band";
 import { Features } from "@/components/landing/features";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { Testimonials } from "@/components/landing/testimonials";
@@ -72,7 +72,7 @@ export default async function Home() {
       <main>
         <Hero />
         <LiveJobs jobs={jobs} />
-        <StatsBand totalJobs={totalJobs} jobs24h={jobs24h} />
+        {/* <StatsBand totalJobs={totalJobs} jobs24h={jobs24h} /> */}
         <Features />
         <HowItWorks />
         <Testimonials />
