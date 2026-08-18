@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
-import { inngest } from "@/lib/inngest/client";
+import { analyzeJob } from "@/lib/jobs/analyze";
 import {
   mapVibeworkerJobsToInserts,
   type VibeworkerResponse,
@@ -17,10 +17,22 @@ interface VibeworkerPayload extends VibeworkerResponse {
   }[];
 }
 
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+  let result = 0;
+  for (let i = 0; i < bufA.length; i++) {
+    result |= bufA[i] ^ bufB[i];
+  }
+  return result === 0;
+}
+
 export async function POST(request: Request) {
   const authHeader = request.headers.get("authorization") || "";
   const expectedSecret = process.env.CRON_SECRET;
-  if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
+  if (!expectedSecret || !authHeader.startsWith("Bearer ") || !timingSafeEqual(authHeader.slice(7), expectedSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -129,32 +141,37 @@ export async function POST(request: Request) {
       `[Vibeworker] ${newJobIds.length} new, ${skipped} skipped, ${scoreCount} scored out of ${inserts.length} received`
     );
 
-    const analyzeEvents = (scoreInserts || [])
-      .map((s: any) => ({
-        name: "app/jobs.analyze" as const,
-        data: { jobId: s.job_id, userId: s.user_id },
-      }));
-
-    if (analyzeEvents.length > 0) {
-      try {
-        for (let i = 0; i < analyzeEvents.length; i += 50) {
-          await inngest.send(analyzeEvents.slice(i, i + 50));
-        }
-        console.log(`[Vibeworker] Sent ${analyzeEvents.length} analysis events to Inngest`);
-      } catch (e: any) {
-        console.warn("[Vibeworker] Failed to send Inngest events:", e.message);
-      }
-    }
-
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
       timestamp: new Date().toISOString(),
       received: payload.jobs.length,
       newJobs: newJobIds.length,
       skipped,
       scored: scoreCount,
-      analyzeQueued: analyzeEvents.length,
     });
+
+    if (scoreInserts.length > 0) {
+      const admin = createSupabaseAdminClient();
+      Promise.allSettled(
+        scoreInserts.map(async (s) => {
+          try {
+            const { data: job } = await admin
+              .from("jobs")
+              .select("*")
+              .eq("id", s.job_id)
+              .single();
+            if (job) await analyzeJob(admin, job, s.job_id, s.user_id);
+          } catch (e: any) {
+            console.warn("[Vibeworker] Analysis failed for", s.job_id, e.message);
+          }
+        })
+      ).then((results) => {
+        const ok = results.filter((r) => r.status === "fulfilled").length;
+        console.log(`[Vibeworker] Analyzed ${ok}/${scoreInserts.length} jobs`);
+      });
+    }
+
+    return response;
   } catch (err: any) {
     console.error("[Vibeworker] Fatal error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });

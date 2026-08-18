@@ -4,6 +4,7 @@ Login to Upwork via undetected-chromedriver to bypass Cloudflare.
 Uses Playwright's Chromium binary.
 """
 import json
+import os
 import sys
 import time
 
@@ -11,8 +12,8 @@ COOKIE_FILE = "/tmp/upwork_cookies.json"
 DOCKER_COOKIE_FILE = "/home/ubuntu/upwork-api/upwork_cookies.json"
 CHROME_PATH = "/home/ubuntu/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome"
 
-EMAIL = "usama@thrilledge.com"
-PASSWORD = "@Usama#Adeel183"
+EMAIL = os.environ.get("UPWORK_EMAIL", "")
+PASSWORD = os.environ.get("UPWORK_PASSWORD", "")
 
 
 def login():

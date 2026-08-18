@@ -1,11 +1,17 @@
 import json
+import os
+import sys
 from urllib.request import Request, urlopen
 
-CRON_SECRET = "0b34f5d0f122f313ad8668ddad9ebe8f"
+CRON_SECRET = os.environ.get("CRON_SECRET", "")
 USER_ID = "1266be7b-5c93-441d-a080-351777a5d0d1"
 CHANNEL_ID = "5bf0cbe0-ae76-41ae-84d0-c4477b6fe860"
 
-send_url = "https://www.getupscore.com//api/notifications/send"
+if not CRON_SECRET:
+    print("CRON_SECRET environment variable not set")
+    sys.exit(1)
+
+send_url = "https://www.getupscore.com/api/notifications/send"
 body = json.dumps({"channelId": CHANNEL_ID, "user_id": USER_ID}).encode()
 req = Request(send_url, data=body, method="POST", headers={
     "Content-Type": "application/json",

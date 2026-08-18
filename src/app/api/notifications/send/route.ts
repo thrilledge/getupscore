@@ -11,6 +11,18 @@ import { NextResponse } from "next/server";
 import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyUser, type JobAlertContext } from "@/lib/notifications";
 
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+  let result = 0;
+  for (let i = 0; i < bufA.length; i++) {
+    result |= bufA[i] ^ bufB[i];
+  }
+  return result === 0;
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -22,9 +34,9 @@ export async function POST(request: Request) {
     if (authHeader.startsWith("Bearer ")) {
       const token = authHeader.slice(7).trim();
 
-      // 1) Try cron secret
+      // 1) Try cron secret (timing-safe comparison)
       const cronSecret = process.env.CRON_SECRET;
-      if (cronSecret && token === cronSecret) {
+      if (cronSecret && token.length === cronSecret.length && timingSafeEqual(token, cronSecret)) {
         userId = body.user_id || null;
         if (!userId) {
           return NextResponse.json({ error: "user_id required with cron-secret auth" }, { status: 400 });
@@ -126,8 +138,7 @@ export async function POST(request: Request) {
       results,
       testMode: !jobId,
     });
-  } catch (err: any) {
-    console.error("[Notifications Send] Error:", err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

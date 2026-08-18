@@ -4,14 +4,6 @@ After=docker.service
 
 [Service]
 Type=oneshot
-Environment=UPSCORE_API_URL=https://www.getupscore.com
-Environment=UPSCORE_CRON_SECRET=0b34f5d0f122f313ad8668ddad9ebe8f
-Environment=VW_COOKIE_FILE=/home/ubuntu/upwork-api/cookies/vw_cookies.json
-Environment=VW_EMAIL=admin@thrilledge.com
-Environment=VW_PASSWORD=Lovelyflower@6381
-Environment=VW_PAGES=3
-Environment=VW_PAGE_SIZE=100
-Environment=SUPABASE_URL=https://kjfqtenfmxdoyjxxnhnm.supabase.co
-Environment=SUPABASE_SERVICE_ROLE_KEY=sb_secret_dI5gwLE0HaNKXRXWQlgcJg_IRwEZmKU
+EnvironmentFile=/home/ubuntu/upwork-api/.env
 ExecStart=/usr/bin/python3 /home/ubuntu/upwork-api/vw_ingest.py
 User=ubuntu

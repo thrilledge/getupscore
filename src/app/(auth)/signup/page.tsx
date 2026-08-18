@@ -24,6 +24,12 @@ export default function SignupPage() {
     setError(null);
     setLoading(true);
 
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters");
+      setLoading(false);
+      return;
+    }
+
     const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
@@ -95,7 +101,7 @@ export default function SignupPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="new-password"
-              minLength={6}
+              minLength={8}
               className="h-10"
             />
           </div>

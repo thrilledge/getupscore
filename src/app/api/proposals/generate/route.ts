@@ -3,17 +3,27 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { generateProposal, streamProposal } from "@/lib/proposals/generate";
 import { analyzeJob } from "@/lib/jobs/analyze";
 import { resolveUserIdFromBearer } from "@/lib/supabase/verify-bearer";
+import { checkRateLimit, proposalRateLimit } from "@/lib/rate-limit";
 
-const CORS_HEADERS: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Max-Age": "86400",
-};
+const ALLOWED_ORIGINS = [
+  "chrome-extension://",
+  "moz-extension://",
+];
 
-function withCors(response: Response): Response {
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+  return {
+    "Access-Control-Allow-Origin": allowed ? origin : "",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Max-Age": "86400",
+  };
+}
+
+function withCors(response: Response, origin: string | null): Response {
   const headers = new Headers(response.headers);
-  for (const [key, value] of Object.entries(CORS_HEADERS)) headers.set(key, value);
+  const corsHeaders = getCorsHeaders(origin);
+  for (const [key, value] of Object.entries(corsHeaders)) headers.set(key, value);
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -21,15 +31,17 @@ function withCors(response: Response): Response {
   });
 }
 
-export async function OPTIONS() {
-  return new Response(null, { status: 204, headers: CORS_HEADERS });
+export async function OPTIONS(request: Request) {
+  const origin = request.headers.get("origin");
+  return new Response(null, { status: 204, headers: getCorsHeaders(origin) });
 }
 
 async function respondFromDbJob(
   supabase: any,
   job: Record<string, any>,
   userId: string,
-  baseInput: Record<string, unknown>
+  baseInput: Record<string, unknown>,
+  origin: string | null
 ) {
   const jobId = job.id;
 
@@ -45,8 +57,8 @@ async function respondFromDbJob(
   if (!analysisData) {
     try {
       analysisData = await analyzeJob(supabase, job, jobId, userId);
-    } catch (analyzeErr: any) {
-      console.warn("[Proposals] On-demand analysis error:", analyzeErr.message);
+    } catch {
+      // Analysis failed — continue without it
     }
   }
 
@@ -73,7 +85,7 @@ async function respondFromDbJob(
   const result = await generateProposal(proposalInput);
 
   if (!result.generated_text || result.generated_text.length < 50) {
-    return withCors(NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 }));
+    return withCors(NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 }), origin);
   }
 
   const { data: proposal, error: insertError } = await supabase
@@ -89,13 +101,12 @@ async function respondFromDbJob(
     .single();
 
   if (insertError) {
-    console.error("[Proposals] Insert error:", insertError.message);
     return withCors(NextResponse.json({
       ok: true,
       proposal: result.generated_text,
       score: result.score,
       saved: false,
-    }));
+    }), origin);
   }
 
   return withCors(NextResponse.json({
@@ -105,10 +116,12 @@ async function respondFromDbJob(
     id: proposal.id,
     saved: true,
     created_at: proposal.created_at,
-  }));
+  }), origin);
 }
 
 export async function POST(request: Request) {
+  const origin = request.headers.get("origin");
+
   try {
     const authHeader = request.headers.get("authorization") || "";
     let userId: string | null = null;
@@ -122,14 +135,20 @@ export async function POST(request: Request) {
     }
 
     if (!userId) {
-      return withCors(NextResponse.json({ error: "Unauthorized" }, { status: 401 }));
+      return withCors(NextResponse.json({ error: "Unauthorized" }, { status: 401 }), origin);
+    }
+
+    // Rate limit per user
+    const { success } = await checkRateLimit(proposalRateLimit, userId);
+    if (!success) {
+      return withCors(NextResponse.json({ error: "Too many requests" }, { status: 429 }), origin);
     }
 
     const body = await request.json();
     const { jobId, jobDetails, upworkJobId, customInstructions, answerQuestion, stream } = body;
 
     if (!jobId && !jobDetails && !upworkJobId) {
-      return withCors(NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 }));
+      return withCors(NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 }), origin);
     }
 
     const supabase = await createSupabaseAdminClient();
@@ -157,9 +176,6 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     const customSystemPrompt = preferences?.proposal_system_prompt as string | null | undefined;
-    if (customSystemPrompt && customSystemPrompt.trim().length) {
-      console.log("[Proposals] Using custom system prompt for user:", userId.slice(0, 8));
-    }
 
     const portfolio = (profile?.portfolio as { title: string; description?: string; url?: string }[]) || [];
     const portfolioPreview = portfolio.length
@@ -186,7 +202,6 @@ export async function POST(request: Request) {
     if (jobDetails) {
       const d = jobDetails as Record<string, unknown>;
 
-      // ── STEP 1: Auto-save the job to the database ──
       const upworkJobId =
         String(d.job_id || d.upwork_job_id || "").trim() ||
         String(d.url || "")
@@ -233,28 +248,22 @@ export async function POST(request: Request) {
       let dbJobId = savedJob?.id;
 
       if (!dbJobId || saveError) {
-        console.warn("[Proposals] Auto-save failed:", saveError?.message);
+        console.warn("[Proposals] Auto-save failed");
       }
 
-      // ── STEP 2: Analyze the job (even if save failed — we have rich data) ──
-      // Streaming path: fire-and-forget so the proposal starts immediately.
-      // The analysis is still saved for the side panel / history.
       let analysisData: Record<string, any> | null = null;
       if (dbJobId) {
         if (stream) {
-          analyzeJob(supabase, jobRecord, dbJobId, userId).catch((analyzeErr: any) => {
-            console.warn("[Proposals] Background analysis error:", analyzeErr.message);
-          });
+          analyzeJob(supabase, jobRecord, dbJobId, userId).catch(() => {});
         } else {
           try {
             analysisData = await analyzeJob(supabase, jobRecord, dbJobId, userId);
-          } catch (analyzeErr: any) {
-            console.warn("[Proposals] Analysis error:", analyzeErr.message);
+          } catch {
+            // Continue without analysis
           }
         }
       }
 
-      // ── STEP 3: Build rich proposal input with analysis context ──
       const budgetStr = d.budget_type === "hourly"
         ? d.budget ? String(d.budget) : d.hourly_min ? `$${d.hourly_min}/hr - $${d.hourly_max}/hr` : undefined
         : d.budget ? String(d.budget) : undefined;
@@ -278,7 +287,6 @@ export async function POST(request: Request) {
           : typeof d.clientTotalSpend === "number" ? d.clientTotalSpend : undefined,
         clientRating: typeof d.client_rating === "number" ? d.client_rating
           : typeof d.clientRating === "number" ? d.clientRating : undefined,
-        // Include analysis results if available
         proposalTips: (analysisData?.proposal_tips as string[]) || undefined,
         matchScore: analysisData?.match_score || undefined,
         opportunityScore: analysisData?.opportunity_score || undefined,
@@ -291,20 +299,16 @@ export async function POST(request: Request) {
         : await generateProposal(proposalInput);
 
       if (stream) {
-        // ── STREAMING MODE: Return SSE with reasoning + proposal ──
         const proposalStream = await streamProposal(proposalInput);
         const encoder = new TextEncoder();
         const combined = new ReadableStream({
           async start(controller) {
-            // Send status event before streaming
             controller.enqueue(encoder.encode(`event: status\ndata: ${JSON.stringify({
               phase: "generating",
               saved: !!dbJobId,
               jobId: dbJobId,
             })}\n\n`));
 
-            // Pipe the proposal stream while accumulating the final text so we
-            // can persist it to the `proposals` table for history/activity.
             const reader = proposalStream.getReader();
             const decoder = new TextDecoder();
             let buffer = "";
@@ -327,8 +331,8 @@ export async function POST(request: Request) {
                     `event: saved\ndata: ${JSON.stringify({ saved: true })}\n\n`
                   ));
                 }
-              } catch (saveErr: any) {
-                console.warn("[Proposals] Stream save error:", saveErr.message);
+              } catch {
+                // Save failed silently
               }
             };
 
@@ -370,11 +374,11 @@ export async function POST(request: Request) {
             "Cache-Control": "no-cache",
             Connection: "keep-alive",
           },
-        }));
+        }), origin);
       }
 
       if (!result || !result.generated_text || result.generated_text.length < 50) {
-        return withCors(NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 }));
+        return withCors(NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 }), origin);
       }
 
       return withCors(NextResponse.json({
@@ -383,7 +387,7 @@ export async function POST(request: Request) {
         score: result.score,
         saved: !!dbJobId,
         jobId: dbJobId,
-      }));
+      }), origin);
     }
 
     if (jobId) {
@@ -394,10 +398,10 @@ export async function POST(request: Request) {
         .single();
 
       if (jobError || !job) {
-        return withCors(NextResponse.json({ error: "Job not found" }, { status: 404 }));
+        return withCors(NextResponse.json({ error: "Job not found" }, { status: 404 }), origin);
       }
 
-      return respondFromDbJob(supabase, job, userId, baseInput);
+      return respondFromDbJob(supabase, job, userId, baseInput, origin);
     }
 
     if (upworkJobId) {
@@ -417,16 +421,14 @@ export async function POST(request: Request) {
       const job = rows && rows[0];
 
       if (lookupError || !job) {
-        return withCors(NextResponse.json({ error: "Job not found in database" }, { status: 404 }));
+        return withCors(NextResponse.json({ error: "Job not found in database" }, { status: 404 }), origin);
       }
 
-      return respondFromDbJob(supabase, job, userId, baseInput);
+      return respondFromDbJob(supabase, job, userId, baseInput, origin);
     }
 
-    return withCors(NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 }));
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("[Proposals] Error:", err);
-    return withCors(NextResponse.json({ error: message }, { status: 500 }));
+    return withCors(NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 }), origin);
+  } catch {
+    return withCors(NextResponse.json({ error: "Internal server error" }, { status: 500 }), origin);
   }
 }

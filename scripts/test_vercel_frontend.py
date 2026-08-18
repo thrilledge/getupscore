@@ -3,11 +3,12 @@ Test Vercel frontend - login and check jobs page
 """
 import json
 import asyncio
+import os
 from playwright.async_api import async_playwright
 
 
-EMAIL = "usamaadeel1183@gmail.com"
-PASSWORD = "@Usama#Adeel183"
+EMAIL = os.environ.get("UPWORK_EMAIL", "")
+PASSWORD = os.environ.get("UPWORK_PASSWORD", "")
 FRONTEND = "https://www.getupscore.com/"
 
 

@@ -1,8 +1,9 @@
 import json
+import os
 from urllib.request import Request, urlopen
 
-SUPABASE_URL = "https://kjfqtenfmxdoyjxxnhnm.supabase.co"
-SERVICE_KEY = "sb_secret_dI5gwLE0HaNKXRXWQlgcJg_IRwEZmKU"
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 USER_ID = "1266be7b-5c93-441d-a080-351777a5d0d1"
 
 url = f"{SUPABASE_URL}/rest/v1/job_analyses?select=match_score,opportunity_score,recommendation&user_id=eq.{USER_ID}&order=created_at.desc&limit=20"

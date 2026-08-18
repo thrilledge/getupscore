@@ -1,8 +1,9 @@
 import json
+import os
 from urllib.request import Request, urlopen
 
-SUPABASE_URL = "https://kjfqtenfmxdoyjxxnhnm.supabase.co"
-SERVICE_KEY = "sb_secret_dI5gwLE0HaNKXRXWQlgcJg_IRwEZmKU"
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 HEADERS = {
     "apikey": SERVICE_KEY,
     "Authorization": f"Bearer {SERVICE_KEY}",

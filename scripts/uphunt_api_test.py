@@ -3,12 +3,13 @@ UpHunt.io Direct API calls using session token
 """
 import json
 import asyncio
+import os
 from urllib.request import Request, urlopen
 from playwright.async_api import async_playwright
 
 
-EMAIL = "usamaadeel1183@gmail.com"
-PASSWORD = "@Usama#Adeel183"
+EMAIL = os.environ.get("UPWORK_EMAIL", "")
+PASSWORD = os.environ.get("UPWORK_PASSWORD", "")
 
 
 async def main():

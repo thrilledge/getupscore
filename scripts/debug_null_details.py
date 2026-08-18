@@ -3,14 +3,15 @@ Debug: check UpHunt jobs IN Supabase that have null client_score
 vs the same job in UpHunt API which should have the data
 """
 import json
+import os
 import asyncio
 from playwright.async_api import async_playwright
 from urllib.request import Request, urlopen
 
-EMAIL = "usamaadeel1183@gmail.com"
-PASSWORD = "@Usama#Adeel183"
-SUPABASE_URL = "https://kjfqtenfmxdoyjxxnhnm.supabase.co"
-SERVICE_KEY = "sb_secret_dI5gwLE0HaNKXRXWQlgcJg_IRwEZmKU"
+EMAIL = os.environ.get("UPWORK_EMAIL", "")
+PASSWORD = os.environ.get("UPWORK_PASSWORD", "")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
+SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 
 
 async def main():

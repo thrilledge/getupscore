@@ -4,6 +4,7 @@ Grab Upwork cookies using curl_cffi (bypasses Cloudflare).
 No browser needed. Just visits Upwork pages and saves cookies.
 """
 import json
+import os
 import sys
 import time
 from curl_cffi import requests
@@ -12,8 +13,8 @@ COOKIE_FILE = "/tmp/upwork_cookies.json"
 DOCKER_COOKIE_FILE = "/home/ubuntu/upwork-api/upwork_cookies.json"
 DOCKER_COOKIE_FILE2 = "/app/upwork_cookies.json"
 
-EMAIL = "usama@thrilledge.com"
-PASSWORD = "@Usama#Adeel183"
+EMAIL = os.environ.get("UPWORK_EMAIL", "")
+PASSWORD = os.environ.get("UPWORK_PASSWORD", "")
 
 
 def grab_cookies():

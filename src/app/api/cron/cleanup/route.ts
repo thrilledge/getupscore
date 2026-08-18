@@ -6,10 +6,22 @@ export const dynamic = "force-dynamic";
 const RETENTION_DAYS = 30;
 const BATCH_SIZE = 500;
 
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+  let result = 0;
+  for (let i = 0; i < bufA.length; i++) {
+    result |= bufA[i] ^ bufB[i];
+  }
+  return result === 0;
+}
+
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization") || "";
   const expectedSecret = process.env.CRON_SECRET;
-  if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
+  if (!expectedSecret || !authHeader.startsWith("Bearer ") || !timingSafeEqual(authHeader.slice(7), expectedSecret)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

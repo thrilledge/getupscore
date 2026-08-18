@@ -4,12 +4,13 @@ Run multiple times to see if login stays reliable.
 """
 import json
 import asyncio
+import os
 import time
 from playwright.async_api import async_playwright
 
 
-EMAIL = "usamaadeel1183@gmail.com"
-PASSWORD = "@Usama#Adeel183"
+EMAIL = os.environ.get("UPWORK_EMAIL", "")
+PASSWORD = os.environ.get("UPWORK_PASSWORD", "")
 
 
 async def test_login(attempt):

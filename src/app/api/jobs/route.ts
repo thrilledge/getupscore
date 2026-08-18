@@ -26,13 +26,11 @@ export async function GET(request: Request) {
   const skill = searchParams.get("skill")?.trim() || null;
   const category = searchParams.get("category")?.trim() || null;
 
-  // Build a cache key from all filter params
-  const cacheKey = `jobs:${page}:${limit}:${q || ""}:${jobType || ""}:${tier || ""}:${budgetMin || ""}:${budgetMax || ""}:${hourlyMin || ""}:${hourlyMax || ""}:${skill || ""}:${category || ""}:${ids || ""}`;
+  // Build a cache key from all filter params (include user for per-user analyses)
+  const cacheKey = `jobs:${user.id}:${page}:${limit}:${q || ""}:${jobType || ""}:${tier || ""}:${budgetMin || ""}:${budgetMax || ""}:${hourlyMin || ""}:${hourlyMax || ""}:${skill || ""}:${category || ""}:${ids || ""}`;
 
   try {
     const result = await cached(cacheKey, TTL.JOBS_LIST, async () => {
-      // Use RPC for all filtered queries — runs server-side on PostgreSQL,
-      // avoids Supabase client timeout, and uses trigram indexes properly.
       const { data, error } = await supabase.rpc("search_jobs" as any, {
         p_search: q,
         p_job_type: jobType,
@@ -47,6 +45,7 @@ export async function GET(request: Request) {
         p_ids: ids ? ids.split(",").map((id) => id.trim()).filter(Boolean) : null,
         p_limit: limit,
         p_offset: (page - 1) * limit,
+        p_user_id: user.id,
       } as any);
 
       if (error) throw error;
@@ -67,6 +66,6 @@ export async function GET(request: Request) {
     });
   } catch (err: any) {
     console.error("[Jobs API] Query error:", err.message);
-    return NextResponse.json({ error: `Jobs query: ${err.message}` }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch jobs" }, { status: 500 });
   }
 }

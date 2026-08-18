@@ -16,13 +16,13 @@ from datetime import datetime, timezone
 
 # ── Config ──────────────────────────────────────────────────
 VW_COOKIE_FILE = os.environ.get("VW_COOKIE_FILE", "/home/ubuntu/upwork-api/cookies/vw_cookies.json")
-VW_EMAIL = os.environ.get("VW_EMAIL", "admin@thrilledge.com")
-VW_PASSWORD = os.environ.get("VW_PASSWORD", "Lovelyflower@6381")
+VW_EMAIL = os.environ.get("VW_EMAIL")
+VW_PASSWORD = os.environ.get("VW_PASSWORD")
 VW_PAGES = int(os.environ.get("VW_PAGES", "3"))
 VW_PAGE_SIZE = int(os.environ.get("VW_PAGE_SIZE", "100"))
 UPSCORE_API_URL = os.environ.get("UPSCORE_API_URL", "https://www.getupscore.com/")
 UPSCORE_CRON_SECRET = os.environ.get("UPSCORE_CRON_SECRET", "")
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://kjfqtenfmxdoyjxxnhnm.supabase.co")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
 API_BASE = "https://tryvibeworker.com"
 USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -30,6 +30,22 @@ USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 AUTH_COOKIE_PREFIX = "sb-kttkatrmvlzsepgprqqd-auth-token"
 REFRESH_BEFORE_MIN = 15
 MIN_STATIC_SCORE = 30
+
+# Validate required env vars
+_missing = []
+if not VW_EMAIL:
+    _missing.append("VW_EMAIL")
+if not VW_PASSWORD:
+    _missing.append("VW_PASSWORD")
+if not UPSCORE_CRON_SECRET:
+    _missing.append("UPSCORE_CRON_SECRET")
+if not SUPABASE_URL:
+    _missing.append("SUPABASE_URL")
+if not SUPABASE_SERVICE_KEY:
+    _missing.append("SUPABASE_SERVICE_ROLE_KEY")
+if _missing:
+    print(f"FATAL: Missing required environment variables: {', '.join(_missing)}")
+    sys.exit(1)
 
 
 def log(msg):
@@ -113,7 +129,7 @@ def login_with_camoufox():
         if "dashboard" not in page.url:
             time.sleep(5)
         if "dashboard" not in page.url:
-            raise RuntimeError(f"Login failed, landed on: {page.url}")
+            raise RuntimeError("Login failed")
         raw = ctx.cookies()
         cookies = [
             {"name": c["name"], "value": c["value"], "domain": c["domain"],
@@ -294,7 +310,7 @@ def score_job_for_users(job, filters):
 
 
 # ════════════════════════════════════════════════════════════
-# Map VW job → DB insert shape
+# Map VW job -> DB insert shape
 # ════════════════════════════════════════════════════════════
 
 def map_job(job):
@@ -352,7 +368,7 @@ def post_to_upscore(payload):
             log(f"POST {url}: {result}")
             return result
     except urllib.error.HTTPError as e:
-        log(f"POST failed: {e.code} {e.read().decode()[:500]}")
+        log(f"POST failed: {e.code}")
         raise
 
 

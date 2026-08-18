@@ -1,11 +1,37 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // App name is configured via NEXT_PUBLIC_APP_NAME in .env.local
-  // No hardcoded app name here
+const securityHeaders = [
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-XSS-Protection", value: "1; mode=block" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  {
+    key: "Content-Security-Policy",
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://www.getupscore.com https://lh3.googleusercontent.com",
+      "font-src 'self'",
+      "connect-src 'self' https://kjfqtenfmxdoyjxxnhnm.supabase.co wss://kjfqtenfmxdoyjxxnhnm.supabase.co https://optimum-raven-68827.upstash.io",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join("; "),
+  },
+];
 
-  // Enable React strict mode for development
+const nextConfig: NextConfig = {
   reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: securityHeaders,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

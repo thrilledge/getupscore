@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 const EC2_API = "http://13.48.204.110";
 
 export async function POST(request: Request) {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { ciphertext } = await request.json();
     if (!ciphertext) {
@@ -17,13 +25,12 @@ export async function POST(request: Request) {
     );
 
     if (!ec2Resp.ok) {
-      const err = await ec2Resp.text().catch(() => "EC2 error");
-      return NextResponse.json({ error: err }, { status: 502 });
+      return NextResponse.json({ error: "Upstream service error" }, { status: 502 });
     }
 
     const data = await ec2Resp.json();
     return NextResponse.json(data);
-  } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

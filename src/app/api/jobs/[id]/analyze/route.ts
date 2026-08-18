@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { analyzeJob } from "@/lib/jobs/analyze";
+import { checkRateLimit, analysisRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,12 @@ export async function POST(
 
   if (authError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate limit per user
+  const { success } = await checkRateLimit(analysisRateLimit, user.id);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   const { id } = await params;
@@ -35,8 +42,7 @@ export async function POST(
       ok: true,
       analysis,
     });
-  } catch (err: any) {
-    console.error("[Analyze API] Error:", err);
-    return NextResponse.json({ error: err.message || "Analysis failed" }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Analysis failed" }, { status: 500 });
   }
 }

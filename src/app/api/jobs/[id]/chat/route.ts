@@ -91,17 +91,18 @@ export async function POST(
        client_hire_rate,
        client_payment_verified,
        client_location_country,
-       job_analyses (
-         match_score,
-         opportunity_score,
-         win_probability,
-         recommendation,
-         reasoning,
-         proposal_tips,
-         red_flags
+       job_analyses!inner (
+        match_score,
+        opportunity_score,
+        win_probability,
+        recommendation,
+        reasoning,
+        proposal_tips,
+        red_flags
        )`
     )
     .eq("id", id)
+    .eq("job_analyses.user_id", user.id)
     .single();
 
   if (jobError || !job) {

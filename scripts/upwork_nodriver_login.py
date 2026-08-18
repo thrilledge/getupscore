@@ -5,14 +5,15 @@ Saves authenticated cookies for client detail enrichment.
 """
 import asyncio
 import json
+import os
 import sys
 
 COOKIE_FILE = "/tmp/upwork_cookies.json"
 DOCKER_COOKIE_FILE = "/home/ubuntu/upwork-api/upwork_cookies.json"
 CHROME_PATH = "/home/ubuntu/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome"
 
-EMAIL = "usama@thrilledge.com"
-PASSWORD = "@Usama#Adeel183"
+EMAIL = os.environ.get("UPWORK_EMAIL", "")
+PASSWORD = os.environ.get("UPWORK_PASSWORD", "")
 
 
 async def login():

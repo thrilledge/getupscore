@@ -1,25 +1,32 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
+import { checkRateLimit, authRateLimit } from "@/lib/rate-limit";
 
-/**
- * POST /api/extension/auth/login
- * Sign the extension into the same Supabase account as the dashboard.
- *
- * Body: { email, password }
- * Returns a session (access_token, refresh_token, expires_at) plus user info.
- * Never stores the password anywhere.
- */
-export async function POST(request: Request) {
-  const corsHeaders: Record<string, string> = {
-    "Access-Control-Allow-Origin": "*",
+const ALLOWED_ORIGINS = [
+  "chrome-extension://",
+  "moz-extension://",
+];
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.some(o => origin.startsWith(o));
+  return {
+    "Access-Control-Allow-Origin": allowed ? origin : "",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
   };
+}
 
-  if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
+export async function POST(request: Request) {
+  const origin = request.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
+  // Rate limit by IP
+  const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown";
+  const { success } = await checkRateLimit(authRateLimit, `login:${ip}`);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429, headers: corsHeaders });
   }
 
   try {
@@ -38,7 +45,7 @@ export async function POST(request: Request) {
     });
 
     if (error || !data.session) {
-      return NextResponse.json({ error: error?.message || "Invalid credentials" }, { status: 401, headers: corsHeaders });
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401, headers: corsHeaders });
     }
 
     return NextResponse.json({
@@ -58,21 +65,12 @@ export async function POST(request: Request) {
           null,
       },
     }, { headers: corsHeaders });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Invalid request";
-    console.error("[Extension Auth] Login error:", err);
-    return NextResponse.json({ error: message }, { status: 400, headers: corsHeaders });
+  } catch {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400, headers: corsHeaders });
   }
 }
 
-export async function OPTIONS() {
-  return new Response(null, {
-    status: 204,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      "Access-Control-Max-Age": "86400",
-    },
-  });
+export async function OPTIONS(request: Request) {
+  const origin = request.headers.get("origin");
+  return new Response(null, { status: 204, headers: getCorsHeaders(origin) });
 }

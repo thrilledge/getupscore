@@ -39,6 +39,7 @@ export async function GET(
         client_member_since,
         client_industry,
         client_score,
+        client_hire_rate,
         client_hours_count,
         client_feedback_count,
         client_payment_verified,
@@ -61,7 +62,7 @@ export async function GET(
         weekly_retainer,
         skills,
         created_at,
-        job_analyses (
+        job_analyses!inner (
           id,
           match_score,
           opportunity_score,
@@ -79,6 +80,7 @@ export async function GET(
         )
       `)
       .eq("id", id)
+      .eq("job_analyses.user_id", user.id)
       .single();
 
     if (error) throw error;

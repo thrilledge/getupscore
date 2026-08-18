@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { cached, TTL } from "@/lib/cache";
 
 /**
@@ -8,12 +8,18 @@ import { cached, TTL } from "@/lib/cache";
  * Used by the frontend dashboard and extension.
  */
 export async function GET() {
-  try {
-    const supabase = await createSupabaseAdminClient();
+  const supabase = await createSupabaseServerClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    // Single RPC replaces 6 sequential count queries
+  if (authError || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const admin = createSupabaseAdminClient();
+
     const stats = await cached("system:status", TTL.STATS, async () => {
-      const { data, error } = await supabase.rpc("get_system_stats" as any);
+      const { data, error } = await admin.rpc("get_system_stats" as any);
       if (error) throw error;
       return data as any;
     });
@@ -31,8 +37,7 @@ export async function GET() {
       },
       last_analysis: stats?.last_analysis || null,
     });
-  } catch (err: any) {
-    console.error("[Job Status] Error:", err);
+  } catch {
     return NextResponse.json(
       { error: "Failed to fetch status" },
       { status: 500 }
