@@ -1,30 +1,46 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
 import type { JobFilter } from "@/lib/supabase/database-types";
 import { FilterFormDialog } from "@/components/filter-form";
 import { FilterCard } from "@/components/filter-card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  AlertCircle,
   Filter,
+  Inbox,
   Plus,
   RefreshCw,
-  AlertCircle,
-  Inbox,
 } from "lucide-react";
 
-async function fetchFilters(userId: string): Promise<JobFilter[]> {
+async function fetchFilters(
+  userId: string
+): Promise<JobFilter[]> {
   const { data, error } = await supabase
     .from("job_filters")
     .select("*")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", {
+      ascending: false,
+    });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(error.message);
+  }
+
   return data ?? [];
 }
 
@@ -45,63 +61,116 @@ export default function FiltersPage() {
     enabled: !!user?.id,
   });
 
-  // Separate active/paused filters
   const activeFilters =
-    filters?.filter((f) => f.is_active) ?? [];
+    filters?.filter(
+      (filter) => filter.is_active
+    ) ?? [];
+
   const pausedFilters =
-    filters?.filter((f) => !f.is_active) ?? [];
+    filters?.filter(
+      (filter) => !filter.is_active
+    ) ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 overflow-x-clip pb-6 sm:space-y-5 sm:pb-8 xl:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight font-heading">
-            Job Filters
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Create and manage your job search filters to find relevant
-            opportunities.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => refetch()}
-            disabled={isRefetching}
-            className="shrink-0"
-          >
-            <RefreshCw
-              className={`size-4 ${isRefetching ? "animate-spin" : ""}`}
+      <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-2xl border border-[#0A0A0A]/10 bg-white p-4 shadow-[0_8px_28px_rgba(0,0,0,0.04)] duration-500 min-[480px]:p-5 sm:rounded-[22px] md:p-6">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 -top-20 size-48 rounded-full bg-[#00C98B]/10 blur-[80px] sm:size-52"
+        />
+
+        <div className="relative z-10 flex min-w-0 flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-start gap-3 min-[480px]:gap-4">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#00C98B]/20 bg-[#00C98B]/10 text-[#00A975] min-[480px]:size-12 min-[480px]:rounded-2xl">
+              <Filter className="size-4 min-[480px]:size-5" />
+            </span>
+
+            <div className="min-w-0">
+              <h1 className="font-heading text-xl font-bold tracking-tight text-[#0A0A0A] min-[480px]:text-2xl sm:text-3xl">
+                Job Filters
+              </h1>
+
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-[#0A0A0A]/50 min-[480px]:text-sm min-[480px]:leading-6">
+                Create and manage your job search
+                filters to find relevant opportunities.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex w-full min-w-0 items-center gap-2 md:w-auto md:shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Refresh filters"
+              title="Refresh filters"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="size-10 shrink-0 rounded-xl border-[#0A0A0A]/10 bg-white text-[#0A0A0A]/55 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/5 hover:text-[#00A975]"
+            >
+              <RefreshCw
+                className={`size-4 ${
+                  isRefetching
+                    ? "animate-spin"
+                    : ""
+                }`}
+              />
+            </Button>
+
+            <FilterFormDialog
+              trigger={
+                <Button className="group h-10 min-w-0 flex-1 rounded-xl bg-[#0A0A0A] px-4 text-xs font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.13)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#00C98B] hover:text-[#0A0A0A] md:flex-none sm:text-sm">
+                  <Plus className="size-4 shrink-0 transition-transform duration-300 group-hover:rotate-90" />
+
+                  <span className="truncate">
+                    Create filter
+                  </span>
+                </Button>
+              }
             />
-          </Button>
-          <FilterFormDialog />
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Loading State */}
       {isLoading && (
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className="overflow-hidden border-border/60">
-              <div className="h-1 bg-muted" />
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <Skeleton className="h-5 w-32" />
-                    <Skeleton className="h-3 w-24" />
+        <div className="grid min-w-0 grid-cols-1 gap-3 min-[680px]:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+          {Array.from({
+            length: 3,
+          }).map((_, index) => (
+            <Card
+              key={index}
+              className="min-w-0 gap-0 overflow-hidden rounded-xl border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_6px_22px_rgba(0,0,0,0.035)] sm:rounded-2xl"
+            >
+              <div className="h-[2px] bg-[#00C98B]/30" />
+
+              <CardHeader className="px-4 pb-3 pt-4 min-[480px]:px-5 min-[480px]:pt-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1 space-y-2.5">
+                    <Skeleton className="h-5 w-32 max-w-full bg-[#0A0A0A]/10" />
+                    <Skeleton className="h-3 w-24 max-w-full bg-[#0A0A0A]/5" />
                   </div>
-                  <Skeleton className="size-8 rounded-md" />
+
+                  <Skeleton className="size-8 shrink-0 rounded-lg bg-[#00C98B]/10 min-[480px]:size-9 min-[480px]:rounded-xl" />
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {Array.from({ length: 4 }).map((_, j) => (
-                    <Skeleton key={j} className="h-5 w-16 rounded-full" />
-                  ))}
+
+              <CardContent className="px-4 pb-4 pt-0 min-[480px]:px-5 min-[480px]:pb-5">
+                <div className="mb-4 flex flex-wrap gap-1.5 min-[480px]:gap-2">
+                  {Array.from({
+                    length: 4,
+                  }).map(
+                    (_, itemIndex) => (
+                      <Skeleton
+                        key={itemIndex}
+                        className="h-5 w-14 rounded-full bg-[#00C98B]/10 min-[480px]:w-16"
+                      />
+                    )
+                  )}
                 </div>
-                <Skeleton className="h-3 w-48" />
+
+                <Skeleton className="h-3 w-48 max-w-full bg-[#0A0A0A]/5" />
               </CardContent>
             </Card>
           ))}
@@ -110,126 +179,221 @@ export default function FiltersPage() {
 
       {/* Error State */}
       {isError && (
-        <Card className="border-destructive/30 bg-destructive/5">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-destructive/10 p-2">
-                <AlertCircle className="size-5 text-destructive" />
-              </div>
-              <div>
-                <CardTitle className="text-base font-heading">
+        <Card className="animate-in fade-in slide-in-from-bottom-2 min-w-0 gap-0 overflow-hidden rounded-2xl border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_10px_30px_rgba(0,0,0,0.05)] duration-500 sm:rounded-[22px]">
+          <div className="h-[3px] bg-[#0A0A0A]" />
+
+          <CardHeader className="px-4 pb-3 pt-4 min-[480px]:px-5 min-[480px]:pt-5 sm:px-6">
+            <div className="flex flex-col gap-3 min-[420px]:flex-row min-[420px]:items-start">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#00C98B]/10 text-[#00A975] min-[480px]:size-11 min-[480px]:rounded-2xl">
+                <AlertCircle className="size-5" />
+              </span>
+
+              <div className="min-w-0">
+                <CardTitle className="font-heading text-sm font-bold text-[#0A0A0A] min-[480px]:text-base">
                   Failed to load filters
                 </CardTitle>
-                <CardDescription>
-                  {error?.message ?? "An unexpected error occurred."}
+
+                <CardDescription className="mt-1 break-words text-xs leading-relaxed text-[#0A0A0A]/50 min-[480px]:text-sm">
+                  {error?.message ??
+                    "An unexpected error occurred."}
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <Button variant="outline" onClick={() => refetch()}>
-              Try Again
+
+          <CardContent className="px-4 pb-4 pt-1 min-[480px]:px-5 min-[480px]:pb-5 sm:px-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="h-9 w-full rounded-xl border-[#0A0A0A]/10 bg-white px-4 text-xs font-semibold text-[#0A0A0A] transition-all duration-300 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/5 hover:text-[#00A975] min-[420px]:w-auto"
+            >
+              <RefreshCw
+                className={`size-3.5 ${
+                  isRefetching
+                    ? "animate-spin"
+                    : ""
+                }`}
+              />
+
+              Try again
             </Button>
           </CardContent>
         </Card>
       )}
 
       {/* Empty State */}
-      {!isLoading && !isError && filters?.length === 0 && (
-        <Card className="border-border/60">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-accent-blue/10 p-3">
-                <Filter className="size-6 text-accent-blue" />
-              </div>
-              <div>
-                <CardTitle className="text-lg font-heading">
-                  No filters yet
-                </CardTitle>
-                <CardDescription>
-                  Create your first filter to start monitoring Upwork for
-                  relevant jobs.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4 pb-8">
-            <div className="max-w-sm text-center space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Filters scan Upwork jobs based on your criteria and score them
-                for match quality and opportunity.
-              </p>
-              <ul className="text-xs text-muted-foreground/70 space-y-1 text-left">
-                <li className="flex items-start gap-2">
-                  <span className="text-accent-blue mt-0.5">•</span>
-                  Add keywords like &quot;react&quot;, &quot;typescript&quot;
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-accent-blue mt-0.5">•</span>
-                  Set budget range and client preferences
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-accent-blue mt-0.5">•</span>
-                  Get scored job alerts via your notification channels
-                </li>
-              </ul>
-            </div>
-            <FilterFormDialog
-              trigger={
-                <Button size="lg" className="mt-2">
-                  <Plus className="size-4 mr-2" />
-                  Create Your First Filter
-                </Button>
-              }
+      {!isLoading &&
+        !isError &&
+        filters?.length === 0 && (
+          <Card className="animate-in fade-in slide-in-from-bottom-3 relative min-w-0 gap-0 overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] py-0 text-white shadow-[0_18px_50px_rgba(0,0,0,0.15)] duration-500 sm:rounded-[24px]">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 hidden opacity-35 sm:block"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(0,201,139,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(0,201,139,0.07) 1px, transparent 1px)",
+
+                backgroundSize: "44px 44px",
+
+                maskImage:
+                  "radial-gradient(circle at center, black, transparent 75%)",
+
+                WebkitMaskImage:
+                  "radial-gradient(circle at center, black, transparent 75%)",
+              }}
             />
-          </CardContent>
-        </Card>
-      )}
+
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-20 -top-20 size-64 rounded-full bg-[#00C98B]/15 blur-[100px] sm:size-[280px]"
+            />
+
+            <CardContent className="relative z-10 flex flex-col items-center px-4 py-8 text-center min-[480px]:px-5 min-[480px]:py-10 sm:px-7 sm:py-11 lg:px-8 lg:py-12">
+              <div className="relative mb-4 min-[480px]:mb-5">
+                <span className="absolute inset-0 scale-150 rounded-full bg-[#00C98B]/15 blur-xl" />
+
+                <span className="relative grid size-14 place-items-center rounded-2xl border border-[#00C98B]/30 bg-[#00C98B]/10 text-[#00C98B] shadow-[0_15px_35px_rgba(0,201,139,0.1)] min-[480px]:size-16 min-[480px]:rounded-[20px]">
+                  <Inbox className="size-6 min-[480px]:size-7" />
+                </span>
+
+                <span className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-lg border-2 border-[#0A0A0A] bg-[#00C98B] text-[#0A0A0A] min-[480px]:size-7">
+                  <Filter className="size-3 min-[480px]:size-3.5" />
+                </span>
+              </div>
+
+              <CardTitle className="font-heading text-xl font-bold text-white min-[480px]:text-2xl">
+                No filters yet
+              </CardTitle>
+
+              <CardDescription className="mt-2 max-w-lg text-xs leading-5 text-white/50 min-[480px]:text-sm min-[480px]:leading-6">
+                Create your first filter to start
+                monitoring Upwork for relevant jobs.
+              </CardDescription>
+
+              <div className="mt-5 grid w-full max-w-3xl grid-cols-1 gap-2.5 text-left min-[520px]:grid-cols-2 sm:mt-6 sm:gap-3 lg:grid-cols-3">
+                {[
+                  'Add keywords like "react" or "typescript"',
+                  "Set budget range and client preferences",
+                  "Receive scored alerts through your channels",
+                ].map((item, index) => (
+                  <div
+                    key={item}
+                    className={`group flex min-w-0 items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/30 hover:bg-[#00C98B]/10 sm:rounded-2xl sm:p-4 ${
+                      index === 2
+                        ? "min-[520px]:col-span-2 lg:col-span-1"
+                        : ""
+                    }`}
+                  >
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#00C98B]/10 text-[10px] font-bold text-[#00C98B]">
+                      {index + 1}
+                    </span>
+
+                    <p className="min-w-0 text-[11px] leading-5 text-white/55 sm:text-xs">
+                      {item}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <FilterFormDialog
+                trigger={
+                  <Button
+                    size="lg"
+                    className="group mt-6 h-10 w-full rounded-xl bg-[#00C98B] px-5 text-xs font-bold text-[#0A0A0A] shadow-[0_12px_30px_rgba(0,201,139,0.18)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#00C98B]/90 hover:shadow-[0_16px_36px_rgba(0,201,139,0.24)] min-[420px]:w-auto min-[420px]:rounded-full min-[480px]:mt-7 min-[480px]:h-11 min-[480px]:px-6 min-[480px]:text-sm"
+                  >
+                    <Plus className="size-4 shrink-0 transition-transform duration-300 group-hover:rotate-90" />
+
+                    <span className="truncate">
+                      Create your first filter
+                    </span>
+                  </Button>
+                }
+              />
+            </CardContent>
+          </Card>
+        )}
 
       {/* Filters Grid */}
-      {!isLoading && !isError && filters && filters.length > 0 && (
-        <div className="space-y-8">
-          {/* Active Filters */}
-          {activeFilters.length > 0 && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="size-2 rounded-full bg-accent-green animate-pulse" />
-                <h2 className="text-sm font-medium text-muted-foreground font-heading tracking-wide uppercase">
-                  Active Filters
-                </h2>
-                <span className="text-xs text-muted-foreground/60 bg-muted/50 px-2 py-0.5 rounded-full">
-                  {activeFilters.length}
-                </span>
-              </div>
-              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {activeFilters.map((filter) => (
-                  <FilterCard key={filter.id} filter={filter} />
-                ))}
-              </div>
-            </section>
-          )}
+      {!isLoading &&
+        !isError &&
+        filters &&
+        filters.length > 0 && (
+          <div className="min-w-0 space-y-7 sm:space-y-8">
+            {/* Active Filters */}
+            {activeFilters.length > 0 && (
+              <section className="animate-in fade-in slide-in-from-bottom-2 min-w-0 space-y-3 duration-500 sm:space-y-4">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="relative flex size-2.5 shrink-0">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#00C98B] opacity-30" />
 
-          {/* Paused Filters */}
-          {pausedFilters.length > 0 && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="size-2 rounded-full bg-muted-foreground/30" />
-                <h2 className="text-sm font-medium text-muted-foreground font-heading tracking-wide uppercase">
-                  Paused Filters
-                </h2>
-                <span className="text-xs text-muted-foreground/60 bg-muted/50 px-2 py-0.5 rounded-full">
-                  {pausedFilters.length}
-                </span>
-              </div>
-              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {pausedFilters.map((filter) => (
-                  <FilterCard key={filter.id} filter={filter} />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
+                    <span className="relative inline-flex size-2.5 rounded-full bg-[#00C98B]" />
+                  </span>
+
+                  <h2 className="shrink-0 font-heading text-[10px] font-bold uppercase tracking-[0.13em] text-[#0A0A0A]/60 min-[480px]:text-xs min-[480px]:tracking-[0.15em]">
+                    Active filters
+                  </h2>
+
+                  <span className="shrink-0 rounded-full border border-[#00C98B]/20 bg-[#00C98B]/10 px-2 py-0.5 text-[9px] font-bold text-[#00A975] min-[480px]:text-[10px]">
+                    {activeFilters.length}
+                  </span>
+
+                  <span className="h-px min-w-0 flex-1 bg-[#0A0A0A]/10" />
+                </div>
+
+                <div className="grid min-w-0 grid-cols-1 gap-3 min-[680px]:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+                  {activeFilters.map(
+                    (filter) => (
+                      <div
+                        key={filter.id}
+                        className="min-w-0"
+                      >
+                        <FilterCard
+                          filter={filter}
+                        />
+                      </div>
+                    )
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* Paused Filters */}
+            {pausedFilters.length > 0 && (
+              <section className="animate-in fade-in slide-in-from-bottom-2 min-w-0 space-y-3 duration-500 sm:space-y-4">
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className="size-2.5 shrink-0 rounded-full border-2 border-[#0A0A0A]/20" />
+
+                  <h2 className="shrink-0 font-heading text-[10px] font-bold uppercase tracking-[0.13em] text-[#0A0A0A]/45 min-[480px]:text-xs min-[480px]:tracking-[0.15em]">
+                    Paused filters
+                  </h2>
+
+                  <span className="shrink-0 rounded-full border border-[#0A0A0A]/10 bg-[#0A0A0A]/5 px-2 py-0.5 text-[9px] font-bold text-[#0A0A0A]/45 min-[480px]:text-[10px]">
+                    {pausedFilters.length}
+                  </span>
+
+                  <span className="h-px min-w-0 flex-1 bg-[#0A0A0A]/10" />
+                </div>
+
+                <div className="grid min-w-0 grid-cols-1 gap-3 min-[680px]:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+                  {pausedFilters.map(
+                    (filter) => (
+                      <div
+                        key={filter.id}
+                        className="min-w-0"
+                      >
+                        <FilterCard
+                          filter={filter}
+                        />
+                      </div>
+                    )
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
     </div>
   );
 }

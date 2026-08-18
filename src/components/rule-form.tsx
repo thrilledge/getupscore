@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useCallback, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -12,7 +12,11 @@ import {
   type RuleFormValues,
 } from "@/lib/validations/rule";
 import { createRule, updateRule } from "@/actions/rules";
-import type { NotificationRule, JobFilter, NotificationChannel } from "@/lib/supabase/database-types";
+import type {
+  JobFilter,
+  NotificationChannel,
+  NotificationRule,
+} from "@/lib/supabase/database-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +24,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -34,15 +37,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Plus,
-  Loader2,
-  Asterisk,
-  Filter,
   Bell,
+  Check,
+  Filter,
+  Gauge,
   Globe,
+  Loader2,
+  Pencil,
+  Plus,
+  Target,
+  Users,
 } from "lucide-react";
-
-// ─── Data Fetching ─────────────────────────────────────
 
 function useUserFilters(userId?: string) {
   return useQuery({
@@ -53,6 +58,7 @@ function useUserFilters(userId?: string) {
         .select("*")
         .eq("user_id", userId!)
         .order("name");
+
       return data ?? [];
     },
     enabled: !!userId,
@@ -62,43 +68,45 @@ function useUserFilters(userId?: string) {
 function useUserChannels(userId?: string) {
   return useQuery({
     queryKey: ["notification_channels", userId],
-    queryFn: async (): Promise<NotificationChannel[]> => {
+    queryFn: async (): Promise<
+      NotificationChannel[]
+    > => {
       const { data } = await supabase
         .from("notification_channels")
         .select("*")
         .eq("user_id", userId!)
         .order("name");
+
       return data ?? [];
     },
     enabled: !!userId,
   });
 }
 
-// ─── Helpers ───────────────────────────────────────────
-
-function ruleToFormValues(rule?: NotificationRule): RuleFormValues {
+function ruleToFormValues(
+  rule?: NotificationRule
+): RuleFormValues {
   return {
     channel_id: rule?.channel_id ?? "",
     job_filter_id: rule?.job_filter_id ?? null,
     match_score_min: rule?.match_score_min ?? 75,
-    opportunity_score_min: rule?.opportunity_score_min ?? 70,
+    opportunity_score_min:
+      rule?.opportunity_score_min ?? 70,
     max_proposals: rule?.max_proposals ?? 20,
   };
 }
 
-// ─── Props ─────────────────────────────────────────────
-
 interface RuleFormDialogProps {
   rule?: NotificationRule;
-  /** Pre-select a channel (useful when creating from channel page) */
+
+  /** Pre-select a channel when creating from the channel page */
   preselectedChannelId?: string;
+
   trigger?: React.ReactElement;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onSuccess?: () => void;
 }
-
-// ─── Component ─────────────────────────────────────────
 
 export function RuleFormDialog({
   rule,
@@ -110,20 +118,29 @@ export function RuleFormDialog({
 }: RuleFormDialogProps) {
   const isEditing = !!rule;
   const { user } = useUser();
-  const [internalOpen, setInternalOpen] = useState(false);
+
+  const [internalOpen, setInternalOpen] =
+    useState(false);
+
+  const [submitting, setSubmitting] =
+    useState(false);
 
   const open = controlledOpen ?? internalOpen;
-  const setOpen = controlledOnOpenChange ?? setInternalOpen;
-  const [submitting, setSubmitting] = useState(false);
+  const setOpen =
+    controlledOnOpenChange ?? setInternalOpen;
 
-  const { data: filters = [] } = useUserFilters(user?.id);
-  const { data: channels = [] } = useUserChannels(user?.id);
+  const { data: filters = [] } = useUserFilters(
+    user?.id
+  );
+
+  const { data: channels = [] } = useUserChannels(
+    user?.id
+  );
 
   const {
     register,
     handleSubmit,
     watch,
-    setValue,
     reset,
     control,
     formState: { errors },
@@ -132,21 +149,37 @@ export function RuleFormDialog({
     resolver: zodResolver(ruleFormSchema) as any,
     defaultValues: {
       ...ruleToFormValues(rule),
-      ...(preselectedChannelId ? { channel_id: preselectedChannelId } : {}),
+      ...(preselectedChannelId
+        ? {
+          channel_id: preselectedChannelId,
+        }
+        : {}),
     },
   });
 
   const selectedChannelId = watch("channel_id");
   const selectedFilterId = watch("job_filter_id");
 
-  // Reset when dialog opens
+  const selectedChannel = channels.find(
+    (channel) => channel.id === selectedChannelId
+  );
+
+  const selectedFilter = filters.find(
+    (filter) => filter.id === selectedFilterId
+  );
+
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       setOpen(nextOpen);
+
       if (nextOpen) {
         reset({
           ...ruleToFormValues(rule),
-          ...(preselectedChannelId ? { channel_id: preselectedChannelId } : {}),
+          ...(preselectedChannelId
+            ? {
+              channel_id: preselectedChannelId,
+            }
+            : {}),
         });
       }
     },
@@ -156,23 +189,43 @@ export function RuleFormDialog({
   const onSubmit = useCallback(
     async (values: RuleFormValues) => {
       setSubmitting(true);
+
       try {
         const formData = new FormData();
-        formData.append("channel_id", values.channel_id);
-        formData.append("job_filter_id", values.job_filter_id ?? "");
-        formData.append("match_score_min", String(values.match_score_min));
+
+        formData.append(
+          "channel_id",
+          values.channel_id
+        );
+
+        formData.append(
+          "job_filter_id",
+          values.job_filter_id ?? ""
+        );
+
+        formData.append(
+          "match_score_min",
+          String(values.match_score_min)
+        );
+
         formData.append(
           "opportunity_score_min",
           String(values.opportunity_score_min)
         );
-        formData.append("max_proposals", String(values.max_proposals));
+
+        formData.append(
+          "max_proposals",
+          String(values.max_proposals)
+        );
 
         const result = isEditing
           ? await updateRule(rule!.id, formData)
           : await createRule(formData);
 
         if (!result.success) {
-          toast.error(result.error ?? "Something went wrong.");
+          toast.error(
+            result.error ?? "Something went wrong."
+          );
           return;
         }
 
@@ -181,6 +234,7 @@ export function RuleFormDialog({
             ? "Rule updated successfully."
             : "Rule created successfully."
         );
+
         setOpen(false);
         onSuccess?.();
       } finally {
@@ -190,7 +244,11 @@ export function RuleFormDialog({
     [isEditing, rule, setOpen, onSuccess]
   );
 
-  const selectedChannel = channels.find((c) => c.id === selectedChannelId);
+  const inputClassName =
+    "h-10 rounded-lg border-black/10 bg-white px-3 text-[13px] text-[#0A0A0A] shadow-none placeholder:text-black/30 transition-colors hover:border-black/20 focus-visible:border-[#00C98B] focus-visible:ring-2 focus-visible:ring-[#00C98B]/15";
+
+  const selectTriggerClassName =
+    "h-10 w-full rounded-lg border-black/10 bg-white px-3 text-[13px] text-[#0A0A0A] shadow-none transition-colors hover:border-black/20 focus:border-[#00C98B] focus:ring-2 focus:ring-[#00C98B]/15";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -198,229 +256,387 @@ export function RuleFormDialog({
         <DialogTrigger
           render={
             trigger ?? (
-              <Button>
-                <Plus className="size-4 mr-2" />
-                Add Rule
+              <Button className="h-9 rounded-lg bg-[#00C98B] px-3.5 text-xs font-semibold text-[#0A0A0A] hover:bg-[#00C98B]/90">
+                <Plus className="size-3.5" />
+                Add rule
               </Button>
             )
           }
         />
       )}
-      <DialogContent className="sm:max-w-lg">
+
+      <DialogContent className="max-h-[calc(100dvh-1.5rem)] w-[calc(100%-1.25rem)] overflow-hidden rounded-2xl border border-black/10 bg-white p-0 shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:max-h-[calc(100dvh-3rem)] sm:max-w-[520px] [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:top-4 [&_[data-slot=dialog-close]]:rounded-lg [&_[data-slot=dialog-close]]:text-white/60 [&_[data-slot=dialog-close]]:hover:bg-white/10 [&_[data-slot=dialog-close]]:hover:text-white">
         <form
-          onSubmit={handleSubmit(onSubmit as (v: RuleFormValues) => void)}
+          onSubmit={handleSubmit(
+            onSubmit as (
+              values: RuleFormValues
+            ) => void
+          )}
+          className="flex max-h-[calc(100dvh-1.5rem)] min-h-0 flex-col sm:max-h-[calc(100dvh-3rem)]"
         >
-          <DialogHeader>
-            <DialogTitle className="font-heading">
-              {isEditing ? "Edit Rule" : "Create Rule"}
-            </DialogTitle>
-            <DialogDescription>
-              {isEditing
-                ? "Update your notification rule."
-                : "Link a channel with a filter to define when alerts are sent."}
-            </DialogDescription>
-          </DialogHeader>
+          {/* Header */}
+          <div className="relative shrink-0 overflow-hidden bg-[#0A0A0A] px-5 pb-5 pt-6 pr-14 sm:px-6 sm:pr-14">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-12 -top-16 size-40 rounded-full bg-[#00C98B]/10 blur-3xl"
+            />
 
-          <div className="grid gap-5 py-4">
-            {/* Channel */}
-            <div className="space-y-2">
-              <Label
-                htmlFor="channel_id"
-                className="flex items-center gap-1"
-              >
-                Notification Channel{" "}
-                <Asterisk className="size-3 text-destructive" />
-              </Label>
-              <Controller
-                name="channel_id"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={(val: string | null) =>
-                      field.onChange(val ?? "")
-                    }
-                  >
-                    <SelectTrigger className="w-full h-10">
-                      <SelectValue placeholder="Select a channel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {channels.length === 0 && (
-                          <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                            No channels yet. Create one first.
-                          </div>
-                        )}
-                        {channels.map((ch) => (
-                          <SelectItem key={ch.id} value={ch.id}>
-                            <span className="flex items-center gap-2">
-                              <Bell className="size-4 text-muted-foreground" />
-                              {ch.name}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.channel_id && (
-                <p className="text-xs text-destructive">
-                  {errors.channel_id.message}
-                </p>
-              )}
-            </div>
-
-            {/* Job Filter */}
-            <div className="space-y-2">
-              <Label htmlFor="job_filter_id">Job Filter (optional)</Label>
-              <Controller
-                name="job_filter_id"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value ?? ""}
-                    onValueChange={(val: string | null) =>
-                      field.onChange(val || null)
-                    }
-                  >
-                    <SelectTrigger className="w-full h-10">
-                      <SelectValue placeholder="All filters (no filter)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="">
-                          <span className="flex items-center gap-2">
-                            <Globe className="size-4 text-muted-foreground" />
-                            All filters
-                          </span>
-                        </SelectItem>
-                        {filters.map((f) => (
-                          <SelectItem key={f.id} value={f.id}>
-                            <span className="flex items-center gap-2">
-                              <Filter className="size-4 text-muted-foreground" />
-                              {f.name}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              <p className="text-xs text-muted-foreground">
-                Leave empty to apply this rule to all your filters.
-              </p>
-            </div>
-
-            {/* Thresholds */}
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
-              <div className="flex items-center gap-2 pb-1">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Scoring Thresholds
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="match_score_min">
-                    Min Match Score
-                  </Label>
-                  <Input
-                    id="match_score_min"
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="75"
-                    {...register("match_score_min")}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    0–100
-                  </p>
-                  {errors.match_score_min && (
-                    <p className="text-xs text-destructive">
-                      {errors.match_score_min.message}
-                    </p>
+            <DialogHeader className="relative text-left">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#00C98B]/25 bg-[#00C98B]/10 text-[#00C98B]">
+                  {isEditing ? (
+                    <Pencil className="size-4" />
+                  ) : (
+                    <Bell className="size-4" />
                   )}
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="opportunity_score_min">
-                    Min Opportunity Score
-                  </Label>
-                  <Input
-                    id="opportunity_score_min"
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="70"
-                    {...register("opportunity_score_min")}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    0–100
-                  </p>
-                  {errors.opportunity_score_min && (
-                    <p className="text-xs text-destructive">
-                      {errors.opportunity_score_min.message}
-                    </p>
-                  )}
+
+                <div className="min-w-0">
+                  <DialogTitle className="font-heading text-base font-bold leading-tight tracking-tight text-white sm:text-lg">
+                    {isEditing
+                      ? "Edit notification rule"
+                      : "Create notification rule"}
+                  </DialogTitle>
+
+                  <DialogDescription className="mt-1.5 text-[11px] leading-relaxed text-white/50 sm:text-xs">
+                    {isEditing
+                      ? "Update when and where this rule sends alerts."
+                      : "Connect a channel with your job matching criteria."}
+                  </DialogDescription>
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="max_proposals">
-                  Max Proposals on Job
-                </Label>
-                <Input
-                  id="max_proposals"
-                  type="number"
-                  min={0}
-                  placeholder="20"
-                  {...register("max_proposals")}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Exclude jobs with more proposals than this.
-                </p>
-                {errors.max_proposals && (
-                  <p className="text-xs text-destructive">
-                    {errors.max_proposals.message}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Summary */}
-            {selectedChannel && (
-              <div className="rounded-xl bg-accent-amber/5 border border-accent-amber/20 p-3">
-                <p className="text-xs text-muted-foreground">
-                  Alerts will be sent to{" "}
-                  <strong className="text-foreground">
-                    {selectedChannel.name}
-                  </strong>
-                  {selectedFilterId
-                    ? ` when jobs match filter "${filters.find(f => f.id === selectedFilterId)?.name ?? ""}"`
-                    : " for all matching jobs"}
-                  .
-                </p>
-              </div>
-            )}
+            </DialogHeader>
           </div>
 
-          <DialogFooter className="gap-2">
+          {/* Scrollable Content */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#F7F8F8]">
+            <div className="space-y-4 p-5 sm:p-6">
+              {/* Channel */}
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="channel_id"
+                  className="text-[12px] font-semibold text-[#0A0A0A]"
+                >
+                  Notification channel
+                  <span className="ml-1 text-[#00C98B]">
+                    *
+                  </span>
+                </Label>
+
+                <Controller
+                  name="channel_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={(
+                        value: string | null
+                      ) =>
+                        field.onChange(value ?? "")
+                      }
+                    >
+                      <SelectTrigger
+                        className={selectTriggerClassName}
+                      >
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <Bell className="size-3.5 shrink-0 text-[#00C98B]" />
+                          <SelectValue placeholder="Select a channel" />
+                        </div>
+                      </SelectTrigger>
+
+                      <SelectContent className="rounded-xl border-black/10 bg-white p-1 shadow-[0_16px_45px_rgba(0,0,0,0.14)]">
+                        <SelectGroup>
+                          {channels.length === 0 && (
+                            <div className="px-3 py-5 text-center">
+                              <Bell className="mx-auto size-5 text-black/25" />
+
+                              <p className="mt-2 text-[11px] text-black/45">
+                                No channels yet. Create a
+                                channel first.
+                              </p>
+                            </div>
+                          )}
+
+                          {channels.map((channel) => (
+                            <SelectItem
+                              key={channel.id}
+                              value={channel.id}
+                              className="rounded-lg py-2 text-xs focus:bg-[#00C98B]/10 focus:text-[#0A0A0A]"
+                            >
+                              <span className="flex items-center gap-2">
+                                <Bell className="size-3.5 text-[#00C98B]" />
+                                {channel.name}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+
+                {errors.channel_id && (
+                  <p className="px-0.5 text-[11px] font-medium text-black/55">
+                    {errors.channel_id.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Job Filter */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-3">
+                  <Label
+                    htmlFor="job_filter_id"
+                    className="text-[12px] font-semibold text-[#0A0A0A]"
+                  >
+                    Job filter
+                  </Label>
+
+                  <span className="text-[10px] font-medium text-black/35">
+                    Optional
+                  </span>
+                </div>
+
+                <Controller
+                  name="job_filter_id"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value ?? ""}
+                      onValueChange={(
+                        value: string | null
+                      ) =>
+                        field.onChange(value || null)
+                      }
+                    >
+                      <SelectTrigger
+                        className={selectTriggerClassName}
+                      >
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <Filter className="size-3.5 shrink-0 text-[#00C98B]" />
+
+                          <SelectValue placeholder="All filters" />
+                        </div>
+                      </SelectTrigger>
+
+                      <SelectContent className="rounded-xl border-black/10 bg-white p-1 shadow-[0_16px_45px_rgba(0,0,0,0.14)]">
+                        <SelectGroup>
+                          <SelectItem
+                            value=""
+                            className="rounded-lg py-2 text-xs focus:bg-[#00C98B]/10 focus:text-[#0A0A0A]"
+                          >
+                            <span className="flex items-center gap-2">
+                              <Globe className="size-3.5 text-[#00C98B]" />
+                              All filters
+                            </span>
+                          </SelectItem>
+
+                          {filters.map((filter) => (
+                            <SelectItem
+                              key={filter.id}
+                              value={filter.id}
+                              className="rounded-lg py-2 text-xs focus:bg-[#00C98B]/10 focus:text-[#0A0A0A]"
+                            >
+                              <span className="flex items-center gap-2">
+                                <Filter className="size-3.5 text-[#00C98B]" />
+                                {filter.name}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+
+                <p className="px-0.5 text-[10px] leading-relaxed text-black/40">
+                  Leave empty to apply the rule to all job
+                  filters.
+                </p>
+              </div>
+
+              {/* Thresholds */}
+              <div className="rounded-xl border border-black/10 bg-white p-4">
+                <div className="mb-4 flex items-center gap-2.5 border-b border-black/5 pb-3">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#0A0A0A] text-[#00C98B]">
+                    <Gauge className="size-3.5" />
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-bold text-[#0A0A0A]">
+                      Scoring thresholds
+                    </p>
+
+                    <p className="mt-0.5 text-[10px] text-black/40">
+                      Control which jobs can trigger an alert
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Match Score */}
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="match_score_min"
+                      className="flex items-center gap-1.5 text-[11px] font-semibold text-[#0A0A0A]"
+                    >
+                      <Target className="size-3 text-[#00C98B]" />
+                      Match score
+                    </Label>
+
+                    <div className="relative">
+                      <Input
+                        id="match_score_min"
+                        type="number"
+                        min={0}
+                        max={100}
+                        placeholder="75"
+                        className={`${inputClassName} pr-9`}
+                        {...register("match_score_min")}
+                      />
+
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-black/30">
+                        /100
+                      </span>
+                    </div>
+
+                    {errors.match_score_min && (
+                      <p className="text-[10px] font-medium leading-tight text-black/55">
+                        {errors.match_score_min.message}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Opportunity Score */}
+                  <div className="space-y-1.5">
+                    <Label
+                      htmlFor="opportunity_score_min"
+                      className="flex items-center gap-1.5 text-[11px] font-semibold text-[#0A0A0A]"
+                    >
+                      <Gauge className="size-3 text-[#00C98B]" />
+                      Opportunity
+                    </Label>
+
+                    <div className="relative">
+                      <Input
+                        id="opportunity_score_min"
+                        type="number"
+                        min={0}
+                        max={100}
+                        placeholder="70"
+                        className={`${inputClassName} pr-9`}
+                        {...register(
+                          "opportunity_score_min"
+                        )}
+                      />
+
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-black/30">
+                        /100
+                      </span>
+                    </div>
+
+                    {errors.opportunity_score_min && (
+                      <p className="text-[10px] font-medium leading-tight text-black/55">
+                        {
+                          errors.opportunity_score_min
+                            .message
+                        }
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Maximum Proposals */}
+                <div className="mt-4 space-y-1.5 border-t border-black/5 pt-4">
+                  <Label
+                    htmlFor="max_proposals"
+                    className="flex items-center gap-1.5 text-[11px] font-semibold text-[#0A0A0A]"
+                  >
+                    <Users className="size-3 text-[#00C98B]" />
+                    Maximum proposals
+                  </Label>
+
+                  <Input
+                    id="max_proposals"
+                    type="number"
+                    min={0}
+                    placeholder="20"
+                    className={inputClassName}
+                    {...register("max_proposals")}
+                  />
+
+                  <p className="text-[10px] leading-relaxed text-black/40">
+                    Jobs above this proposal count will be
+                    excluded.
+                  </p>
+
+                  {errors.max_proposals && (
+                    <p className="text-[10px] font-medium text-black/55">
+                      {errors.max_proposals.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Summary */}
+              {selectedChannel && (
+                <div className="rounded-xl border border-[#00C98B]/20 bg-[#00C98B]/5 p-3.5">
+                  <div className="flex items-start gap-2.5">
+                    <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-[#00C98B] text-[#0A0A0A]">
+                      <Check className="size-3.5" />
+                    </div>
+
+                    <p className="text-[11px] leading-relaxed text-black/55">
+                      Alerts will be delivered to{" "}
+                      <strong className="font-semibold text-[#0A0A0A]">
+                        {selectedChannel.name}
+                      </strong>
+
+                      {selectedFilterId
+                        ? ` when jobs match "${selectedFilter?.name ?? ""
+                        }"`
+                        : " for jobs matching any filter"}
+                      .
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-black/10 bg-white px-5 py-4 sm:px-6">
             <Button
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={submitting}
+              className="h-9 w-24 shrink-0 rounded-lg border-black/15 bg-white px-3 text-xs font-semibold text-[#0A0A0A] shadow-none hover:bg-black/5"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting && (
-                <Loader2 className="size-4 mr-2 animate-spin" />
+
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="h-9 min-w-32 rounded-lg bg-[#0A0A0A] px-4 text-xs font-semibold text-white hover:bg-[#00C98B] hover:text-[#0A0A0A]"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="size-3.5" />
+
+                  {isEditing
+                    ? "Save changes"
+                    : "Create rule"}
+                </>
               )}
-              {isEditing ? "Save Changes" : "Create Rule"}
             </Button>
-          </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

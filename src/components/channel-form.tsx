@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useCallback, useState } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
   channelFormSchema,
-  channelTypeLabels,
   channelTypeIcons,
-  getConfigFields,
+  channelTypeLabels,
   getConfigFieldLabel,
   getConfigFieldPlaceholder,
+  getConfigFields,
   type ChannelFormValues,
   type ChannelType,
 } from "@/lib/validations/channel";
@@ -23,7 +23,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -37,21 +36,19 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Plus,
-  Pencil,
-  Loader2,
-  Asterisk,
-  Mail,
-  Send,
-  MessageSquare,
-  MessageCircle,
-  Webhook,
-  Smartphone,
-  ExternalLink,
+  Check,
   CheckCircle2,
+  ExternalLink,
+  Loader2,
+  Mail,
+  MessageCircle,
+  MessageSquare,
+  Pencil,
+  Plus,
+  Send,
+  Smartphone,
+  Webhook,
 } from "lucide-react";
-
-// ─── Icon map ──────────────────────────────────────────
 
 const iconMap: Record<string, React.ElementType> = {
   Mail,
@@ -62,15 +59,14 @@ const iconMap: Record<string, React.ElementType> = {
   Smartphone,
 };
 
-// ─── Helpers ───────────────────────────────────────────
-
 function channelToFormValues(
   channel?: NotificationChannel
 ): ChannelFormValues {
   return {
     name: channel?.name ?? "",
     type: (channel?.type as ChannelType) ?? "email",
-    config: (channel?.config as Record<string, unknown>) ?? {},
+    config:
+      (channel?.config as Record<string, unknown>) ?? {},
   };
 }
 
@@ -78,13 +74,13 @@ function configToFormEntries(
   config: Record<string, unknown>
 ): Record<string, string> {
   const entries: Record<string, string> = {};
+
   for (const [key, value] of Object.entries(config)) {
     entries[key] = value != null ? String(value) : "";
   }
+
   return entries;
 }
-
-// ─── Props ─────────────────────────────────────────────
 
 interface ChannelFormDialogProps {
   channel?: NotificationChannel;
@@ -94,8 +90,6 @@ interface ChannelFormDialogProps {
   onSuccess?: () => void;
 }
 
-// ─── Component ─────────────────────────────────────────
-
 export function ChannelFormDialog({
   channel,
   trigger,
@@ -104,12 +98,15 @@ export function ChannelFormDialog({
   onSuccess,
 }: ChannelFormDialogProps) {
   const isEditing = !!channel;
+
   const [internalOpen, setInternalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [connectingSlack, setConnectingSlack] =
+    useState(false);
 
   const open = controlledOpen ?? internalOpen;
-  const setOpen = controlledOnOpenChange ?? setInternalOpen;
-  const [submitting, setSubmitting] = useState(false);
-  const [connectingSlack, setConnectingSlack] = useState(false);
+  const setOpen =
+    controlledOnOpenChange ?? setInternalOpen;
 
   const {
     register,
@@ -128,24 +125,39 @@ export function ChannelFormDialog({
   const selectedType = watch("type") as ChannelType;
   const configFields = getConfigFields(selectedType);
 
-  // Handle Slack OAuth flow
+  const TypeIcon =
+    iconMap[channelTypeIcons[selectedType]] || Mail;
+
   const handleSlackConnect = useCallback(async () => {
     setConnectingSlack(true);
+
     try {
-      const channelName = watch("name") || "Slack Notifications";
-      const res = await fetch("/api/notifications/channels", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          channel_type: "slack",
-          name: channelName,
-        }),
-      });
+      const channelName =
+        watch("name") || "Slack Notifications";
+
+      const res = await fetch(
+        "/api/notifications/channels",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            channel_type: "slack",
+            name: channelName,
+          }),
+        }
+      );
+
       const data = await res.json();
+
       if (data.auth_url) {
         window.location.href = data.auth_url;
       } else {
-        toast.error(data.error || "Failed to initiate Slack connection.");
+        toast.error(
+          data.error ||
+          "Failed to initiate Slack connection."
+        );
         setConnectingSlack(false);
       }
     } catch {
@@ -154,10 +166,10 @@ export function ChannelFormDialog({
     }
   }, [watch]);
 
-  // Reset form when dialog opens / channel changes
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       setOpen(nextOpen);
+
       if (nextOpen) {
         reset(channelToFormValues(channel));
       }
@@ -170,16 +182,24 @@ export function ChannelFormDialog({
       if (values.type === "slack" && !isEditing) {
         return;
       }
+
       setSubmitting(true);
+
       try {
         const formData = new FormData();
+
         formData.append("name", values.name);
         formData.append("type", values.type);
-        // Append config fields with config_ prefix
+
         if (values.config) {
-          for (const [key, value] of Object.entries(values.config)) {
+          for (const [key, value] of Object.entries(
+            values.config
+          )) {
             if (value != null) {
-              formData.append(`config_${key}`, String(value));
+              formData.append(
+                `config_${key}`,
+                String(value)
+              );
             }
           }
         }
@@ -189,7 +209,9 @@ export function ChannelFormDialog({
           : await createChannel(formData);
 
         if (!result.success) {
-          toast.error(result.error ?? "Something went wrong.");
+          toast.error(
+            result.error ?? "Something went wrong."
+          );
           return;
         }
 
@@ -198,6 +220,7 @@ export function ChannelFormDialog({
             ? "Channel updated successfully."
             : "Channel created successfully."
         );
+
         setOpen(false);
         onSuccess?.();
       } finally {
@@ -207,18 +230,29 @@ export function ChannelFormDialog({
     [isEditing, channel, setOpen, onSuccess]
   );
 
-  // Update config field in the form
   const setConfigField = useCallback(
     (field: string, value: string) => {
       const currentConfig = watch("config") ?? {};
-      setValue("config", { ...currentConfig, [field]: value }, {
-        shouldValidate: true,
-      });
+
+      setValue(
+        "config",
+        {
+          ...currentConfig,
+          [field]: value,
+        },
+        {
+          shouldValidate: true,
+        }
+      );
     },
     [watch, setValue]
   );
 
-  const TypeIcon = iconMap[channelTypeIcons[selectedType]] || Mail;
+  const inputClassName =
+    "h-10 rounded-lg border-black/10 bg-white px-3 text-[13px] text-[#0A0A0A] shadow-none placeholder:text-black/30 transition-colors hover:border-black/20 focus-visible:border-[#00C98B] focus-visible:ring-2 focus-visible:ring-[#00C98B]/15";
+
+  const selectTriggerClassName =
+    "h-10 w-full rounded-lg border-black/10 bg-white px-3 text-[13px] text-[#0A0A0A] shadow-none transition-colors hover:border-black/20 focus:border-[#00C98B] focus:ring-2 focus:ring-[#00C98B]/15";
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -226,253 +260,446 @@ export function ChannelFormDialog({
         <DialogTrigger
           render={
             trigger ?? (
-              <Button>
-                <Plus className="size-4 mr-2" />
-                Add Channel
+              <Button className="h-9 rounded-lg bg-[#00C98B] px-3.5 text-xs font-semibold text-[#0A0A0A] hover:bg-[#00C98B]/90">
+                <Plus className="size-3.5" />
+                Add channel
               </Button>
             )
           }
         />
       )}
-      <DialogContent className="sm:max-w-lg">
-        <form onSubmit={handleSubmit(onSubmit as (v: ChannelFormValues) => void)}>
-          <DialogHeader>
-            <DialogTitle className="font-heading">
-              {isEditing ? "Edit Channel" : "Create Channel"}
-            </DialogTitle>
-            <DialogDescription>
-              {isEditing
-                ? "Update your notification channel settings."
-                : "Connect a notification channel to receive job alerts."}
-            </DialogDescription>
-          </DialogHeader>
 
-          <div className="grid gap-5 py-4">
-            {/* Name */}
-            <div className="space-y-2">
-              <Label htmlFor="name" className="flex items-center gap-1">
-                Channel Name <Asterisk className="size-3 text-destructive" />
-              </Label>
-              <Input
-                id="name"
-                placeholder="e.g. My Email, Team Slack"
-                {...register("name")}
-              />
-              {errors.name && (
-                <p className="text-xs text-destructive">
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
+      <DialogContent className="max-h-[calc(100dvh-1.5rem)] w-[calc(100%-1.25rem)] overflow-hidden rounded-2xl border border-black/10 bg-white p-0 shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:max-h-[calc(100dvh-3rem)] sm:max-w-[520px] [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:top-4 [&_[data-slot=dialog-close]]:rounded-lg [&_[data-slot=dialog-close]]:text-white/60 [&_[data-slot=dialog-close]]:hover:bg-white/10 [&_[data-slot=dialog-close]]:hover:text-white">
+        <form
+          onSubmit={handleSubmit(
+            onSubmit as (
+              values: ChannelFormValues
+            ) => void
+          )}
+          className="flex max-h-[calc(100dvh-1.5rem)] min-h-0 flex-col sm:max-h-[calc(100dvh-3rem)]"
+        >
+          {/* Header */}
+          <div className="relative shrink-0 overflow-hidden bg-[#0A0A0A] px-5 pb-5 pt-6 pr-14 sm:px-6 sm:pr-14">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-12 -top-16 size-40 rounded-full bg-[#00C98B]/10 blur-3xl"
+            />
 
-            {/* Type */}
-            <div className="space-y-2">
-              <Label htmlFor="type" className="flex items-center gap-1">
-                Channel Type <Asterisk className="size-3 text-destructive" />
-              </Label>
-              <Controller
-                name="type"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value}
-                    onValueChange={(val: string | null, _details) => {
-                      field.onChange(val ?? "");
-                      // Reset config when type changes
-                      setValue("config", {});
-                    }}
-                  >
-                    <SelectTrigger className="w-full h-10">
-                      <SelectValue placeholder="Select a channel type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {(Object.keys(channelTypeLabels) as ChannelType[]).map(
-                          (type) => {
+            <DialogHeader className="relative text-left">
+              <div className="flex items-start gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#00C98B]/25 bg-[#00C98B]/10 text-[#00C98B]">
+                  {isEditing ? (
+                    <Pencil className="size-4" />
+                  ) : (
+                    <TypeIcon className="size-4" />
+                  )}
+                </div>
+
+                <div className="min-w-0">
+                  <DialogTitle className="font-heading text-base font-bold leading-tight tracking-tight text-white sm:text-lg">
+                    {isEditing
+                      ? "Edit notification channel"
+                      : "Add notification channel"}
+                  </DialogTitle>
+
+                  <DialogDescription className="mt-1.5 text-[11px] leading-relaxed text-white/50 sm:text-xs">
+                    {isEditing
+                      ? "Update the delivery details for this channel."
+                      : "Choose where you want to receive job alerts."}
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+          </div>
+
+          {/* Form Content */}
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#F7F8F8]">
+            <div className="space-y-4 p-5 sm:p-6">
+              {/* Channel Name */}
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="name"
+                  className="text-[12px] font-semibold text-[#0A0A0A]"
+                >
+                  Channel name
+                  <span className="ml-1 text-[#00C98B]">
+                    *
+                  </span>
+                </Label>
+
+                <Input
+                  id="name"
+                  placeholder="e.g. My Email"
+                  className={inputClassName}
+                  {...register("name")}
+                />
+
+                {errors.name && (
+                  <p className="px-0.5 text-[11px] font-medium text-black/55">
+                    {errors.name.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Channel Type */}
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="type"
+                  className="text-[12px] font-semibold text-[#0A0A0A]"
+                >
+                  Channel type
+                  <span className="ml-1 text-[#00C98B]">
+                    *
+                  </span>
+                </Label>
+
+                <Controller
+                  name="type"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={(
+                        value: string | null,
+                        _details
+                      ) => {
+                        field.onChange(value ?? "");
+                        setValue("config", {});
+                      }}
+                    >
+                      <SelectTrigger
+                        className={selectTriggerClassName}
+                      >
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <TypeIcon className="size-3.5 shrink-0 text-[#00C98B]" />
+
+                          <SelectValue placeholder="Select channel" />
+                        </div>
+                      </SelectTrigger>
+
+                      <SelectContent className="rounded-xl border-black/10 bg-white p-1 shadow-[0_16px_45px_rgba(0,0,0,0.14)]">
+                        <SelectGroup>
+                          {(
+                            Object.keys(
+                              channelTypeLabels
+                            ) as ChannelType[]
+                          ).map((type) => {
                             const Icon =
-                              iconMap[channelTypeIcons[type]] || Mail;
+                              iconMap[
+                              channelTypeIcons[type]
+                              ] || Mail;
+
                             return (
-                              <SelectItem key={type} value={type}>
+                              <SelectItem
+                                key={type}
+                                value={type}
+                                className="rounded-lg py-2 text-xs focus:bg-[#00C98B]/10 focus:text-[#0A0A0A]"
+                              >
                                 <span className="flex items-center gap-2">
-                                  <Icon className="size-4 text-muted-foreground" />
+                                  <Icon className="size-3.5 text-[#00C98B]" />
+
                                   {channelTypeLabels[type]}
                                 </span>
                               </SelectItem>
                             );
-                          }
-                        )}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.type && (
-                <p className="text-xs text-destructive">
-                  {errors.type.message}
-                </p>
-              )}
-            </div>
-
-            {/* Type-specific config fields */}
-            {selectedType === "slack" && !isEditing ? (
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
-                <div className="flex items-center gap-2 pb-1">
-                  <MessageSquare className="size-4 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Slack Configuration
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Connect your Slack workspace with one click. We&apos;ll request permission to post notifications to your chosen channel.
-                </p>
-                <Button
-                  type="button"
-                  variant="default"
-                  className="w-full bg-[#4A154B] hover:bg-[#350d36] text-white"
-                  onClick={handleSlackConnect}
-                  disabled={connectingSlack}
-                >
-                  {connectingSlack ? (
-                    <Loader2 className="size-4 mr-2 animate-spin" />
-                  ) : (
-                    <MessageSquare className="size-4 mr-2" />
+                          })}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   )}
-                  {connectingSlack ? "Connecting..." : "Connect with Slack"}
-                  {!connectingSlack && <ExternalLink className="size-3 ml-2 opacity-60" />}
-                </Button>
-              </div>
-            ) : selectedType === "slack" && isEditing && (watch("config")?.webhook_url) ? (
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
-                <div className="flex items-center gap-2 pb-1">
-                  <MessageSquare className="size-4 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Slack Configuration
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-green-600">
-                  <CheckCircle2 className="size-4" />
-                  <span>Connected via Slack OAuth</span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  To reconnect, delete this channel and add a new Slack channel.
-                </p>
-              </div>
-            ) : selectedType === "slack" && isEditing ? (
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
-                <div className="flex items-center gap-2 pb-1">
-                  <MessageSquare className="size-4 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Slack Configuration
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  This channel is not connected yet. Connect your Slack workspace:
-                </p>
-                <Button
-                  type="button"
-                  variant="default"
-                  className="w-full bg-[#4A154B] hover:bg-[#350d36] text-white"
-                  onClick={handleSlackConnect}
-                  disabled={connectingSlack}
-                >
-                  {connectingSlack ? (
-                    <Loader2 className="size-4 mr-2 animate-spin" />
-                  ) : (
-                    <MessageSquare className="size-4 mr-2" />
-                  )}
-                  {connectingSlack ? "Connecting..." : "Connect with Slack"}
-                  {!connectingSlack && <ExternalLink className="size-3 ml-2 opacity-60" />}
-                </Button>
-              </div>
-            ) : configFields.length > 0 ? (
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-4">
-                <div className="flex items-center gap-2 pb-1">
-                  <TypeIcon className="size-4 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    {channelTypeLabels[selectedType]} Configuration
-                  </span>
-                </div>
-                {configFields.map((field) => {
-                  const isSelectField = field === "method";
-                  const currentConfig = watch("config") ?? {};
+                />
 
-                  if (isSelectField) {
-                    return (
-                      <div key={field} className="space-y-2">
-                        <Label htmlFor={`config_${field}`}>
-                          {getConfigFieldLabel(selectedType, field)}
-                        </Label>
-                        <Select
-                          value={String(currentConfig[field] ?? "POST")}
-                          onValueChange={(val: string | null) =>
-                            setConfigField(field, val ?? "POST")
-                          }
-                        >
-                          <SelectTrigger className="w-full h-10">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {["GET", "POST", "PUT"].map((method) => (
-                                <SelectItem key={method} value={method}>
-                                  {method}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div key={field} className="space-y-2">
-                      <Label htmlFor={`config_${field}`}>
-                        {getConfigFieldLabel(selectedType, field)}
-                      </Label>
-                      <Input
-                        id={`config_${field}`}
-                        type={field === "phone" ? "tel" : "text"}
-                        placeholder={getConfigFieldPlaceholder(
-                          selectedType,
-                          field
-                        )}
-                        value={String(currentConfig[field] ?? "")}
-                        onChange={(e) =>
-                          setConfigField(field, e.target.value)
-                        }
-                      />
-                    </div>
-                  );
-                })}
-                {/* Config validation errors */}
-                {errors.config?.message && (
-                  <p className="text-xs text-destructive">
-                    {String(errors.config.message)}
+                {errors.type && (
+                  <p className="px-0.5 text-[11px] font-medium text-black/55">
+                    {errors.type.message}
                   </p>
                 )}
               </div>
-            ) : null}
+
+              {/* New Slack */}
+              {selectedType === "slack" &&
+                !isEditing ? (
+                <div className="rounded-xl border border-[#00C98B]/20 bg-white p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#0A0A0A] text-[#00C98B]">
+                      <MessageSquare className="size-3.5" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#0A0A0A]">
+                        Connect Slack
+                      </p>
+
+                      <p className="mt-1 text-[11px] leading-relaxed text-black/45">
+                        Select your workspace and delivery
+                        channel through Slack.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={handleSlackConnect}
+                    disabled={connectingSlack}
+                    className="mt-4 h-9 w-full rounded-lg bg-[#0A0A0A] text-xs font-semibold text-white hover:bg-[#00C98B] hover:text-[#0A0A0A]"
+                  >
+                    {connectingSlack ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <MessageSquare className="size-3.5" />
+                    )}
+
+                    {connectingSlack
+                      ? "Connecting..."
+                      : "Connect with Slack"}
+
+                    {!connectingSlack && (
+                      <ExternalLink className="size-3 opacity-50" />
+                    )}
+                  </Button>
+                </div>
+              ) : selectedType === "slack" &&
+                isEditing &&
+                watch("config")?.webhook_url ? (
+                /* Connected Slack */
+                <div className="rounded-xl border border-[#00C98B]/25 bg-white p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#00C98B] text-[#0A0A0A]">
+                      <CheckCircle2 className="size-3.5" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#0A0A0A]">
+                        Slack connected
+                      </p>
+
+                      <p className="mt-1 text-[11px] leading-relaxed text-black/45">
+                        This channel is connected through Slack
+                        OAuth. Delete it to connect another
+                        workspace.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : selectedType === "slack" &&
+                isEditing ? (
+                /* Slack Not Connected */
+                <div className="rounded-xl border border-black/10 bg-white p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#0A0A0A] text-[#00C98B]">
+                      <MessageSquare className="size-3.5" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-[#0A0A0A]">
+                        Slack not connected
+                      </p>
+
+                      <p className="mt-1 text-[11px] leading-relaxed text-black/45">
+                        Connect your workspace to start
+                        receiving notifications.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={handleSlackConnect}
+                    disabled={connectingSlack}
+                    className="mt-4 h-9 w-full rounded-lg bg-[#0A0A0A] text-xs font-semibold text-white hover:bg-[#00C98B] hover:text-[#0A0A0A]"
+                  >
+                    {connectingSlack ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <MessageSquare className="size-3.5" />
+                    )}
+
+                    {connectingSlack
+                      ? "Connecting..."
+                      : "Connect with Slack"}
+
+                    {!connectingSlack && (
+                      <ExternalLink className="size-3 opacity-50" />
+                    )}
+                  </Button>
+                </div>
+              ) : configFields.length > 0 ? (
+                /* Other Channel Configuration */
+                <div className="rounded-xl border border-black/10 bg-white p-4">
+                  <div className="mb-4 flex items-center gap-2.5 border-b border-black/5 pb-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[#0A0A0A] text-[#00C98B]">
+                      <TypeIcon className="size-3.5" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-bold text-[#0A0A0A]">
+                        {channelTypeLabels[selectedType]}{" "}
+                        details
+                      </p>
+
+                      <p className="mt-0.5 text-[10px] text-black/40">
+                        Enter the required information
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3.5">
+                    {configFields.map((field) => {
+                      const isSelectField =
+                        field === "method";
+
+                      const currentConfig =
+                        watch("config") ?? {};
+
+                      if (isSelectField) {
+                        return (
+                          <div
+                            key={field}
+                            className="space-y-1.5"
+                          >
+                            <Label
+                              htmlFor={`config_${field}`}
+                              className="text-[12px] font-semibold text-[#0A0A0A]"
+                            >
+                              {getConfigFieldLabel(
+                                selectedType,
+                                field
+                              )}
+                            </Label>
+
+                            <Select
+                              value={String(
+                                currentConfig[field] ??
+                                "POST"
+                              )}
+                              onValueChange={(
+                                value: string | null
+                              ) =>
+                                setConfigField(
+                                  field,
+                                  value ?? "POST"
+                                )
+                              }
+                            >
+                              <SelectTrigger
+                                className={
+                                  selectTriggerClassName
+                                }
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+
+                              <SelectContent className="rounded-xl border-black/10 bg-white p-1 shadow-xl">
+                                <SelectGroup>
+                                  {[
+                                    "GET",
+                                    "POST",
+                                    "PUT",
+                                  ].map((method) => (
+                                    <SelectItem
+                                      key={method}
+                                      value={method}
+                                      className="rounded-lg text-xs focus:bg-[#00C98B]/10"
+                                    >
+                                      {method}
+                                    </SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={field}
+                          className="space-y-1.5"
+                        >
+                          <Label
+                            htmlFor={`config_${field}`}
+                            className="text-[12px] font-semibold text-[#0A0A0A]"
+                          >
+                            {getConfigFieldLabel(
+                              selectedType,
+                              field
+                            )}
+                          </Label>
+
+                          <Input
+                            id={`config_${field}`}
+                            type={
+                              field === "phone"
+                                ? "tel"
+                                : "text"
+                            }
+                            placeholder={getConfigFieldPlaceholder(
+                              selectedType,
+                              field
+                            )}
+                            value={String(
+                              currentConfig[field] ?? ""
+                            )}
+                            onChange={(event) =>
+                              setConfigField(
+                                field,
+                                event.target.value
+                              )
+                            }
+                            className={inputClassName}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {errors.config?.message && (
+                    <p className="mt-3 text-[11px] font-medium text-black/55">
+                      {String(errors.config.message)}
+                    </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          {/* Footer */}
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-black/10 bg-white px-5 py-4 sm:px-6">
             <Button
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={submitting}
+              className="h-9 w-24 shrink-0 rounded-lg border-black/15 bg-white px-3 text-xs font-semibold text-[#0A0A0A] shadow-none hover:border-black/25 hover:bg-black/5"
             >
               Cancel
             </Button>
-            {!(selectedType === "slack" && !isEditing) && (
-              <Button type="submit" disabled={submitting}>
-                {submitting && (
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                )}
-                {isEditing ? "Save Changes" : "Create Channel"}
-              </Button>
-            )}
-          </DialogFooter>
+
+            {!(
+              selectedType === "slack" && !isEditing
+            ) && (
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="h-9 min-w-36 rounded-lg bg-[#0A0A0A] px-4 text-xs font-semibold text-white shadow-none hover:bg-[#00C98B] hover:text-[#0A0A0A]"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="size-3.5" />
+
+                      {isEditing
+                        ? "Save changes"
+                        : "Create channel"}
+                    </>
+                  )}
+                </Button>
+              )}
+          </div>
         </form>
       </DialogContent>
     </Dialog>

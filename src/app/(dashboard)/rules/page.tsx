@@ -3,11 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
-import type {
-  NotificationRule,
-  NotificationChannel,
-  JobFilter,
-} from "@/lib/supabase/database-types";
+import type { NotificationRule } from "@/lib/supabase/database-types";
 import { RuleFormDialog } from "@/components/rule-form";
 import { RuleCard } from "@/components/rule-card";
 import { Button } from "@/components/ui/button";
@@ -20,65 +16,87 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Plus,
-  RefreshCw,
   AlertCircle,
-  Network,
   Bell,
   Filter,
+  Gauge,
+  Network,
+  Plus,
+  RefreshCw,
 } from "lucide-react";
-
-// ─── Fetch Rules with related data ─────────────────────
 
 interface RuleWithRefs extends NotificationRule {
   channel_name?: string;
   filter_name?: string;
 }
 
-async function fetchRules(userId: string): Promise<RuleWithRefs[]> {
+async function fetchRules(
+  userId: string
+): Promise<RuleWithRefs[]> {
   const { data: rules, error } = await supabase
     .from("notification_rules")
     .select("*")
     .eq("user_id", userId)
-    .order("created_at", { ascending: false });
+    .order("created_at", {
+      ascending: false,
+    });
 
   if (error) throw new Error(error.message);
 
-  // Resolve channel and filter names
-  const channelIds = [...new Set(rules.map((r) => r.channel_id))];
+  const channelIds = [
+    ...new Set(
+      rules.map((rule) => rule.channel_id)
+    ),
+  ];
+
   const filterIds = rules
-    .map((r) => r.job_filter_id)
+    .map((rule) => rule.job_filter_id)
     .filter(Boolean) as string[];
 
-  const [channelsRes, filtersRes] = await Promise.all([
-    channelIds.length > 0
-      ? supabase
+  const [channelsRes, filtersRes] =
+    await Promise.all([
+      channelIds.length > 0
+        ? supabase
           .from("notification_channels")
           .select("id, name")
           .in("id", channelIds)
-      : { data: [] },
-    filterIds.length > 0
-      ? supabase.from("job_filters").select("id, name").in("id", filterIds)
-      : { data: [] },
-  ]);
+        : { data: [] },
+
+      filterIds.length > 0
+        ? supabase
+          .from("job_filters")
+          .select("id, name")
+          .in("id", filterIds)
+        : { data: [] },
+    ]);
 
   const channelMap = new Map(
-    (channelsRes.data ?? []).map((c) => [c.id, c.name])
+    (channelsRes.data ?? []).map((channel) => [
+      channel.id,
+      channel.name,
+    ])
   );
+
   const filterMap = new Map(
-    (filtersRes.data ?? []).map((f) => [f.id, f.name])
+    (filtersRes.data ?? []).map((filter) => [
+      filter.id,
+      filter.name,
+    ])
   );
 
   return rules.map((rule) => ({
     ...rule,
-    channel_name: channelMap.get(rule.channel_id) ?? "Deleted Channel",
+
+    channel_name:
+      channelMap.get(rule.channel_id) ??
+      "Deleted Channel",
+
     filter_name: rule.job_filter_id
-      ? filterMap.get(rule.job_filter_id) ?? "Deleted Filter"
+      ? filterMap.get(rule.job_filter_id) ??
+      "Deleted Filter"
       : undefined,
   }));
 }
-
-// ─── Page ──────────────────────────────────────────────
 
 export default function RulesPage() {
   const { user } = useUser();
@@ -91,198 +109,411 @@ export default function RulesPage() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ["notification_rules", user?.id],
+    queryKey: [
+      "notification_rules",
+      user?.id,
+    ],
     queryFn: () => fetchRules(user!.id),
     enabled: !!user?.id,
   });
 
-  const activeRules = rules?.filter((r) => r.is_active) ?? [];
-  const pausedRules = rules?.filter((r) => !r.is_active) ?? [];
+  const activeRules =
+    rules?.filter((rule) => rule.is_active) ??
+    [];
+
+  const pausedRules =
+    rules?.filter((rule) => !rule.is_active) ??
+    [];
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-[1500px] min-w-0 space-y-4 overflow-x-clip pb-6 sm:space-y-5 lg:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight font-heading">
-            Notification Rules
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Link your filters with notification channels and set scoring
-            thresholds for when alerts are sent.
-          </p>
+      <section className="animate-in fade-in slide-in-from-bottom-3 relative min-w-0 overflow-hidden rounded-[20px] bg-[#0A0A0A] px-4 py-5 duration-500 min-[480px]:px-5 sm:rounded-[24px] sm:px-6 sm:py-6 lg:rounded-[26px] lg:px-7 lg:py-7">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-[#00C98B]/15 blur-3xl"
+        />
+
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-1/3 h-px w-1/2 bg-gradient-to-r from-transparent via-[#00C98B]/60 to-transparent"
+        />
+
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-25"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(0,201,139,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(0,201,139,0.06) 1px, transparent 1px)",
+            backgroundSize: "42px 42px",
+            maskImage:
+              "linear-gradient(to right, transparent, black)",
+            WebkitMaskImage:
+              "linear-gradient(to right, transparent, black)",
+          }}
+        />
+
+        <div className="relative flex min-w-0 flex-col gap-5 xl:flex-row xl:items-center xl:justify-between xl:gap-8">
+          {/* Header Information */}
+          <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-[#00C98B]/30 bg-[#00C98B]/10 text-[#00C98B] sm:size-12 sm:rounded-2xl">
+              <Network className="size-5 sm:size-6" />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <h1 className="max-w-full break-words font-heading text-xl font-bold leading-tight tracking-tight text-white min-[420px]:text-2xl sm:text-3xl">
+                Notification Rules
+              </h1>
+
+              <p className="mt-1.5 max-w-2xl text-xs leading-5 text-white/55 min-[420px]:text-sm min-[420px]:leading-6">
+                Connect your job filters with
+                notification channels and control which
+                opportunities should trigger an alert.
+              </p>
+            </div>
+          </div>
+
+          {/* Header Actions */}
+          <div className="flex w-full min-w-0 items-center gap-2 xl:w-auto xl:shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              aria-label="Refresh notification rules"
+              title="Refresh notification rules"
+              className="size-10 shrink-0 rounded-xl border-white/15 bg-white/5 text-white hover:border-[#00C98B]/50 hover:bg-[#00C98B]/10 hover:text-[#00C98B]"
+            >
+              <RefreshCw
+                className={`size-4 ${isRefetching
+                    ? "animate-spin"
+                    : ""
+                  }`}
+              />
+            </Button>
+
+            <div className="min-w-0 flex-1 xl:flex-none">
+              <RuleFormDialog
+                trigger={
+                  <Button className="h-10 w-full min-w-0 max-w-full overflow-hidden rounded-xl bg-[#00C98B] px-3 text-xs font-semibold text-[#0A0A0A] shadow-[0_8px_24px_rgba(0,201,139,0.2)] hover:bg-[#00C98B]/90 min-[380px]:px-4 min-[380px]:text-sm xl:w-auto">
+                    <Plus className="size-4 shrink-0" />
+
+                    <span className="truncate whitespace-nowrap">
+                      Create rule
+                    </span>
+                  </Button>
+                }
+                onSuccess={() => refetch()}
+              />
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => refetch()}
-            disabled={isRefetching}
-            className="shrink-0"
-          >
-            <RefreshCw
-              className={`size-4 ${isRefetching ? "animate-spin" : ""}`}
-            />
-          </Button>
-          <RuleFormDialog onSuccess={() => refetch()} />
-        </div>
-      </div>
+      </section>
 
       {/* Loading */}
       {isLoading && (
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Card key={i} className="overflow-hidden border-border/60">
-              <div className="h-1 bg-muted" />
-              <CardHeader className="pb-3">
-                <Skeleton className="h-5 w-40 mb-2" />
-                <Skeleton className="h-3 w-32" />
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-3">
-                  {Array.from({ length: 3 }).map((_, j) => (
-                    <Skeleton key={j} className="h-16 rounded-lg" />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid min-w-0 gap-3 lg:grid-cols-2 lg:gap-4 2xl:grid-cols-3">
+          {Array.from({ length: 3 }).map(
+            (_, index) => (
+              <Card
+                key={index}
+                className="min-w-0 gap-0 overflow-hidden rounded-[18px] border-black/10 bg-white py-0 shadow-[0_10px_30px_rgba(0,0,0,0.04)] sm:rounded-2xl"
+              >
+                <div className="h-[3px] bg-[#00C98B]/25" />
+
+                <CardHeader className="p-4 pb-3 min-[480px]:p-5 min-[480px]:pb-4">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <Skeleton className="size-10 shrink-0 rounded-xl bg-black/10" />
+
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <Skeleton className="h-4 w-36 max-w-full bg-black/10" />
+                      <Skeleton className="h-3 w-24 max-w-full bg-black/10" />
+                    </div>
+
+                    <Skeleton className="size-8 shrink-0 rounded-lg bg-black/10" />
+                  </div>
+                </CardHeader>
+
+                <CardContent className="px-4 pb-4 min-[480px]:px-5 min-[480px]:pb-5">
+                  <Skeleton className="mb-3 h-9 w-full rounded-xl bg-black/10 sm:mb-4" />
+
+                  <div className="grid grid-cols-3 gap-1.5 min-[420px]:gap-2">
+                    {Array.from({
+                      length: 3,
+                    }).map(
+                      (_, itemIndex) => (
+                        <Skeleton
+                          key={itemIndex}
+                          className="h-16 rounded-xl bg-black/10 min-[420px]:h-20"
+                        />
+                      )
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          )}
         </div>
       )}
 
       {/* Error */}
       {isError && (
-        <Card className="border-destructive/30 bg-destructive/5">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-destructive/10 p-2">
-                <AlertCircle className="size-5 text-destructive" />
+        <Card className="animate-in fade-in slide-in-from-bottom-3 min-w-0 gap-0 overflow-hidden rounded-[18px] border-black/10 bg-white py-0 duration-500 shadow-[0_12px_34px_rgba(0,0,0,0.05)] sm:rounded-2xl">
+          <div className="h-[3px] bg-[#0A0A0A]" />
+
+          <CardHeader className="p-4 min-[480px]:p-5 sm:p-6">
+            <div className="flex min-w-0 flex-col gap-3 min-[420px]:flex-row min-[420px]:items-center sm:gap-4">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#0A0A0A] text-[#00C98B]">
+                <AlertCircle className="size-5" />
               </div>
-              <div>
-                <CardTitle className="text-base font-heading">
+
+              <div className="min-w-0">
+                <CardTitle className="font-heading text-base font-bold text-[#0A0A0A]">
                   Failed to load rules
                 </CardTitle>
-                <CardDescription>
-                  {error?.message ?? "An unexpected error occurred."}
+
+                <CardDescription className="mt-1 break-words text-xs leading-5 text-black/50">
+                  {error?.message ??
+                    "An unexpected error occurred."}
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent>
-            <Button variant="outline" onClick={() => refetch()}>
-              Try Again
+
+          <CardContent className="px-4 pb-4 min-[480px]:px-5 min-[480px]:pb-5 sm:px-6 sm:pb-6">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => refetch()}
+              className="h-9 w-full rounded-lg border-black/15 bg-white px-4 text-xs font-semibold text-[#0A0A0A] hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 min-[420px]:w-auto"
+            >
+              <RefreshCw className="size-3.5" />
+              Try again
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* Empty */}
-      {!isLoading && !isError && rules?.length === 0 && (
-        <Card className="border-border/60">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-accent-purple/10 p-3">
-                <Network className="size-6 text-accent-purple" />
-              </div>
-              <div>
-                <CardTitle className="text-lg font-heading">
-                  No rules yet
-                </CardTitle>
-                <CardDescription>
-                  Create rules to connect your filters with notification
-                  channels and control exactly when alerts are sent.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4 pb-8">
-            <div className="max-w-sm text-center space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Each rule links a filter with a channel and defines minimum
-                thresholds:
-              </p>
-              <ul className="text-xs text-muted-foreground/70 space-y-1 text-left">
-                <li className="flex items-start gap-2">
-                  <Bell className="size-3 text-accent-amber mt-0.5 shrink-0" />
-                  Select a notification channel (where to send)
-                </li>
-                <li className="flex items-start gap-2">
-                  <Filter className="size-3 text-accent-blue mt-0.5 shrink-0" />
-                  Pick a job filter (what to match), or apply to all
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-accent-purple mt-0.5 shrink-0">•</span>
-                  Set score thresholds (when to alert)
-                </li>
-              </ul>
-            </div>
-            <RuleFormDialog
-              trigger={
-                <Button size="lg" className="mt-2">
-                  <Plus className="size-4 mr-2" />
-                  Create Your First Rule
-                </Button>
-              }
-              onSuccess={() => refetch()}
+      {/* Empty State */}
+      {!isLoading &&
+        !isError &&
+        rules?.length === 0 && (
+          <Card className="animate-in fade-in slide-in-from-bottom-3 relative min-w-0 gap-0 overflow-hidden rounded-[20px] border-[#00C98B]/25 bg-white py-0 duration-500 shadow-[0_16px_45px_rgba(0,0,0,0.05)] sm:rounded-[24px]">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-20 -top-20 size-64 rounded-full bg-[#00C98B]/10 blur-3xl"
             />
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Rules Grid */}
-      {!isLoading && !isError && rules && rules.length > 0 && (
-        <div className="space-y-8">
-          {activeRules.length > 0 && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="size-2 rounded-full bg-accent-green animate-pulse" />
-                <h2 className="text-sm font-medium text-muted-foreground font-heading tracking-wide uppercase">
-                  Active Rules
-                </h2>
-                <span className="text-xs text-muted-foreground/60 bg-muted/50 px-2 py-0.5 rounded-full">
-                  {activeRules.length}
-                </span>
+            <CardHeader className="relative p-4 pb-3 min-[480px]:p-5 min-[480px]:pb-4 sm:p-7 sm:pb-5">
+              <div className="flex min-w-0 flex-col gap-3 min-[480px]:flex-row min-[480px]:items-center sm:gap-4">
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#0A0A0A] text-[#00C98B] shadow-lg">
+                  <Network className="size-5" />
+                </div>
+
+                <div className="min-w-0">
+                  <CardTitle className="font-heading text-lg font-bold text-[#0A0A0A]">
+                    Create your first rule
+                  </CardTitle>
+
+                  <CardDescription className="mt-1 max-w-xl text-xs leading-5 text-black/50 sm:text-sm sm:leading-6">
+                    Define which jobs qualify for an
+                    alert and where that alert should be
+                    delivered.
+                  </CardDescription>
+                </div>
               </div>
-              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {activeRules.map((rule) => (
-                  <RuleCard
-                    key={rule.id}
-                    rule={rule}
-                    channelName={rule.channel_name}
-                    filterName={rule.filter_name}
+            </CardHeader>
+
+            <CardContent className="relative space-y-5 p-4 pt-2 min-[480px]:p-5 min-[480px]:pt-2 sm:p-7 sm:pt-2">
+              <div className="grid min-w-0 gap-3 lg:grid-cols-3">
+                {[
+                  {
+                    icon: Bell,
+                    title: "Select a channel",
+                    description:
+                      "Choose where alerts should be delivered.",
+                  },
+                  {
+                    icon: Filter,
+                    title: "Choose a filter",
+                    description:
+                      "Apply the rule to one filter or all filters.",
+                  },
+                  {
+                    icon: Gauge,
+                    title: "Set thresholds",
+                    description:
+                      "Control the score and proposal limits.",
+                  },
+                ].map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <div
+                      key={item.title}
+                      className="group min-w-0 rounded-xl border border-black/10 bg-[#F7F8F8] p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/35 hover:bg-[#00C98B]/5 min-[480px]:p-4"
+                    >
+                      <div className="mb-3 flex size-8 items-center justify-center rounded-lg bg-[#00C98B]/10 text-[#00C98B] transition-colors group-hover:bg-[#00C98B] group-hover:text-[#0A0A0A]">
+                        <Icon className="size-4" />
+                      </div>
+
+                      <h3 className="text-xs font-bold text-[#0A0A0A]">
+                        {item.title}
+                      </h3>
+
+                      <p className="mt-1 text-[11px] leading-5 text-black/45">
+                        {item.description}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex min-w-0 flex-col gap-3 border-t border-black/10 pt-4 lg:flex-row lg:items-center lg:justify-between sm:pt-5">
+                <p className="min-w-0 text-[11px] leading-5 text-black/40">
+                  Rules can be paused, edited or removed
+                  at any time.
+                </p>
+
+                <div className="w-full min-w-0 lg:w-auto lg:shrink-0">
+                  <RuleFormDialog
+                    trigger={
+                      <Button className="h-10 w-full min-w-0 overflow-hidden rounded-lg bg-[#0A0A0A] px-4 text-xs font-semibold text-white hover:bg-[#00C98B] hover:text-[#0A0A0A] lg:w-auto lg:px-5">
+                        <Plus className="size-3.5 shrink-0" />
+
+                        <span className="truncate whitespace-nowrap">
+                          Create first rule
+                        </span>
+                      </Button>
+                    }
                     onSuccess={() => refetch()}
                   />
-                ))}
+                </div>
               </div>
-            </section>
-          )}
+            </CardContent>
+          </Card>
+        )}
 
-          {pausedRules.length > 0 && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-2">
-                <div className="size-2 rounded-full bg-muted-foreground/30" />
-                <h2 className="text-sm font-medium text-muted-foreground font-heading tracking-wide uppercase">
-                  Paused Rules
-                </h2>
-                <span className="text-xs text-muted-foreground/60 bg-muted/50 px-2 py-0.5 rounded-full">
-                  {pausedRules.length}
-                </span>
-              </div>
-              <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {pausedRules.map((rule) => (
-                  <RuleCard
-                    key={rule.id}
-                    rule={rule}
-                    channelName={rule.channel_name}
-                    filterName={rule.filter_name}
-                    onSuccess={() => refetch()}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
+      {/* Rules */}
+      {!isLoading &&
+        !isError &&
+        rules &&
+        rules.length > 0 && (
+          <div className="animate-in fade-in slide-in-from-bottom-3 min-w-0 space-y-7 duration-500 sm:space-y-8">
+            {/* Active Rules */}
+            {activeRules.length > 0 && (
+              <section className="min-w-0 space-y-3 sm:space-y-4">
+                <div className="flex min-w-0 flex-col gap-3 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#0A0A0A]">
+                      <span className="size-2.5 animate-pulse rounded-full bg-[#00C98B] shadow-[0_0_12px_rgba(0,201,139,0.9)]" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <h2 className="font-heading text-xs font-bold uppercase tracking-[0.12em] text-[#0A0A0A] min-[420px]:tracking-[0.14em]">
+                        Active rules
+                      </h2>
+
+                      <p className="mt-0.5 text-[10px] leading-4 text-black/40">
+                        Monitoring jobs and ready to send
+                        alerts
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="w-fit shrink-0 rounded-full border border-[#00C98B]/25 bg-[#00C98B]/10 px-3 py-1 text-[10px] font-bold text-[#007A56]">
+                    {activeRules.length} active
+                  </span>
+                </div>
+
+                <div className="grid min-w-0 gap-3 lg:grid-cols-2 lg:gap-4 2xl:grid-cols-3">
+                  {activeRules.map(
+                    (rule, index) => (
+                      <div
+                        key={rule.id}
+                        style={{
+                          animationDelay: `${index * 70
+                            }ms`,
+                        }}
+                        className="animate-in fade-in slide-in-from-bottom-3 h-full min-w-0"
+                      >
+                        <RuleCard
+                          rule={rule}
+                          channelName={
+                            rule.channel_name
+                          }
+                          filterName={
+                            rule.filter_name
+                          }
+                          onSuccess={() =>
+                            refetch()
+                          }
+                        />
+                      </div>
+                    )
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* Paused Rules */}
+            {pausedRules.length > 0 && (
+              <section className="min-w-0 space-y-3 sm:space-y-4">
+                <div className="flex min-w-0 flex-col gap-3 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-black/10 bg-white">
+                      <span className="size-2.5 rounded-full bg-black/25" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <h2 className="font-heading text-xs font-bold uppercase tracking-[0.12em] text-[#0A0A0A] min-[420px]:tracking-[0.14em]">
+                        Paused rules
+                      </h2>
+
+                      <p className="mt-0.5 text-[10px] leading-4 text-black/40">
+                        Saved rules currently not sending
+                        alerts
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="w-fit shrink-0 rounded-full border border-black/10 bg-black/5 px-3 py-1 text-[10px] font-bold text-black/45">
+                    {pausedRules.length} paused
+                  </span>
+                </div>
+
+                <div className="grid min-w-0 gap-3 lg:grid-cols-2 lg:gap-4 2xl:grid-cols-3">
+                  {pausedRules.map(
+                    (rule, index) => (
+                      <div
+                        key={rule.id}
+                        style={{
+                          animationDelay: `${index * 70
+                            }ms`,
+                        }}
+                        className="animate-in fade-in slide-in-from-bottom-3 h-full min-w-0"
+                      >
+                        <RuleCard
+                          rule={rule}
+                          channelName={
+                            rule.channel_name
+                          }
+                          filterName={
+                            rule.filter_name
+                          }
+                          onSuccess={() =>
+                            refetch()
+                          }
+                        />
+                      </div>
+                    )
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
     </div>
   );
 }
