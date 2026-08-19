@@ -7,6 +7,7 @@ import {
 } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
+import { SubscriptionGate } from "@/components/subscription-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -525,6 +526,7 @@ export default function JobsPage() {
     subcategoryFilter;
 
   return (
+    <SubscriptionGate feature="Access the full jobs dashboard with AI-powered scoring, filters, and real-time job feeds">
     <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 overflow-x-clip pb-6 sm:space-y-5 sm:pb-8 xl:space-y-6">
       {/* Header */}
       <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] p-4 text-white shadow-[0_16px_40px_rgba(0,0,0,0.13)] duration-500 min-[480px]:p-5 sm:rounded-[22px] md:p-6">
@@ -1369,5 +1371,6 @@ export default function JobsPage() {
           </>
         )}
     </div>
+    </SubscriptionGate>
   );
 }

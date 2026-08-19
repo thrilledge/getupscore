@@ -8,6 +8,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
+import { useSubscription } from "@/hooks/use-subscription";
 import {
   updateDisplayName,
   sendPasswordReset,
@@ -54,10 +55,14 @@ import {
   Sparkles,
   RotateCcw,
   Settings,
+  Lock,
+  Zap,
+  Crown,
 } from "lucide-react";
 
 export default function SettingsPage() {
   const { user, loading } = useUser();
+  const { subscription } = useSubscription();
 
   const [displayName, setDisplayName] = useState(
     user?.user_metadata?.display_name ??
@@ -716,7 +721,8 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* API Tokens */}
+      {/* API Tokens — Pro only */}
+      {subscription?.is_paid ? (
       <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
         <CardHeader className="border-b border-[#0A0A0A]/10 px-5 py-5 sm:px-6">
           <div className="flex items-center gap-3">
@@ -897,8 +903,28 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Account */}
+      ) : (
+      <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
+        <CardContent className="flex flex-col items-center px-5 py-8 text-center sm:px-6">
+          <span className="grid size-12 place-items-center rounded-2xl bg-[#0A0A0A]">
+            <Lock className="size-5 text-white/60" />
+          </span>
+          <h3 className="mt-3 font-heading text-sm font-bold text-[#0A0A0A]">
+            Extension API — Pro Only
+          </h3>
+          <p className="mt-1 max-w-sm text-xs text-[#0A0A0A]/45">
+            Upgrade to Pro to generate API tokens and connect the Chrome Extension.
+          </p>
+          <Button
+            onClick={() => window.location.href = "/billing"}
+            className="mt-4 h-9 rounded-xl bg-[#0A0A0A] px-4 text-xs font-semibold text-white hover:bg-[#0A0A0A]/90"
+          >
+            <Crown className="size-3.5" />
+            Upgrade to Pro
+          </Button>
+        </CardContent>
+      </Card>
+      )}
       <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
         <CardHeader className="border-b border-[#0A0A0A]/10 px-5 py-5 sm:px-6">
           <div className="flex items-center gap-3">

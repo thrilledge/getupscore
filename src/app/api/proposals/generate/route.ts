@@ -4,6 +4,7 @@ import { generateProposal, streamProposal } from "@/lib/proposals/generate";
 import { analyzeJob } from "@/lib/jobs/analyze";
 import { resolveUserIdFromBearer } from "@/lib/supabase/verify-bearer";
 import { checkRateLimit, proposalRateLimit } from "@/lib/rate-limit";
+import { requirePaid } from "@/lib/subscription-guard";
 
 const ALLOWED_ORIGINS = [
   "chrome-extension://",
@@ -142,6 +143,12 @@ export async function POST(request: Request) {
     const { success } = await checkRateLimit(proposalRateLimit, userId);
     if (!success) {
       return withCors(NextResponse.json({ error: "Too many requests" }, { status: 429 }), origin);
+    }
+
+    // Subscription check — Pro required
+    const subError = await requirePaid(userId);
+    if (subError) {
+      return withCors(subError, origin);
     }
 
     const body = await request.json();

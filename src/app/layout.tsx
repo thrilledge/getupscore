@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Providers } from "@/components/providers";
+import { PaddleProvider } from "@/components/paddle-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { env } from "@/lib/env";
 import "./globals.css";
@@ -42,7 +43,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <TooltipProvider>
-          <Providers>{children}</Providers>
+          <PaddleProvider>
+            <Providers>{children}</Providers>
+          </PaddleProvider>
         </TooltipProvider>
       </body>
     </html>

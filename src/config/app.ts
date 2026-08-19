@@ -23,6 +23,7 @@ export const appConfig = {
       { title: "Market Trends", href: "/market-trends", icon: "BarChart3" },
       { title: "Extension", href: "/extension", icon: "ExternalLink" },
       { title: "Settings", href: "/settings", icon: "Settings" },
+      { title: "Billing", href: "/billing", icon: "CreditCard" },
     ],
   },
 

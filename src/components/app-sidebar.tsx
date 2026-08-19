@@ -38,6 +38,7 @@ import {
   Radio,
   GitBranch,
   X,
+  CreditCard,
 } from "lucide-react";
 import {
   Avatar,
@@ -67,6 +68,7 @@ const iconMap: Record<string, React.ElementType> = {
   BookOpen,
   Radio,
   GitBranch,
+  CreditCard,
 };
 
 export function AppSidebar() {

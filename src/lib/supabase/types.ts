@@ -860,6 +860,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_subscription: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: Json
+      }
+      upsert_subscription: {
+        Args: {
+          p_user_id: string
+          p_paddle_subscription_id: string
+          p_paddle_plan_id: string
+          p_status: string
+          p_current_period_end: string | null
+        }
+        Returns: void
+      }
+      cancel_subscription: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: void
+      }
       cleanup_old_jobs: {
         Args: {
           p_days: number

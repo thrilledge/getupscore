@@ -83,6 +83,13 @@ export const env = {
     process.env.APIFY_API_KEY !== undefined &&
     process.env.APIFY_API_KEY !== "your_apify_api_key_here",
 
+  // Paddle
+  PADDLE_CLIENT_TOKEN: getEnv("NEXT_PUBLIC_PADDLE_CLIENT_TOKEN"),
+  PADDLE_ENV: getEnv("NEXT_PUBLIC_PADDLE_ENV", "sandbox"),
+  PADDLE_WEBHOOK_SECRET: getEnv("PADDLE_WEBHOOK_SECRET"),
+  PADDLE_MONTHLY_PRICE_ID: getEnv("PADDLE_MONTHLY_PRICE_ID"),
+  PADDLE_YEARLY_PRICE_ID: getEnv("PADDLE_YEARLY_PRICE_ID"),
+
   // Notifications
   isNotificationsConfigured:
     (process.env.SMTP_HOST !== "" && process.env.SMTP_HOST !== undefined) ||

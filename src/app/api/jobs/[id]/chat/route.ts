@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { proposalMethodology } from "@/lib/proposals/system-prompt";
 import { streamChat, type ChatMessage } from "@/lib/chat-stream";
+import { requirePaid } from "@/lib/subscription-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,9 @@ export async function POST(
   if (authError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const subError = await requirePaid(user.id);
+  if (subError) return subError;
 
   const { id } = await params;
 

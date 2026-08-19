@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { analyzeJob } from "@/lib/jobs/analyze";
 import { checkRateLimit, analysisRateLimit } from "@/lib/rate-limit";
+import { requirePaid } from "@/lib/subscription-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,10 @@ export async function POST(
   if (!success) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
+
+  // Subscription check — Pro required
+  const subError = await requirePaid(user.id);
+  if (subError) return subError;
 
   const { id } = await params;
 
