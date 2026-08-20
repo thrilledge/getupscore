@@ -16,9 +16,9 @@ export interface LLMChainOptions {
 }
 
 /**
- * Provider chain: Gemini first (best value for paid), Groq (free tier),
- * Deepshi as last-resort fallback.
- * Pass `provider: "groq"` to skip Gemini (used for free-tier proposals).
+ * Provider chain: Groq first (reliable, fast), Gemini second (best quality
+ * but may hit quota), Deepshi as last-resort fallback.
+ * Pass `provider: "groq"` to force Groq only (used for free-tier proposals).
  */
 export function getProviderChain(opts?: LLMChainOptions): LLMProvider[] {
   const all = buildAllProviders();
@@ -34,16 +34,6 @@ export function getProviderChain(opts?: LLMChainOptions): LLMProvider[] {
 function buildAllProviders(): LLMProvider[] {
   const chain: LLMProvider[] = [];
 
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (geminiKey) {
-    chain.push({
-      name: "gemini",
-      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-      apiKey: geminiKey,
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-    });
-  }
-
   const groqKey = process.env.GROQ_API_KEY;
   if (groqKey) {
     chain.push({
@@ -52,6 +42,16 @@ function buildAllProviders(): LLMProvider[] {
       apiKey: groqKey,
       model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
       groqStyle: true,
+    });
+  }
+
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey) {
+    chain.push({
+      name: "gemini",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+      apiKey: geminiKey,
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     });
   }
 
@@ -82,9 +82,11 @@ export function parseLlmJson<T = any>(content: string): T {
 }
 
 /**
- * POST to each provider in the chain until one succeeds. Retries 429s with
- * exponential backoff (honoring Retry-After). Returns the first ok response
- * with its provider; throws when every provider has failed.
+ * POST to each provider in the chain until one succeeds.
+ *
+ * - 429 with "quota" in body = permanent failure, skip immediately (no retry)
+ * - 429 with Retry-After = transient rate limit, retry with backoff (max 2x)
+ * - Other errors = skip to next provider
  */
 export async function chatCompletionWithRetry(
   bodyFactory: (provider: LLMProvider) => Record<string, unknown>,
@@ -114,17 +116,36 @@ export async function chatCompletionWithRetry(
         break;
       }
 
-      if (res.status !== 429 || attempt === maxAttempts - 1) {
-        if (res.ok) return { response: res, provider };
-        lastError = await res.text().catch(() => "");
-        console.warn(`[LLM] ${provider.name} error ${res.status}:`, lastError.slice(0, 300));
-        break;
+      if (res.ok) return { response: res, provider };
+
+      if (res.status === 429) {
+        const body = await res.text().catch(() => "");
+        const isQuota = /quota|exceeded|billing/i.test(body);
+
+        if (isQuota) {
+          console.warn(`[LLM] ${provider.name} quota exhausted — skipping to next provider`);
+          lastError = body.slice(0, 300);
+          break;
+        }
+
+        if (attempt === maxAttempts - 1) {
+          lastError = body.slice(0, 300);
+          console.warn(`[LLM] ${provider.name} rate limited (${maxAttempts} attempts exhausted)`);
+          break;
+        }
+
+        const retryAfter = Number(res.headers.get("retry-after"));
+        const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+          ? Math.min(retryAfter * 1000, 5000)
+          : 1500 * (attempt + 1);
+        console.warn(`[LLM] ${provider.name} rate limited, retrying in ${waitMs}ms`);
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
       }
 
-      const retryAfter = Number(res.headers.get("retry-after"));
-      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1200 * (attempt + 1);
-      console.warn(`[LLM] ${provider.name} rate limited, retrying in ${waitMs}ms`);
-      await new Promise((r) => setTimeout(r, Math.min(waitMs, 8000)));
+      lastError = await res.text().catch(() => "");
+      console.warn(`[LLM] ${provider.name} error ${res.status}:`, lastError.slice(0, 300));
+      break;
     }
   }
 
