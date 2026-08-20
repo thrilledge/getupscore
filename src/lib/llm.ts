@@ -120,9 +120,11 @@ export async function chatCompletionWithRetry(
 
       if (res.status === 429) {
         const body = await res.text().catch(() => "");
-        const isQuota = /quota|exceeded|billing/i.test(body);
+        // Gemini returns "You exceeded your current quota" for permanent quota exhaustion.
+        // Groq returns "rate_limit_exceeded" for transient daily token limits — do NOT skip those.
+        const isPermanentQuota = /exceeded your current quota|quota.*exceeded|billing.*required/i.test(body);
 
-        if (isQuota) {
+        if (isPermanentQuota) {
           console.warn(`[LLM] ${provider.name} quota exhausted — skipping to next provider`);
           lastError = body.slice(0, 300);
           break;
