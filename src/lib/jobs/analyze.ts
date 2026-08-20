@@ -12,13 +12,10 @@ export async function analyzeJob(
   dbJobId: string,
   userId: string
 ): Promise<Record<string, any>> {
-  const groqApiKey = process.env.GROQ_API_KEY;
-  const groqModel = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
-
   let analysisData: Record<string, any>;
 
   try {
-    analysisData = await serverSideGroqAnalysis(job, groqApiKey, groqModel);
+    analysisData = await serverSideLlmAnalysis(job);
   } catch (err) {
     console.warn("[Analyze] LLM analysis failed, using keyword fallback:", err instanceof Error ? err.message : err);
     analysisData = serverSideKeywordFallback(job);
@@ -45,7 +42,7 @@ export async function analyzeJob(
       reasoning: analysisData.reasoning || "",
       proposal_tips: Array.isArray(analysisData.proposal_tips) ? analysisData.proposal_tips.slice(0, 10) : [],
       red_flags: Array.isArray(analysisData.red_flags) ? analysisData.red_flags.slice(0, 10) : [],
-      model_used: process.env.UPSCORE_LLM_MODEL || (groqApiKey ? groqModel : "deepshi-r1"),
+      model_used: process.env.UPSCORE_LLM_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash",
     },
     { onConflict: "job_id, user_id", ignoreDuplicates: false }
   );
@@ -62,10 +59,8 @@ export async function analyzeJob(
   };
 }
 
-async function serverSideGroqAnalysis(
+async function serverSideLlmAnalysis(
   job: any,
-  apiKey: string | undefined,
-  model: string
 ): Promise<Record<string, any>> {
   const title = job.title || "";
   const description = (job.description || "").slice(0, 3000);
@@ -151,7 +146,6 @@ Return JSON only with these exact fields:
       max_tokens: 1500,
       response_format: { type: "json_object" },
     }),
-    { explicitApiKey: apiKey, explicitModel: model }
   );
 
   if (!response.response.ok) {

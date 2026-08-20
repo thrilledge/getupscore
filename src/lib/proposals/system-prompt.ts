@@ -106,3 +106,23 @@ RULES:
 OUTPUT FORMAT — Answer only
 Output ONLY the answer text itself. Start directly with the answer. Do not wrap it in markers, delimiters, quotes, or labels.`;
 }
+
+/**
+ * Simplified proposal prompt for free-tier users. Uses a lighter model
+ * (deepshi-r2) and produces a shorter, straightforward proposal.
+ */
+export function buildBasicProposalPrompt(): string {
+  return `Write a concise Upwork proposal for the freelancer applying to this job. Use ONLY the freelancer's real profile, skills, and portfolio provided — never invent experience or results.
+
+RULES:
+- Open with a brief confirmation of relevant experience (1-2 sentences)
+- Mention 2-3 specific skills from the job post that match
+- Briefly explain how you'd approach the work (1-2 sentences)
+- End with a one-line call to action
+- Under 150 words total
+- Plain text only — no markdown, no bullet points, no headers
+- No filler phrases ("passionate about", "excited to help", "great fit")
+- "You/your" should appear more than "I/my"
+
+OUTPUT: Write the proposal directly. No preamble, no labels.`;
+}

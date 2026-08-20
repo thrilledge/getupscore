@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@/hooks/use-user";
 import { useSubscription } from "@/hooks/use-subscription";
-import { usePaddle } from "@/components/paddle-provider";
+import { usePaddle, setCheckoutCompletedHandler } from "@/components/paddle-provider";
 import { env } from "@/lib/env";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,31 +51,57 @@ export default function BillingPage() {
 
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
+  const checkoutUserIdRef = useRef<string | null>(null);
 
   const isPaid = subscription?.is_paid ?? false;
   const isLoading = userLoading || subLoading;
+
+  useEffect(() => {
+    setCheckoutCompletedHandler(async (data: any) => {
+      const checkoutId = data?.id;
+      const transactionId = data?.transaction_id;
+      const userId = checkoutUserIdRef.current;
+      if (!checkoutId || !userId) return;
+
+      try {
+        const res = await fetch("/api/billing/activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ checkoutId, transactionId, userId }),
+        });
+        const json = await res.json();
+        if (json?.success) {
+          await refetch();
+          setCheckoutLoading(false);
+          toast.success("Welcome to Pro! All features unlocked.");
+        } else {
+          console.error("[Billing] activate failed:", json);
+        }
+      } catch (err) {
+        console.error("[Billing] activate error:", err);
+      }
+    });
+  }, [refetch]);
 
   const handleCheckout = useCallback(async () => {
     if (!user || !paddle) return;
 
     setCheckoutLoading(true);
+    checkoutUserIdRef.current = user.id;
 
     const priceId =
       period === "monthly"
-        ? env.PADDLE_MONTHLY_PRICE_ID
-        : env.PADDLE_YEARLY_PRICE_ID;
+        ? process.env.NEXT_PUBLIC_PADDLE_MONTHLY_PRICE_ID
+        : process.env.NEXT_PUBLIC_PADDLE_YEARLY_PRICE_ID;
 
     try {
       paddle.Checkout.open({
         items: [
           {
-            priceId,
+            priceId: priceId as string,
             quantity: 1,
           },
         ],
-        customer: {
-          email: user.email ?? "",
-        },
         customData: {
           user_id: user.id,
         },
@@ -85,33 +111,11 @@ export default function BillingPage() {
           locale: "en",
         },
       });
-
-      const pollInterval = setInterval(async () => {
-        try {
-          const res = await fetch("/api/billing/status");
-          const json = await res.json();
-          if (json?.data?.is_paid) {
-            clearInterval(pollInterval);
-            setCheckoutLoading(false);
-            await refetch();
-            toast.success(
-              "Welcome to Pro! All features unlocked."
-            );
-          }
-        } catch {
-          // ignore poll errors
-        }
-      }, 2000);
-
-      setTimeout(() => {
-        clearInterval(pollInterval);
-        setCheckoutLoading(false);
-      }, 120000);
     } catch {
       setCheckoutLoading(false);
       toast.error("Checkout failed. Please try again.");
     }
-  }, [user, paddle, refetch, period]);
+  }, [user, paddle, period]);
 
   if (isLoading) {
     return (
@@ -287,26 +291,6 @@ export default function BillingPage() {
             <p className="text-center text-xs text-muted-foreground">
               Cancel anytime. No questions asked.
             </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Paid — Manage */}
-      {isPaid && (
-        <Card className="border-[#0A0A0A]/10">
-          <CardHeader>
-            <CardTitle className="font-heading text-base">
-              Manage Subscription
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Update payment method, cancel, or view invoices.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" className="w-full">
-              <ExternalLink className="size-4" />
-              Open Paddle Customer Portal
-            </Button>
           </CardContent>
         </Card>
       )}

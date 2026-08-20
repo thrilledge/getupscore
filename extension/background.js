@@ -160,6 +160,25 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       });
       return true;
 
+    case "PROXY_FETCH": {
+      const { url, options } = msg;
+      (async () => {
+        try {
+          const resp = await fetch(url, options);
+          if (options && options.method === "GET" || (!options || !options.method || options.method === "GET")) {
+            const json = await resp.json();
+            sendResponse({ ok: resp.ok, status: resp.status, data: json });
+          } else {
+            const text = await resp.text();
+            sendResponse({ ok: resp.ok, status: resp.status, body: text, headers: Object.fromEntries(resp.headers.entries()) });
+          }
+        } catch (err) {
+          sendResponse({ ok: false, error: err.message || "Network error" });
+        }
+      })();
+      return true;
+    }
+
     default:
       sendResponse({ error: "Unknown message type" });
   }

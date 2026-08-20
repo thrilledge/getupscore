@@ -49,7 +49,7 @@ async function injectMainWorld(operation, params = {}) {
 
     window.postMessage({ type: "__upscore_exec", operation, params }, "*");
   } catch (err) {
-  
+
   }
 }
 
@@ -185,7 +185,7 @@ function showProfileToast(message, type = "info", duration = 3500) {
     document.documentElement.appendChild(toast);
   }
   const colors = {
-    info: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+    info: "linear-gradient(135deg, #2563eb 0%, #6634c0 100%)",
     success: "linear-gradient(135deg, #16a34a 0%, #22c55e 100%)",
     error: "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)",
   };
@@ -218,39 +218,19 @@ function normalizeProfile(data) {
 
     const skills = Array.isArray(src.skills)
       ? src.skills.map((s) => {
-          if (typeof s === "string") return s;
-          if (s?.prettyName && typeof s.prettyName === "string") return s.prettyName;
-          if (s?.name && typeof s.name === "string") return s.name;
-          if (s?.node?.prettyName) return s.node.prettyName;
-          return String(s);
-        }).filter(Boolean)
+        if (typeof s === "string") return s;
+        if (s?.prettyName && typeof s.prettyName === "string") return s.prettyName;
+        if (s?.name && typeof s.name === "string") return s.name;
+        if (s?.node?.prettyName) return s.node.prettyName;
+        return String(s);
+      }).filter(Boolean)
       : [];
 
-    let hourlyRate = stats.hourlyRate?.node?.amount
-      || stats.hourlyRate?.amount
-      || (typeof stats.hourlyRate === "number" ? stats.hourlyRate : null)
+    const hourlyRate = stats.hourlyRate?.node?.amount
       || p.hourlyRate?.node?.amount
-      || p.hourlyRate?.amount
-      || (typeof p.hourlyRate === "number" ? p.hourlyRate : null)
       || src.hourlyRate?.node?.amount
-      || src.hourlyRate?.amount
-      || (typeof src.hourlyRate === "number" ? src.hourlyRate : null)
       || src.hourly_rate
-      || p.rates?.amount
-      || src.rates?.amount
       || null;
-
-    // Last resort: extract directly from rendered DOM
-    if (!hourlyRate) {
-      try {
-        const text = document.body.innerText.match(/\$\d+(?:\.\d+)?\/hr/)?.[0];
-        if (text) {
-          const num = parseFloat(text.replace("$", "").replace("/hr", ""));
-          if (!isNaN(num) && num > 0) hourlyRate = num;
-        }
-      } catch { /* ignore */ }
-    }
-    console.log("[UpScore] normalizeProfile hourly_rate:", hourlyRate);
 
     const totalEarnings = stats.totalEarnings ?? p.totalEarnings ?? src.totalEarnings ?? src.total_earnings ?? null;
     const totalJobs = stats.totalJobsWorked ?? p.totalJobsWorked ?? src.totalJobsWorked ?? src.total_jobs_done ?? null;
@@ -290,16 +270,16 @@ function normalizeProfile(data) {
     }
     const portfolio = portfolioItems.length
       ? portfolioItems.slice(0, 20).map((item) => ({
-            title: item.title || "",
-            description: (item.description || "").slice(0, 1000),
-            url: item.url || item.projectUrl || item.project_url || item.link || item.website || item.externalUrl || item.previewLink || "",
-            images: Array.isArray(item.images)
-              ? item.images.map((img) => (typeof img === "string" ? img : img?.url || img?.src || "")).filter(Boolean)
-              : [],
-            skills: Array.isArray(item.skills)
-              ? item.skills.map((s) => typeof s === "string" ? s : s?.prettyName || s?.name || "")
-              : [],
-          })).filter((i) => i.title)
+        title: item.title || "",
+        description: (item.description || "").slice(0, 1000),
+        url: item.url || item.projectUrl || item.project_url || item.link || item.website || item.externalUrl || item.previewLink || "",
+        images: Array.isArray(item.images)
+          ? item.images.map((img) => (typeof img === "string" ? img : img?.url || img?.src || "")).filter(Boolean)
+          : [],
+        skills: Array.isArray(item.skills)
+          ? item.skills.map((s) => typeof s === "string" ? s : s?.prettyName || s?.name || "")
+          : [],
+      })).filter((i) => i.title)
       : [];
 
     return {
@@ -455,7 +435,7 @@ function getExtensionSettings() {
     );
     const apiToken = await getAuthTokenFromBackground();
     resolve({
-      apiUrl: (res.upscore_api_url || "https://getupscore.vercel.app").replace(/\/+$/, ""),
+      apiUrl: (res.upscore_api_url || "https://www.getupscore.com").replace(/\/+$/, ""),
       apiToken,
       rules: res.upscore_proposal_rules || "",
     });
@@ -501,15 +481,30 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
     if (rules) payload.customInstructions = rules;
   }
 
-  let response;
+  let fetchResult;
   try {
-    response = await fetch(`${settings.apiUrl}/api/proposals/generate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${settings.apiToken}`,
-      },
-      body: JSON.stringify(payload),
+    fetchResult = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        {
+          type: "PROXY_FETCH",
+          url: `${settings.apiUrl}/api/proposals/generate`,
+          options: {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${settings.apiToken}`,
+            },
+            body: JSON.stringify(payload),
+          },
+        },
+        (resp) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(resp);
+          }
+        }
+      );
     });
   } catch {
     setBtnState(btn, "Cannot reach server", "error");
@@ -517,17 +512,24 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
     return;
   }
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: "HTTP " + response.status }));
-    setBtnState(btn, err.error || "Request failed", "error");
+  if (!fetchResult || !fetchResult.ok) {
+    const errText = fetchResult?.body || "";
+    let errMsg = "Request failed";
+    try {
+      const parsed = JSON.parse(errText);
+      errMsg = parsed.error || errMsg;
+    } catch {
+      errMsg = errText || `HTTP ${fetchResult?.status || "error"}`;
+    }
+    setBtnState(btn, errMsg, "error");
     setTimeout(() => resetBtnState(btn), 3500);
     return;
   }
 
-  const contentType = response.headers.get("content-type") || "";
+  const contentType = fetchResult.headers?.["content-type"] || "";
   if (!contentType.includes("text/event-stream")) {
     try {
-      const data = await response.json();
+      const data = JSON.parse(fetchResult.body);
       if (data.proposal) {
         setTextareaValue(textarea, textarea.value + data.proposal.replace(/[*_`]/g, ""));
         setBtnState(btn, data.score ? `Written! Score ${data.score}` : "Written!", "done");
@@ -545,38 +547,24 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
 
   setBtnState(btn, question ? "Answering..." : "Writing...", "loading");
 
-  const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  let buffer = "";
+  const buffer = fetchResult.body || "";
   let score = null;
 
   const stripMarkdown = (s) => String(s).replace(/[*_`]/g, "");
 
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const json = line.slice(6).trim();
-        if (!json) continue;
-        try {
-          const parsed = JSON.parse(json);
-          if (typeof parsed.text === "string") {
-            setTextareaValue(textarea, textarea.value + stripMarkdown(parsed.text));
-          }
-          if (parsed.score !== undefined) score = parsed.score;
-        } catch { /* ignore */ }
+  const lines = buffer.split("\n");
+  for (const line of lines) {
+    if (!line.startsWith("data: ")) continue;
+    const json = line.slice(6).trim();
+    if (!json) continue;
+    try {
+      const parsed = JSON.parse(json);
+      if (typeof parsed.text === "string") {
+        setTextareaValue(textarea, textarea.value + stripMarkdown(parsed.text));
       }
-    }
-  } catch {
-    setBtnState(btn, "Stream interrupted", "error");
-    setTimeout(() => resetBtnState(btn), 3000);
-    return;
+      if (parsed.score !== undefined) score = parsed.score;
+    } catch { /* ignore */ }
   }
 
   setBtnState(btn, score !== null ? `Written! Score ${score}` : "Written!", "done");
@@ -591,11 +579,11 @@ function dashboardUrl(path) {
   return new Promise((resolve) => {
     try {
       chrome.storage.sync.get(["upscore_api_url"], (res) => {
-        const base = (res.upscore_api_url || "https://getupscore.vercel.app").replace(/\/+$/, "");
+        const base = (res.upscore_api_url || "https://www.getupscore.com").replace(/\/+$/, "");
         resolve(base + path);
       });
     } catch {
-      resolve("https://getupscore.vercel.app" + path);
+      resolve("https://www.getupscore.com" + path);
     }
   });
 }
@@ -651,20 +639,16 @@ function showSignInPopup() {
     removeSignInPopup();
   });
 
-  const logo = document.createElement("div");
-  logo.textContent = "U";
+  const logo = document.createElement("img");
+  logo.src = chrome.runtime.getURL("icons/getupscore-logo-icon.png");
+  logo.alt = "Get UpScore";
   Object.assign(logo.style, {
     width: "48px",
     height: "48px",
     borderRadius: "14px",
     margin: "0 auto 12px",
-    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
-    color: "#fff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: "22px",
-    fontWeight: "700",
+    display: "block",
+    objectFit: "contain",
   });
 
   const title = document.createElement("h2");
@@ -685,7 +669,7 @@ function showSignInPopup() {
     padding: "12px",
     borderRadius: "10px",
     border: "none",
-    background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+    background: "linear-gradient(135deg, #2563eb 0%, #6634c0 100%)",
     color: "#fff",
     fontSize: "15px",
     fontWeight: "600",
@@ -712,7 +696,7 @@ function showSignInPopup() {
   terms.innerHTML = 'By signing in you agree to our <a href="#" style="color:#94a3b8;text-decoration:underline">Terms &amp; Conditions</a>.';
   terms.querySelector("a").addEventListener("click", (e) => {
     e.preventDefault();
-    window.open("https://getupscore.vercel.app", "_blank", "noopener,noreferrer");
+    window.open("https://www.getupscore.com", "_blank", "noopener,noreferrer");
   });
 
   card.append(close, logo, title, welcome, signInBtn, hint, register, terms);
@@ -748,7 +732,7 @@ function injectApplyButton() {
       gap: "6px",
       margin: "0 0 8px",
       padding: "7px 14px",
-      background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+      background: "linear-gradient(135deg, #2563eb 0%, #6634c0 100%)",
       color: "#ffffff",
       border: "none",
       borderRadius: "6px",
@@ -927,14 +911,14 @@ if (document.readyState === "loading") {
     setTimeout(() => {
       captureCookies();
       injectApplyButton();
-      extractAndSend().catch(() => {});
+      extractAndSend().catch(() => { });
     }, 2000);
   });
 } else {
   setTimeout(() => {
     captureCookies();
     injectApplyButton();
-    extractAndSend().catch(() => {});
+    extractAndSend().catch(() => { });
   }, 2000);
 }
 
@@ -947,7 +931,7 @@ const observer = new MutationObserver(() => {
     setTimeout(() => {
       captureCookies();
       injectApplyButton();
-      extractAndSend().catch(() => {});
+      extractAndSend().catch(() => { });
     }, 2000);
   }
 });

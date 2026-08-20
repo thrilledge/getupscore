@@ -1,33 +1,29 @@
-import { NextRequest } from "next/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
+import { resolveUserIdFromBearer } from "@/lib/supabase/verify-bearer";
 
-export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get("authorization");
-  const token = authHeader?.replace("Bearer ", "");
+export async function GET(request: Request) {
+  let userId: string | null = null;
 
-  if (!token) {
+  // Support both cookie auth (dashboard) and Bearer token (extension)
+  const authHeader = request.headers.get("authorization") || "";
+  if (authHeader.startsWith("Bearer ")) {
+    userId = await resolveUserIdFromBearer(authHeader.slice(7).trim());
+  } else {
+    const supabase = await createSupabaseServerClient();
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (!error && user) userId = user.id;
+  }
+
+  if (!userId) {
     return Response.json(
       { error: "Unauthorized" },
       { status: 401 }
     );
   }
 
-  const supabase = createSupabaseAdminClient();
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser(token);
-
-  if (error || !user) {
-    return Response.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
-
-  const { data: rawData } = await supabase.rpc("check_subscription", {
-    p_user_id: user.id,
+  const admin = createSupabaseAdminClient();
+  const { data: rawData } = await admin.rpc("check_subscription", {
+    p_user_id: userId,
   });
 
   const data = rawData as Record<string, unknown> | null;

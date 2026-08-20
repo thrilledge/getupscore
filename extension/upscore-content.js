@@ -481,15 +481,30 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
     if (rules) payload.customInstructions = rules;
   }
 
-  let response;
+  let fetchResult;
   try {
-    response = await fetch(`${settings.apiUrl}/api/proposals/generate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${settings.apiToken}`,
-      },
-      body: JSON.stringify(payload),
+    fetchResult = await new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(
+        {
+          type: "PROXY_FETCH",
+          url: `${settings.apiUrl}/api/proposals/generate`,
+          options: {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${settings.apiToken}`,
+            },
+            body: JSON.stringify(payload),
+          },
+        },
+        (resp) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(resp);
+          }
+        }
+      );
     });
   } catch {
     setBtnState(btn, "Cannot reach server", "error");
@@ -497,17 +512,24 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
     return;
   }
 
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: "HTTP " + response.status }));
-    setBtnState(btn, err.error || "Request failed", "error");
+  if (!fetchResult || !fetchResult.ok) {
+    const errText = fetchResult?.body || "";
+    let errMsg = "Request failed";
+    try {
+      const parsed = JSON.parse(errText);
+      errMsg = parsed.error || errMsg;
+    } catch {
+      errMsg = errText || `HTTP ${fetchResult?.status || "error"}`;
+    }
+    setBtnState(btn, errMsg, "error");
     setTimeout(() => resetBtnState(btn), 3500);
     return;
   }
 
-  const contentType = response.headers.get("content-type") || "";
+  const contentType = fetchResult.headers?.["content-type"] || "";
   if (!contentType.includes("text/event-stream")) {
     try {
-      const data = await response.json();
+      const data = JSON.parse(fetchResult.body);
       if (data.proposal) {
         setTextareaValue(textarea, textarea.value + data.proposal.replace(/[*_`]/g, ""));
         setBtnState(btn, data.score ? `Written! Score ${data.score}` : "Written!", "done");
@@ -525,38 +547,24 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
 
   setBtnState(btn, question ? "Answering..." : "Writing...", "loading");
 
-  const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  let buffer = "";
+  const buffer = fetchResult.body || "";
   let score = null;
 
   const stripMarkdown = (s) => String(s).replace(/[*_`]/g, "");
 
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
-
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        const json = line.slice(6).trim();
-        if (!json) continue;
-        try {
-          const parsed = JSON.parse(json);
-          if (typeof parsed.text === "string") {
-            setTextareaValue(textarea, textarea.value + stripMarkdown(parsed.text));
-          }
-          if (parsed.score !== undefined) score = parsed.score;
-        } catch { /* ignore */ }
+  const lines = buffer.split("\n");
+  for (const line of lines) {
+    if (!line.startsWith("data: ")) continue;
+    const json = line.slice(6).trim();
+    if (!json) continue;
+    try {
+      const parsed = JSON.parse(json);
+      if (typeof parsed.text === "string") {
+        setTextareaValue(textarea, textarea.value + stripMarkdown(parsed.text));
       }
-    }
-  } catch {
-    setBtnState(btn, "Stream interrupted", "error");
-    setTimeout(() => resetBtnState(btn), 3000);
-    return;
+      if (parsed.score !== undefined) score = parsed.score;
+    } catch { /* ignore */ }
   }
 
   setBtnState(btn, score !== null ? `Written! Score ${score}` : "Written!", "done");

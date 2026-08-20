@@ -1,7 +1,7 @@
 const $ = (id) => document.getElementById(id);
 
 // ─── Views ───
-const VIEWS = ["dashboard", "savedjobs", "settings"];
+const VIEWS = ["loading", "upgrade", "dashboard", "savedjobs", "settings"];
 const viewEls = {};
 for (const v of VIEWS) viewEls[v] = $(`view-${v}`);
 
@@ -11,9 +11,13 @@ const NAV_IDS = {
   settings: "navSettings",
 };
 const navEls = {};
-for (const v of VIEWS) navEls[v] = $(NAV_IDS[v]);
+for (const v of VIEWS) {
+  if (NAV_IDS[v]) navEls[v] = $(NAV_IDS[v]);
+}
 
 const VIEW_TITLES = {
+  loading: "Get UpScore",
+  upgrade: "Get UpScore",
   dashboard: "Get UpScore",
   savedjobs: "Saved Jobs",
   settings: "Settings",
@@ -22,17 +26,42 @@ const VIEW_TITLES = {
 let currentView = "dashboard";
 let savedJobsCache = [];
 let apiUrl = null;
+let isPaidUser = null; // null = unknown, true = paid, false = free
 
 function showView(name) {
   currentView = name;
   for (const v of VIEWS) {
-    viewEls[v].style.display = v === name ? "" : "none";
+    if (viewEls[v]) viewEls[v].style.display = v === name ? "" : "none";
     if (navEls[v]) navEls[v].classList.toggle("active", v === name);
+  }
+  // Show nav when not loading
+  if (name !== "loading" && isPaidUser !== null) {
+    $("statusBar").style.display = "";
   }
   // Hide back button — nav tabs are the primary navigation
   $("btnBack").style.display = "none";
   // Update title
   $("appTitle").textContent = VIEW_TITLES[name] || "Get UpScore";
+}
+
+function showDashboardViews() {
+  isPaidUser = true;
+  // Show nav tabs
+  if (navEls.dashboard) navEls.dashboard.style.display = "";
+  if (navEls.savedjobs) navEls.savedjobs.style.display = "";
+  // Show status bar
+  $("statusBar").style.display = "";
+  showView("dashboard");
+}
+
+function showUpgradeView() {
+  isPaidUser = false;
+  // Show nav tabs (only Settings visible)
+  if (navEls.dashboard) navEls.dashboard.style.display = "none";
+  if (navEls.savedjobs) navEls.savedjobs.style.display = "none";
+  // Show status bar
+  $("statusBar").style.display = "";
+  showView("upgrade");
 }
 
 // ─── Status refs ───
@@ -87,23 +116,25 @@ async function apiCall(path, options = {}) {
 document.addEventListener("DOMContentLoaded", async () => {
   // Load settings from storage
   const result = await chrome.storage.sync.get(["upscore_api_url"]);
-  apiUrl = result.upscore_api_url || "https://getupscore.vercel.app";
+  apiUrl = result.upscore_api_url || "https://www.getupscore.com";
 
-  const auth = await getAuthState();
-  renderAuthUI(auth);
-
-  // View switching
-  $("btnSettings")?.addEventListener("click", () => showView("settings"));
-  $("btnBack")?.addEventListener("click", () => showView("dashboard"));
-
-  // Nav tabs
+  // Nav tabs (hidden until subscription check)
   navEls.dashboard?.addEventListener("click", () => showView("dashboard"));
   navEls.savedjobs?.addEventListener("click", () => { showView("savedjobs"); loadSavedJobs(); });
   navEls.settings?.addEventListener("click", () => showView("settings"));
 
+  // View switching
+  $("btnSettings")?.addEventListener("click", () => showView("settings"));
+  $("btnBack")?.addEventListener("click", () => showView(isPaidUser ? "dashboard" : "upgrade"));
+
   // Quick actions
   $("btnViewSavedJobs")?.addEventListener("click", () => { showView("savedjobs"); loadSavedJobs(); });
   $("btnSyncProfile")?.addEventListener("click", syncProfile);
+
+  // Upgrade button
+  $("btnUpgrade")?.addEventListener("click", () => {
+    chrome.tabs.create({ url: `${(apiUrl || "https://www.getupscore.com").replace(/\/+$/, "")}/billing` });
+  });
 
   // Settings
   btnSignIn.addEventListener("click", signIn);
@@ -117,9 +148,45 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Initial load
+  // Initial load — loading view is shown by default in HTML
   requestState();
+
+  // Check auth then subscription
+  const auth = await getAuthState();
+  renderAuthUI(auth);
+
+  if (auth?.authenticated) {
+    await checkSubscription();
+  } else {
+    // Not signed in — show settings (logged out)
+    showView("settings");
+  }
 });
+
+async function checkSubscription() {
+  try {
+    const token = await getAuthToken();
+    if (!token || !apiUrl) return;
+
+    const resp = await fetch(`${apiUrl}/api/billing/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!resp.ok) return; // API error — don't gate
+
+    const json = await resp.json();
+    const sub = json?.data;
+    const paid = sub?.is_paid === true;
+
+    if (!paid) {
+      showUpgradeView();
+    } else {
+      showDashboardViews();
+    }
+  } catch {
+    // Network error — don't gate, let user use extension
+  }
+}
 
 function requestState() {
   chrome.runtime.sendMessage({ type: "GET_STATE" }, (response) => {
@@ -243,20 +310,27 @@ function renderAuthUI(auth) {
   if (signedIn) {
     spAuthEmail.textContent = `Signed in as ${auth.user?.email || "your account"}`;
   }
-  btnSignUp.href = `${(apiUrl || "https://getupscore.vercel.app").replace(/\/+$/, "")}/signup`;
+  btnSignUp.href = `${(apiUrl || "https://www.getupscore.com").replace(/\/+$/, "")}/signup`;
 
-  // Logged-out users only get Settings — Dashboard & Saved Jobs need an account.
-  navEls.dashboard.style.display = signedIn ? "" : "none";
-  navEls.savedjobs.style.display = signedIn ? "" : "none";
+  // Only control nav tab visibility after subscription check is done
+  if (isPaidUser !== null) {
+    navEls.dashboard.style.display = signedIn ? "" : "none";
+    navEls.savedjobs.style.display = signedIn ? "" : "none";
+  }
 
   if (wasSignedIn !== signedIn) {
     if (!signedIn && currentView !== "settings") showView("settings");
     wasSignedIn = signedIn;
+
+    // Re-check subscription on sign in
+    if (signedIn) {
+      checkSubscription();
+    }
   }
 }
 
 function signIn() {
-  const url = `${(apiUrl || "https://getupscore.vercel.app").replace(/\/+$/, "")}/login`;
+  const url = `${(apiUrl || "https://www.getupscore.com").replace(/\/+$/, "")}/login`;
   chrome.tabs.create({ url });
   spAuthMsg.textContent = "Sign in on the dashboard tab — this panel connects automatically.";
 }

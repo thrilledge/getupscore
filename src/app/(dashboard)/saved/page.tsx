@@ -6,6 +6,7 @@ import {
   useCallback,
 } from "react";
 import Link from "next/link";
+import { SubscriptionGate } from "@/components/subscription-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -112,6 +113,7 @@ export default function SavedJobsPage() {
   }
 
   return (
+    <SubscriptionGate feature="Saved Jobs">
     <div className="mx-auto w-full max-w-[1600px] min-w-0 space-y-4 overflow-x-clip pb-6 sm:space-y-5">
       {/* Header */}
       <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-[18px] border border-white/10 bg-[#0A0A0A] px-4 py-4 text-white shadow-[0_14px_35px_rgba(0,0,0,0.12)] duration-500 min-[480px]:px-5 min-[480px]:py-5 sm:rounded-[22px] sm:px-6 lg:px-7 lg:py-6">
@@ -574,5 +576,6 @@ export default function SavedJobsPage() {
         </section>
       )}
     </div>
+    </SubscriptionGate>
   );
 }

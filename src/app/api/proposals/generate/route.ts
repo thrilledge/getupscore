@@ -4,11 +4,12 @@ import { generateProposal, streamProposal } from "@/lib/proposals/generate";
 import { analyzeJob } from "@/lib/jobs/analyze";
 import { resolveUserIdFromBearer } from "@/lib/supabase/verify-bearer";
 import { checkRateLimit, proposalRateLimit } from "@/lib/rate-limit";
-import { requirePaid } from "@/lib/subscription-guard";
 
 const ALLOWED_ORIGINS = [
   "chrome-extension://",
   "moz-extension://",
+  "https://www.upwork.com",
+  "https://upwork.com",
 ];
 
 function getCorsHeaders(origin: string | null): Record<string, string> {
@@ -17,6 +18,7 @@ function getCorsHeaders(origin: string | null): Record<string, string> {
     "Access-Control-Allow-Origin": allowed ? origin : "",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true",
     "Access-Control-Max-Age": "86400",
   };
 }
@@ -42,7 +44,8 @@ async function respondFromDbJob(
   job: Record<string, any>,
   userId: string,
   baseInput: Record<string, unknown>,
-  origin: string | null
+  origin: string | null,
+  isPaid: boolean
 ) {
   const jobId = job.id;
 
@@ -83,7 +86,7 @@ async function respondFromDbJob(
     recommendation: analysisData?.recommendation as string | undefined,
   };
 
-  const result = await generateProposal(proposalInput);
+  const result = await generateProposal(proposalInput, undefined, undefined, isPaid);
 
   if (!result.generated_text || result.generated_text.length < 50) {
     return withCors(NextResponse.json({ error: "Proposal generation returned empty result" }, { status: 500 }), origin);
@@ -145,11 +148,12 @@ export async function POST(request: Request) {
       return withCors(NextResponse.json({ error: "Too many requests" }, { status: 429 }), origin);
     }
 
-    // Subscription check — Pro required
-    const subError = await requirePaid(userId);
-    if (subError) {
-      return withCors(subError, origin);
-    }
+    // Check subscription tier — free users get basic proposals, paid get full
+    const supabase = await createSupabaseAdminClient();
+    const { data: subData } = await supabase.rpc("check_subscription", {
+      p_user_id: userId,
+    });
+    const isPaid = (subData as Record<string, unknown> | null)?.is_paid === true;
 
     const body = await request.json();
     const { jobId, jobDetails, upworkJobId, customInstructions, answerQuestion, stream } = body;
@@ -158,7 +162,6 @@ export async function POST(request: Request) {
       return withCors(NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 }), origin);
     }
 
-    const supabase = await createSupabaseAdminClient();
     const { data: userData } = await supabase.auth.admin.getUserById(userId);
     const metadata = userData?.user?.user_metadata || {};
 
@@ -303,10 +306,10 @@ export async function POST(request: Request) {
 
       const result = stream
         ? null
-        : await generateProposal(proposalInput);
+        : await generateProposal(proposalInput, undefined, undefined, isPaid);
 
       if (stream) {
-        const proposalStream = await streamProposal(proposalInput);
+        const proposalStream = await streamProposal(proposalInput, undefined, undefined, isPaid);
         const encoder = new TextEncoder();
         const combined = new ReadableStream({
           async start(controller) {
@@ -408,7 +411,7 @@ export async function POST(request: Request) {
         return withCors(NextResponse.json({ error: "Job not found" }, { status: 404 }), origin);
       }
 
-      return respondFromDbJob(supabase, job, userId, baseInput, origin);
+      return respondFromDbJob(supabase, job, userId, baseInput, origin, isPaid);
     }
 
     if (upworkJobId) {
@@ -431,7 +434,7 @@ export async function POST(request: Request) {
         return withCors(NextResponse.json({ error: "Job not found in database" }, { status: 404 }), origin);
       }
 
-      return respondFromDbJob(supabase, job, userId, baseInput, origin);
+      return respondFromDbJob(supabase, job, userId, baseInput, origin, isPaid);
     }
 
     return withCors(NextResponse.json({ error: "Provide either jobId, jobDetails or upworkJobId" }, { status: 400 }), origin);

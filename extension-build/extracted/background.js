@@ -6,7 +6,7 @@ import {
   setSession as authSetSession,
 } from "./lib/auth-manager.js";
 
-const DEFAULT_API_URL = "https://getupscore.vercel.app";
+const DEFAULT_API_URL = "https://www.getupscore.com/";
 
 let state = {
   connected: false,
@@ -153,12 +153,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         state.apiToken = null;
         state.connected = false;
         state.statusMessage = "Not signed in";
-        await chrome.storage.sync.remove("upscore_api_token").catch(() => {});
+        await chrome.storage.sync.remove("upscore_api_token").catch(() => { });
         broadcastState();
         broadcastAuth();
         sendResponse({ ok: true });
       });
       return true;
+
+    case "PROXY_FETCH": {
+      const { url, options } = msg;
+      (async () => {
+        try {
+          const resp = await fetch(url, options);
+          if (options && options.method === "GET" || (!options || !options.method || options.method === "GET")) {
+            const json = await resp.json();
+            sendResponse({ ok: resp.ok, status: resp.status, data: json });
+          } else {
+            const text = await resp.text();
+            sendResponse({ ok: resp.ok, status: resp.status, body: text, headers: Object.fromEntries(resp.headers.entries()) });
+          }
+        } catch (err) {
+          sendResponse({ ok: false, error: err.message || "Network error" });
+        }
+      })();
+      return true;
+    }
 
     default:
       sendResponse({ error: "Unknown message type" });
@@ -295,7 +314,7 @@ function getAllVisibleCookies() {
 }
 
 const CANDIDATE_URLS = [
-  "https://getupscore.vercel.app/",
+  "https://www.getupscore.com/",
   "https://upscore.app/",
   "https://www.upscore.app/",
   "https://getupscore.com/",
@@ -491,17 +510,17 @@ function broadcastState() {
     connected: state.connected,
     message: state.statusMessage,
     upworkCookies: state.upworkCookies,
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
 function broadcastAuth() {
   chrome.runtime.sendMessage({
     type: "AUTH_UPDATED",
     authenticated: state.connected && !!state.user,
-  }).catch(() => {});
+  }).catch(() => { });
 }
 
-chrome.alarms.create("upscore-session-import", { periodInMinutes: 0.5 }).catch(() => {});
+chrome.alarms.create("upscore-session-import", { periodInMinutes: 0.5 }).catch(() => { });
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== "upscore-session-import") return;
   const imported = await importSessionFromCookies();

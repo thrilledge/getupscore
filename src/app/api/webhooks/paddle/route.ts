@@ -11,7 +11,13 @@ function verifySignature(
   rawBody: string,
   signatureHeader: string
 ): boolean {
-  if (!WEBHOOK_SECRET || !signatureHeader) return false;
+  if (!WEBHOOK_SECRET || !signatureHeader) {
+    console.error("[Paddle WH] Missing secret or signature:", {
+      hasSecret: !!WEBHOOK_SECRET,
+      hasSig: !!signatureHeader,
+    });
+    return false;
+  }
 
   let ts = "";
   let h1 = "";
@@ -21,7 +27,10 @@ function verifySignature(
     if (key === "h1") h1 = value;
   }
 
-  if (!ts || !h1) return false;
+  if (!ts || !h1) {
+    console.error("[Paddle WH] Invalid signature format:", signatureHeader);
+    return false;
+  }
 
   const signedPayload = `${ts}:${rawBody}`;
   const expected = createHmac("sha256", WEBHOOK_SECRET)
@@ -30,12 +39,20 @@ function verifySignature(
 
   const a = Buffer.from(h1);
   const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
+  const valid = a.length === b.length && timingSafeEqual(a, b);
+
+  if (!valid) {
+    console.error("[Paddle WH] Signature mismatch:", { ts, h1Preview: h1.slice(0, 16), expectedPreview: expected.slice(0, 16) });
+  }
+
+  return valid;
 }
 
 export async function POST(request: NextRequest) {
   const signature = request.headers.get("paddle-signature") ?? "";
   const rawBody = await request.text();
+
+  console.log("[Paddle WH] Received event, signature:", signature ? "present" : "missing");
 
   if (!verifySignature(rawBody, signature)) {
     return Response.json(
@@ -57,12 +74,37 @@ export async function POST(request: NextRequest) {
   const eventType = event.event_type as string;
   const data = event.data as any;
 
+  console.log("[Paddle WH] Event type:", eventType, "custom_data:", JSON.stringify(data?.custom_data));
+
   try {
     switch (eventType) {
+      case "transaction.completed": {
+        const userId = data.custom_data?.user_id;
+        if (!userId) {
+          console.error("[Paddle WH] transaction.completed missing user_id, custom_data:", data?.custom_data);
+          break;
+        }
+
+        const subscriptionId = data.subscription_id ?? data.id ?? "";
+        const priceId = data.items?.[0]?.price?.id ?? "";
+        const periodEnd =
+          data.next_transaction?.effective_at ??
+          data.billing_period?.ends_at ??
+          null;
+
+        console.log("[Paddle WH] Activating subscription:", { userId, subscriptionId, priceId });
+        await upsertSubscription(userId, subscriptionId, priceId, "active", periodEnd);
+        console.log("[Paddle WH] Subscription activated for:", userId);
+        break;
+      }
+
       case "subscription.created":
       case "subscription.updated": {
         const userId = data.custom_data?.user_id;
-        if (!userId) break;
+        if (!userId) {
+          console.error("[Paddle WH]", eventType, "missing user_id, custom_data:", data?.custom_data);
+          break;
+        }
 
         const status = data.status === "active" ? "active"
           : data.status === "past_due" ? "past_due"
@@ -70,19 +112,11 @@ export async function POST(request: NextRequest) {
           : data.status === "canceled" ? "canceled"
           : "active";
 
-        const periodEnd =
-          data.current_billing_period?.ends_at ?? null;
+        const periodEnd = data.current_billing_period?.ends_at ?? null;
+        const planId = data.items?.[0]?.price?.id ?? "";
 
-        const planId =
-          data.items?.[0]?.price?.id ?? "";
-
-        await upsertSubscription(
-          userId,
-          data.id,
-          planId,
-          status,
-          periodEnd
-        );
+        console.log("[Paddle WH] Upserting subscription:", { userId, planId, status });
+        await upsertSubscription(userId, data.id, planId, status, periodEnd);
         break;
       }
 
@@ -107,12 +141,13 @@ export async function POST(request: NextRequest) {
       }
 
       default:
+        console.log("[Paddle WH] Unhandled event type:", eventType);
         break;
     }
 
     return Response.json({ received: true });
   } catch (err) {
-    console.error("Paddle webhook error:", err);
+    console.error("[Paddle WH] Processing error:", err);
     return Response.json(
       { error: "Internal error" },
       { status: 500 }

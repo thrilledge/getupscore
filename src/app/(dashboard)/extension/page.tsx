@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { SubscriptionGate } from "@/components/subscription-gate";
 import {
   Card,
   CardContent,
@@ -43,6 +44,7 @@ const installationSteps = [
 
 export default function ExtensionPage() {
   return (
+    <SubscriptionGate feature="Extension">
     <div className="mx-auto max-w-4xl space-y-5 pb-6">
       {/* Header */}
       <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-[24px] border border-white/10 bg-[#0A0A0A] px-5 py-8 text-white shadow-[0_18px_48px_rgba(0,0,0,0.15)] duration-500 sm:px-8 sm:py-10">
@@ -218,5 +220,6 @@ export default function ExtensionPage() {
         </p>
       </div>
     </div>
+    </SubscriptionGate>
   );
 }

@@ -4,37 +4,67 @@ export interface LLMProvider {
   apiKey: string;
   model: string;
   groqStyle?: boolean;
+  extraHeaders?: Record<string, string>;
 }
 
+export type ProviderName = "gemini" | "groq" | "deepshi";
+
 export interface LLMChainOptions {
-  explicitApiKey?: string;
-  explicitModel?: string;
+  /** Force a specific provider, skipping the default chain order. */
+  provider?: ProviderName;
   maxAttemptsPerProvider?: number;
 }
 
 /**
- * Provider chain: Groq first when a key is configured (fast first token),
- * then DeepSeek proxy as fallback (no rate limit pain, no key needed).
+ * Provider chain: Gemini first (best value for paid), Groq (free tier),
+ * Deepshi as last-resort fallback.
+ * Pass `provider: "groq"` to skip Gemini (used for free-tier proposals).
  */
 export function getProviderChain(opts?: LLMChainOptions): LLMProvider[] {
+  const all = buildAllProviders();
+
+  if (opts?.provider) {
+    const match = all.find((p) => p.name === opts.provider);
+    return match ? [match] : [];
+  }
+
+  return all;
+}
+
+function buildAllProviders(): LLMProvider[] {
   const chain: LLMProvider[] = [];
 
-  const groqKey = opts?.explicitApiKey || process.env.GROQ_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey) {
+    chain.push({
+      name: "gemini",
+      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+      apiKey: geminiKey,
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+    });
+  }
+
+  const groqKey = process.env.GROQ_API_KEY;
   if (groqKey) {
     chain.push({
       name: "groq",
       baseUrl: "https://api.groq.com/openai/v1",
       apiKey: groqKey,
-      model: opts?.explicitModel || process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+      model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
       groqStyle: true,
     });
   }
+
+  const deepshiHeaders: Record<string, string> = {};
+  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (bypassSecret) deepshiHeaders["x-vercel-protection-bypass"] = bypassSecret;
 
   chain.push({
     name: "deepshi",
     baseUrl: process.env.UPSCORE_LLM_BASE_URL || "https://deepshi-proxy.vercel.app/v1",
     apiKey: process.env.UPSCORE_LLM_API_KEY || "",
     model: process.env.UPSCORE_LLM_MODEL || "deepshi-r1",
+    extraHeaders: Object.keys(deepshiHeaders).length > 0 ? deepshiHeaders : undefined,
   });
 
   return chain;
@@ -68,6 +98,7 @@ export async function chatCompletionWithRetry(
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (provider.apiKey) headers.Authorization = `Bearer ${provider.apiKey}`;
+      if (provider.extraHeaders) Object.assign(headers, provider.extraHeaders);
 
       let res: Response;
       try {

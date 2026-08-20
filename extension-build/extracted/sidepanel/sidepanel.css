@@ -570,3 +570,119 @@ body {
 .desc { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
 .desc + .desc { margin-top: 6px; }
 .hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; line-height: 1.4; }
+
+/* ─── UPGRADE CARD ─── */
+.upgrade-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  margin-top: 20px;
+}
+
+.upgrade-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--gradient);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px;
+}
+
+.upgrade-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.upgrade-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+
+.upgrade-features {
+  list-style: none;
+  text-align: left;
+  margin: 16px 0;
+  padding: 0;
+}
+
+.upgrade-features li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 5px 0;
+}
+
+.upgrade-features li svg {
+  flex-shrink: 0;
+  color: var(--accent-green);
+}
+
+.upgrade-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--gradient);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  box-shadow: var(--shadow-sm);
+}
+
+.upgrade-btn:hover {
+  filter: brightness(1.08);
+}
+
+.upgrade-btn:active {
+  transform: scale(0.98);
+}
+
+.upgrade-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 10px;
+}
+
+/* ─── LOADING STATE ─── */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent-blue);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}

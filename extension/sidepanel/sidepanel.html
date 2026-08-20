@@ -20,7 +20,7 @@
       </svg>
     </button>
     <div class="brand">
-      <img class="brand-logo" src="../icons/getupscore-logo-icon.png" alt="Get UpScore">
+      <div class="brand-logo">U</div>
       <div>
         <h1 id="appTitle">Get UpScore</h1>
         <div class="tagline">AI-powered Upwork assistant</div>
@@ -39,22 +39,61 @@
   </header>
 
   <!-- ═══ NAV ═══ -->
-  <nav class="panel-nav">
+  <nav class="panel-nav" style="display:none">
     <button class="nav-item active" id="navDashboard">Dashboard</button>
     <button class="nav-item" id="navSavedJobs">Saved Jobs</button>
     <button class="nav-item" id="navSettings">Settings</button>
   </nav>
 
   <!-- ═══ STATUS BAR ═══ -->
-  <div class="status-bar" id="statusBar">
+  <div class="status-bar" id="statusBar" style="display:none">
     <span class="dot" id="statusDot"></span>
     <span class="status-text" id="statusText">Initializing...</span>
   </div>
 
   <!-- ════════════════════════════════════════════════════ -->
+  <!-- ═══  VIEW: LOADING  ═══ -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <div id="view-loading" class="view">
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">Loading your workspace</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════ -->
+  <!-- ═══  VIEW: UPGRADE (shown to free users)  ═══ -->
+  <!-- ════════════════════════════════════════════════════ -->
+  <div id="view-upgrade" class="view" style="display:none">
+    <div class="upgrade-card">
+      <div class="upgrade-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      </div>
+      <div class="upgrade-title">Upgrade to Pro</div>
+      <div class="upgrade-sub">Unlock the full UpScore experience.</div>
+
+      <ul class="upgrade-features">
+        <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Full jobs dashboard</li>
+        <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> AI job analysis</li>
+        <li><svg width="12" height="12" viewBox="0 0 24  24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Unlimited proposals</li>
+        <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Market trends</li>
+        <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Saved jobs &amp; sync</li>
+        <li><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Unlimited filters</li>
+      </ul>
+
+      <button class="upgrade-btn" id="btnUpgrade">View Plans &amp; Upgrade</button>
+      <div class="upgrade-hint">Cancel anytime. No questions asked.</div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════ -->
   <!-- ═══  VIEW: DASHBOARD  ═══ -->
   <!-- ════════════════════════════════════════════════════ -->
-  <div id="view-dashboard" class="view">
+  <div id="view-dashboard" class="view" style="display:none">
 
     <!-- Hero -->
     <div class="hero">

@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
+import { SubscriptionGate } from "@/components/subscription-gate";
 import type { JobFilter } from "@/lib/supabase/database-types";
 import { FilterFormDialog } from "@/components/filter-form";
 import { FilterCard } from "@/components/filter-card";
@@ -72,6 +73,7 @@ export default function FiltersPage() {
     ) ?? [];
 
   return (
+    <SubscriptionGate feature="Job Filters">
     <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 overflow-x-clip pb-6 sm:space-y-5 sm:pb-8 xl:space-y-6">
       {/* Header */}
       <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-2xl border border-[#0A0A0A]/10 bg-white p-4 shadow-[0_8px_28px_rgba(0,0,0,0.04)] duration-500 min-[480px]:p-5 sm:rounded-[22px] md:p-6">
@@ -395,5 +397,6 @@ export default function FiltersPage() {
           </div>
         )}
     </div>
+    </SubscriptionGate>
   );
 }

@@ -5,7 +5,7 @@ const authSignedOut = document.getElementById("authSignedOut");
 const authSignedIn = document.getElementById("authSignedIn");
 const authEmail = document.getElementById("authEmail");
 
-let apiUrl = "https://getupscore.vercel.app";
+let apiUrl = "https://www.getupscore.com";
 
 document.addEventListener("DOMContentLoaded", async () => {
   const stored = await chrome.storage.sync.get(["upscore_api_url"]);
@@ -48,7 +48,7 @@ function setSignedOut() {
 }
 
 function login() {
-  const url = `${(apiUrl || "https://getupscore.vercel.app").replace(/\/+$/, "")}/login`;
+  const url = `${(apiUrl || "https://www.getupscore.com").replace(/\/+$/, "")}/login`;
   chrome.tabs.create({ url });
   setConnectionStatus("idle", "Sign in on the dashboard tab — this page connects automatically.");
 }

@@ -6,6 +6,7 @@ import { useUser } from "@/hooks/use-user";
 import type { NotificationRule } from "@/lib/supabase/database-types";
 import { RuleFormDialog } from "@/components/rule-form";
 import { RuleCard } from "@/components/rule-card";
+import { SubscriptionGate } from "@/components/subscription-gate";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -126,6 +127,7 @@ export default function RulesPage() {
     [];
 
   return (
+    <SubscriptionGate feature="Rules">
     <div className="mx-auto w-full max-w-[1500px] min-w-0 space-y-4 overflow-x-clip pb-6 sm:space-y-5 lg:space-y-6">
       {/* Header */}
       <section className="animate-in fade-in slide-in-from-bottom-3 relative min-w-0 overflow-hidden rounded-[20px] bg-[#0A0A0A] px-4 py-5 duration-500 min-[480px]:px-5 sm:rounded-[24px] sm:px-6 sm:py-6 lg:rounded-[26px] lg:px-7 lg:py-7">
@@ -515,5 +517,6 @@ export default function RulesPage() {
           </div>
         )}
     </div>
+    </SubscriptionGate>
   );
 }

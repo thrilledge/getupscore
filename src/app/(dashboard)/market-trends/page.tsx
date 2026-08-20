@@ -17,6 +17,7 @@ import {
   BarChart3,
   RefreshCw,
 } from "lucide-react";
+import { SubscriptionGate } from "@/components/subscription-gate";
 import {
   Tabs,
   TabsContent,
@@ -164,6 +165,7 @@ export default function MarketTrendsPage() {
   };
 
   return (
+    <SubscriptionGate feature="Market Trends">
     <div
       className="market-theme space-y-5 pb-6"
       style={
@@ -414,5 +416,6 @@ export default function MarketTrendsPage() {
         ) : null}
       </Tabs>
     </div>
+    </SubscriptionGate>
   );
 }

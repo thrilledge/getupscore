@@ -26,6 +26,7 @@ import { useUser } from "@/hooks/use-user";
 import type { NotificationChannel } from "@/lib/supabase/database-types";
 import { ChannelFormDialog } from "@/components/channel-form";
 import { ChannelCard } from "@/components/channel-card";
+import { SubscriptionGate } from "@/components/subscription-gate";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -187,6 +188,7 @@ function ChannelsContent() {
     ) ?? [];
 
   return (
+    <SubscriptionGate feature="Channels">
     <div className="mx-auto w-full max-w-[1500px] min-w-0 space-y-4 overflow-x-clip pb-6 sm:space-y-5 lg:space-y-6">
       {/* Header */}
       <section className="animate-in fade-in slide-in-from-bottom-3 relative min-w-0 overflow-hidden rounded-[20px] bg-[#0A0A0A] px-4 py-5 duration-500 min-[480px]:px-5 sm:rounded-[24px] sm:px-6 sm:py-6 lg:rounded-[28px] lg:px-7 lg:py-7">
@@ -553,5 +555,6 @@ function ChannelsContent() {
           </div>
         )}
     </div>
+    </SubscriptionGate>
   );
 }

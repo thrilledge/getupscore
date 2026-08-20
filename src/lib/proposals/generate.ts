@@ -1,4 +1,4 @@
-import { buildProposalSystemPrompt, buildAnswerSystemPrompt } from "./system-prompt";
+import { buildProposalSystemPrompt, buildAnswerSystemPrompt, buildBasicProposalPrompt } from "./system-prompt";
 import { chatCompletionWithRetry, parseLlmJson } from "@/lib/llm";
 
 export interface ProposalInput {
@@ -41,8 +41,9 @@ export type StreamEvent =
 
 export async function generateProposal(
   input: ProposalInput,
-  groqApiKey?: string,
-  groqModel?: string
+  _groqApiKey?: string,
+  _groqModel?: string,
+  isPaid: boolean = true
 ): Promise<ProposalResult> {
   try {
     const { response, provider } = await chatCompletionWithRetry(
@@ -51,27 +52,35 @@ export async function generateProposal(
         messages: [
           { role: "system", content: input.answerQuestion
             ? buildAnswerSystemPrompt(input.systemPrompt)
-            : buildProposalSystemPrompt("json", input.systemPrompt) },
+            : isPaid
+              ? buildProposalSystemPrompt("json", input.systemPrompt)
+              : buildBasicProposalPrompt() },
           { role: "user", content: buildPrompt(input) },
         ],
         temperature: 0.7,
-        max_tokens: 4000,
-        response_format: { type: "json_object" },
+        max_tokens: isPaid ? 4000 : 2000,
+        ...(isPaid ? { response_format: { type: "json_object" as const } } : {}),
       }),
-      { explicitApiKey: groqApiKey, explicitModel: groqModel }
+      isPaid ? {} : { provider: "groq", maxAttemptsPerProvider: 2 }
     );
-    console.log("[Proposal] Using provider:", provider.name, "model:", provider.model);
+    console.log("[Proposal] Using provider:", provider.name, "model:", provider.model, "isPaid:", isPaid);
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     if (!content) return generateFallbackProposal(input);
 
-    const parsed = parseLlmJson(content);
-    const proposalText = parsed.proposal || content;
+    if (isPaid) {
+      const parsed = parseLlmJson(content);
+      const proposalText = parsed.proposal || content;
+      return {
+        generated_text: proposalText,
+        score: scoreProposal(proposalText),
+      };
+    }
 
     return {
-      generated_text: proposalText,
-      score: scoreProposal(proposalText),
+      generated_text: cleanProposal(content),
+      score: scoreProposal(content),
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -82,8 +91,9 @@ export async function generateProposal(
 
 export async function streamProposal(
   input: ProposalInput,
-  groqApiKey?: string,
-  groqModel?: string
+  _groqApiKey?: string,
+  _groqModel?: string,
+  isPaid: boolean = true
 ): Promise<ReadableStream<Uint8Array>> {
   return new ReadableStream({
     async start(controller) {
@@ -99,17 +109,19 @@ export async function streamProposal(
             messages: [
               { role: "system", content: input.answerQuestion
                 ? buildAnswerSystemPrompt(input.systemPrompt)
-                : buildProposalSystemPrompt("stream", input.systemPrompt) },
+                : isPaid
+                  ? buildProposalSystemPrompt("stream", input.systemPrompt)
+                  : buildBasicProposalPrompt() },
               { role: "user", content: buildPrompt(input) },
             ],
             stream: true,
-            ...(p.groqStyle ? { reasoning_format: "parsed" as const } : {}),
+            ...(isPaid && p.groqStyle ? { reasoning_format: "parsed" as const } : {}),
             temperature: 0.7,
-            max_tokens: 4000,
+            max_tokens: isPaid ? 4000 : 2000,
           }),
-          { explicitApiKey: groqApiKey, explicitModel: groqModel }
+          isPaid ? {} : { provider: "groq", maxAttemptsPerProvider: 2 }
         );
-        console.log("[Proposal Stream] Using provider:", provider.name, "model:", provider.model);
+        console.log("[Proposal Stream] Using provider:", provider.name, "model:", provider.model, "isPaid:", isPaid);
 
         const reader = response.body!.getReader();
         const decoder = new TextDecoder();

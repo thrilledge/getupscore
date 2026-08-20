@@ -6,6 +6,7 @@ import {
   useCallback,
 } from "react";
 import Link from "next/link";
+import { SubscriptionGate } from "@/components/subscription-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -114,6 +115,7 @@ export default function NotificationsPage() {
   };
 
   return (
+    <SubscriptionGate feature="Notifications">
     <div className="space-y-5 pb-6">
       {/* Header */}
       <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-[22px] border border-white/10 bg-[#0A0A0A] px-5 py-5 text-white shadow-[0_16px_40px_rgba(0,0,0,0.13)] duration-500 sm:px-6">
@@ -416,5 +418,6 @@ export default function NotificationsPage() {
           </section>
         )}
     </div>
+    </SubscriptionGate>
   );
 }
