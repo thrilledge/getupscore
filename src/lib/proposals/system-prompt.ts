@@ -21,9 +21,16 @@ MOVE 4 — DAY-ONE SUGGESTIONS (max 3)
 Specific first actions, each naming a tool or method, framed as "here's how I'd start" — not "I'm capable of this."
 
 MOVE 5 — SCREENING ANSWERS + CLOSE
-Answer any application questions from the post directly, no filler. One-line call to action that invites the next step without begging. If the input includes a JOB SIZE SIGNAL section, the close must be a direct, ready-to-start action (e.g. "send me access and I'll get started") rather than an invitation to discuss.
+Answer any application questions from the post directly, no filler. Then end with this exact closing block (use the freelancer's actual name from the FREELANCER PROFILE section):
+
+Let's discuss your project requirements in detail. I'm available for a chat anytime!
+
+Best Regards,
+
+[freelancer's name]
 
 HARD RULES:
+- The closing block ("Let's discuss..." / "Best Regards," / [name]) is MANDATORY at the end of every proposal. Never skip it.
 - Every bolded claim must be something the freelancer actually did - use ONLY the past work, skills, and portfolio provided in the input. NEVER invent case studies, tools, or results.
 - Do not reuse the same reframe sentence structure across different job niches; build it fresh from this specific post.
 - Max 2-3 bolded phrases total, in the opener only.
@@ -47,7 +54,13 @@ CRITICAL: Do NOT output your thinking process, reasoning, planning, or step-by-s
 2. REFRAME (1 sentence): Separate the surface task from the real problem this job reveals. Build it from THIS post — never a generic industry statement. If no pain point is visible, say so instead of inventing one.
 3. QUESTIONS (max 2): Each must reference something genuinely ambiguous in the post. Never ask what the post already answers. Drop the section if nothing is ambiguous, or if the job is small/low-budget/same-day-urgent.
 4. DAY-ONE SUGGESTIONS (max 3): Specific first actions framed as "here's how I'd start".
-5. CLOSE: Answer application questions directly. One-line CTA - a direct ready-to-start action if the job is small/urgent, otherwise an invitation to the next step.
+5. CLOSE: Answer application questions directly. Then end with this exact closing block (use the freelancer's actual name from the profile):
+
+Let's discuss your project requirements in detail. I'm available for a chat anytime!
+
+Best Regards,
+
+[freelancer's name]
 HARD RULES: never invent past work/results (use only the freelancer profile provided); max 2-3 bolded phrases total in the opener; under 200 words (shorter still for small/urgent jobs); no filler phrases ("passionate about", "excited to help", "great fit", "look forward to working together"); "you/your" more than "i/my"; match the client's tone; for small/low-budget/urgent jobs, explicitly confirm you can meet the stated budget/timeline instead of asking questions; if the post is too thin to build a real reframe/questions, say so.`;
 
 /**

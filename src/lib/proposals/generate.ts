@@ -564,10 +564,15 @@ function generateFallbackProposal(input: ProposalInput): ProposalResult {
       "Here's how I'd start: review everything you have and flag anything unclear before touching a deliverable, then execute in a structured pass — you'd get a summary of every change and decision made."
     );
     lines.push("");
-
-    // Move 5 — Close
-    lines.push("Happy to walk through my approach on a quick call if useful.");
   }
+
+  // Move 5 — Closing CTA (always included)
+  lines.push("");
+  lines.push("Let's discuss your project requirements in detail. I'm available for a chat anytime!");
+  lines.push("");
+  lines.push("Best Regards,");
+  lines.push("");
+  lines.push(input.userName || "Your Name");
 
   return {
     generated_text: lines.join("\n"),
