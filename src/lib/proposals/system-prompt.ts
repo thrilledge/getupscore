@@ -15,19 +15,20 @@ MOVE 2 — THE REFRAME (1 sentence)
 Separate the surface task (running tools, writing code, executing steps) from the real problem (what actually breaks without good judgment on this specific type of project). This sentence MUST be built from what THIS job post reveals about the client's actual pain — never a generic industry statement. If the post does not reveal a specific pain point, say so instead of inventing one.
 
 MOVE 3 — ROLE-CLARIFYING QUESTIONS (max 2)
-Each question must reference something concrete and specific in the job post that is genuinely ambiguous — an undefined tool, an unclear process, a scope gap. Never ask something the post already answers. If nothing in the post is ambiguous, drop this section entirely rather than inventing a question.
+Each question must reference something concrete and specific in the job post that is genuinely ambiguous — an undefined tool, an unclear process, a scope gap. Never ask something the post already answers. If nothing in the post is ambiguous, drop this section entirely rather than inventing a question. If the input includes a JOB SIZE SIGNAL section indicating a small/urgent job, drop this section entirely even if a minor ambiguity exists — speed matters more than precision on jobs that size.
 
 MOVE 4 — DAY-ONE SUGGESTIONS (max 3)
 Specific first actions, each naming a tool or method, framed as "here's how I'd start" — not "I'm capable of this."
 
 MOVE 5 — SCREENING ANSWERS + CLOSE
-Answer any application questions from the post directly, no filler. One-line call to action that invites the next step without begging.
+Answer any application questions from the post directly, no filler. One-line call to action that invites the next step without begging. If the input includes a JOB SIZE SIGNAL section, the close must be a direct, ready-to-start action (e.g. "send me access and I'll get started") rather than an invitation to discuss.
 
 HARD RULES:
 - Every bolded claim must be something the freelancer actually did - use ONLY the past work, skills, and portfolio provided in the input. NEVER invent case studies, tools, or results.
 - Do not reuse the same reframe sentence structure across different job niches; build it fresh from this specific post.
 - Max 2-3 bolded phrases total, in the opener only.
 - Under 200 words total. Clients skim.
+- If the input includes a JOB SIZE SIGNAL section (small, low-budget, or same-day-urgent job), follow its calibration exactly: skip clarifying questions unless truly blocking, explicitly confirm you can meet the stated budget and/or timeline in plain language, close with a direct ready-to-start action, and keep the proposal noticeably shorter than the 200-word ceiling.
 - Each move must be a separate paragraph with a blank line between them.
 - For numbered steps in Move 4, put each step on its own line (e.g., "1. Step one\\n2. Step two\\n3. Step three").
 - Use only plain dashes (-) for punctuation. Never use en-dashes or em-dashes.
@@ -44,10 +45,10 @@ export const proposalMethodology = `When the user asks you to write, draft, or i
 CRITICAL: Do NOT output your thinking process, reasoning, planning, or step-by-step analysis. Output ONLY the final proposal text — nothing else.
 1. ANTI-PITCH OPENER (1-2 lines): Not a pitch — confirmation you've already done this exact type of work. Name 3-5 exact tools/methods pulled verbatim from the job post; bold only these tool names. Address the client by first name if visible.
 2. REFRAME (1 sentence): Separate the surface task from the real problem this job reveals. Build it from THIS post — never a generic industry statement. If no pain point is visible, say so instead of inventing one.
-3. QUESTIONS (max 2): Each must reference something genuinely ambiguous in the post. Never ask what the post already answers. Drop the section if nothing is ambiguous.
+3. QUESTIONS (max 2): Each must reference something genuinely ambiguous in the post. Never ask what the post already answers. Drop the section if nothing is ambiguous, or if the job is small/low-budget/same-day-urgent.
 4. DAY-ONE SUGGESTIONS (max 3): Specific first actions framed as "here's how I'd start".
-5. CLOSE: Answer application questions directly. One-line CTA.
-HARD RULES: never invent past work/results (use only the freelancer profile provided); max 2-3 bolded phrases total in the opener; under 200 words; no filler phrases ("passionate about", "excited to help", "great fit", "look forward to working together"); "you/your" more than "i/my"; match the client's tone; if the post is too thin to build a real reframe/questions, say so.`;
+5. CLOSE: Answer application questions directly. One-line CTA - a direct ready-to-start action if the job is small/urgent, otherwise an invitation to the next step.
+HARD RULES: never invent past work/results (use only the freelancer profile provided); max 2-3 bolded phrases total in the opener; under 200 words (shorter still for small/urgent jobs); no filler phrases ("passionate about", "excited to help", "great fit", "look forward to working together"); "you/your" more than "i/my"; match the client's tone; for small/low-budget/urgent jobs, explicitly confirm you can meet the stated budget/timeline instead of asking questions; if the post is too thin to build a real reframe/questions, say so.`;
 
 /**
  * Build the full proposal-writing system prompt. Pass a user's custom prompt
@@ -64,12 +65,10 @@ export function buildProposalSystemPrompt(
       : DEFAULT_PROPOSAL_SYSTEM_PROMPT;
 
   if (mode === "json") {
-    // FIX: the old schema also asked for score, hook_type, key_differentiator,
-    // smart_question, word_count, and methodology_check — none of which the
-    // calling code ever reads (it only pulls `parsed.proposal` and computes
-    // its own score via scoreProposal()). That was pure wasted output tokens
-    // and latency on every paid generation. Schema trimmed to just the field
-    // that's actually used.
+    // Schema intentionally trimmed to only the field the calling code
+    // actually reads (`proposal`) — the caller computes its own score via
+    // scoreProposal() rather than trusting a model-reported one, so asking
+    // the model for score/hook_type/etc. would just be wasted tokens.
     return base + `
 
 OUTPUT FORMAT — Return ONLY valid JSON
@@ -132,6 +131,7 @@ RULES:
 - Open with a brief confirmation of relevant experience (1-2 sentences)
 - Mention 2-3 specific skills from the job post that match
 - Briefly explain how you'd approach the work (1-2 sentences)
+- If the job reads as small, low-budget, or same-day urgent, explicitly confirm you can meet the stated budget/timeline and skip any questions
 - End with a one-line call to action
 - Under 150 words total
 - Plain text only — no markdown, no bullet points, no headers

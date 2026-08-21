@@ -73,10 +73,8 @@ export async function generateProposal(
     if (!content) return generateFallbackProposal(input);
 
     if (isPaid) {
-      // FIX: previously fell back to raw `content` (the full JSON string) if
-      // `parsed.proposal` was missing, which risked leaking unparsed JSON
-      // straight to the client as their "proposal". Now falls back to the
-      // proper fallback generator instead.
+      // If `parsed.proposal` is missing/invalid, fall back to the proper
+      // fallback generator instead of ever leaking raw unparsed JSON.
       const parsed = parseLlmJson(content);
       const proposalText =
         typeof parsed?.proposal === "string" && parsed.proposal.trim()
@@ -157,18 +155,10 @@ export async function streamProposal(
 
         // Groq (reasoning_format: hidden) hides all reasoning tokens.
         // Non-Groq providers may leak stray <think> blocks into content,
-        // so route them through an incremental scrubber.
-        //
-        // FIX: the old cleaner buffered content waiting for a
-        // "---PROPOSAL---" / "**PROPOSAL:**" marker before streaming
-        // anything live. The system prompt explicitly forbids the model
-        // from ever emitting those markers, so that marker was never found
-        // and the cleaner silently buffered up to 4000 chars (i.e. the
-        // entire proposal, since proposals are capped under 200 words)
-        // before dumping it all at once at the end — defeating live
-        // streaming for every non-Groq provider. The new scrubber only
-        // strips <think>...</think> blocks and streams everything else
-        // immediately, chunk by chunk.
+        // so route them through an incremental scrubber that streams
+        // everything else live (no marker-buffering — the model is never
+        // asked to emit markers, so waiting for one would just delay the
+        // entire proposal to the end of the stream).
         const cleaner = provider.groqStyle
           ? null
           : createThinkScrubber(emit);
@@ -220,6 +210,51 @@ export async function streamProposal(
   });
 }
 
+/**
+ * Detects whether a job reads as small / low-budget / same-day urgent, so
+ * the writing directive can calibrate down: fewer/no clarifying questions,
+ * explicit budget/timeline confirmation, and a direct-action close instead
+ * of an "let's discuss" invitation.
+ *
+ * This is a heuristic on purpose — it only needs to catch the clear cases
+ * (e.g. "$20 fixed, need this today") well enough to steer tone. It's fine
+ * for it to miss ambiguous cases and fall through to the default directive.
+ */
+function detectJobSizeSignal(input: ProposalInput): string | null {
+  const desc = `${input.jobTitle} ${input.jobDescription}`.toLowerCase();
+  const budget = (input.budget || "").toLowerCase();
+
+  const urgentKeywords = /\b(today|asap|as soon as possible|right away|urgent(ly)?)\b/;
+  const smallKeywords = /\b(quick fix|small task|simple fix|minor (fix|issue|change|task)|small job|small (project|gig))\b/;
+
+  // Try to pull a dollar amount out of the budget string to catch low
+  // fixed-price jobs (e.g. "$20 fixed price"). Hourly rates aren't treated
+  // as "low budget" the same way a small fixed price is.
+  let lowFixedBudget = false;
+  const amountMatch = budget.match(/\$?\s*(\d+(?:\.\d+)?)/);
+  if (amountMatch) {
+    const amount = parseFloat(amountMatch[1]);
+    const looksHourly = /hour|\/\s*hr|\bhr\b/.test(budget);
+    if (!looksHourly && amount > 0 && amount <= 50) lowFixedBudget = true;
+  }
+
+  const isUrgent = urgentKeywords.test(desc);
+  const isSmall = smallKeywords.test(desc) || lowFixedBudget;
+
+  if (!isUrgent && !isSmall) return null;
+
+  const reasons: string[] = [];
+  if (lowFixedBudget) reasons.push(`low fixed budget (${input.budget})`);
+  if (isUrgent) reasons.push("client wants same-day/urgent completion");
+  if (isSmall && !lowFixedBudget) reasons.push("client frames this as a small/quick task");
+
+  return `This reads as a SMALL, LOW-FRICTION job (${reasons.join("; ")}). Calibrate the proposal accordingly:
+- Do NOT ask clarifying questions unless something is genuinely blocking execution - the client wants speed, not a discovery process.
+- Explicitly confirm, in plain language, that you can meet the stated budget and/or timeline.
+- Close with a direct, ready-to-start action (e.g. "send me access and I'll get started") - not an invitation to "discuss next steps".
+- Keep the proposal noticeably shorter than the 200-word ceiling; drop any step that isn't essential.`;
+}
+
 function buildPrompt(input: ProposalInput): string {
   const sections: string[] = [];
 
@@ -235,6 +270,12 @@ ${input.matchScore !== undefined ? `AI Match Score: ${input.matchScore}/100` : "
 ${input.opportunityScore !== undefined ? `AI Opportunity Score: ${input.opportunityScore}/100` : ""}
 ${input.winProbability !== undefined ? `AI Win Probability: ${input.winProbability}/100` : ""}
 ${input.recommendation ? `AI Recommendation: ${input.recommendation}` : ""}`);
+
+  // ── JOB SIZE SIGNAL ────────────────────────────────────────────────────────
+  const jobSizeSignal = detectJobSizeSignal(input);
+  if (jobSizeSignal) {
+    sections.push(`\n=== JOB SIZE SIGNAL ===\n${jobSizeSignal}`);
+  }
 
   // ── COMPETITION SIGNALS ───────────────────────────────────────────────────
   const signalFields: string[] = [];
@@ -333,25 +374,21 @@ FORMAT:
 - If the question asks for past work, examples, or links (e.g., "share 2-3 websites you built"), cite the most relevant items listed in the PORTFOLIO section above and include each item's Link URL verbatim when one is present. Never invent a link, website, or project that is not in the profile.
 - If nothing in the profile fits the question, say so honestly in one short line, then point to the closest related capability from the profile. Never fabricate experience.`);
   } else if (input.systemPrompt && input.systemPrompt.trim().length) {
-    // FIX: previously this directive always described the built-in
-    // "six moves" methodology by name (MOVE 1...MOVE 5), even when the user
-    // had saved a custom system prompt that may follow a totally different
-    // structure. That created a mismatch between the system prompt the
-    // model is told to follow and the user-turn instructions layered on
-    // top of it. When a custom system prompt is set, defer to it instead
-    // of re-asserting the default methodology here.
+    // When a custom system prompt is set, defer to it rather than
+    // re-asserting the default six-move structure by name here — but still
+    // point the model at the JOB SIZE SIGNAL section if one was added above.
     sections.push(`
 === TASK ===
-Write the proposal now, strictly following the methodology and rules given in the system prompt above. Output only the final proposal text.`);
+Write the proposal now, strictly following the methodology and rules given in the system prompt above.${jobSizeSignal ? " Apply the JOB SIZE SIGNAL guidance above if it conflicts with a more elaborate default structure." : ""} Output only the final proposal text.`);
   } else {
     sections.push(`
 === WRITING DIRECTIVE ===
 Write the proposal now following the six moves from the system prompt:
   MOVE 1 — Anti-pitch opener (1-2 lines, confirmation not pitch, verbatim tools bolded)
   MOVE 2 — Reframe (1 sentence naming the real problem this post reveals)
-  MOVE 3 — Role-clarifying questions (max 2, only if something is genuinely ambiguous)
+  MOVE 3 — Role-clarifying questions (max 2, only if something is genuinely ambiguous, and NONE if a JOB SIZE SIGNAL above says to skip them)
   MOVE 4 — Day-one suggestions (max 3, concrete first actions)
-  MOVE 5 — Screening answers + close (answer application questions, one-line CTA)
+  MOVE 5 — Screening answers + close (answer application questions, one-line CTA — direct action if a JOB SIZE SIGNAL above applies)
 
 MANDATORY CHECKS BEFORE FINALIZING:
 ✓ First sentence does NOT start with "Hi", the freelancer's name, "I saw your job", or "I'm interested"
@@ -364,7 +401,8 @@ MANDATORY CHECKS BEFORE FINALIZING:
 ✓ Zero filler phrases: passionate about, excited to help, great fit, look forward to working together
 ✓ Ends with exactly ONE line inviting the next step — no begging
 ✓ Tone matches the client's writing style
-✓ No markdown formatting inside the proposal — plain text paragraphs only`);
+✓ No markdown formatting inside the proposal — plain text paragraphs only
+✓ If a JOB SIZE SIGNAL section is present above, its guidance overrides the defaults (drop non-essential questions, confirm budget/timeline explicitly, close with a direct action)`);
   }
 
   return sections.join("\n\n");
@@ -376,9 +414,8 @@ MANDATORY CHECKS BEFORE FINALIZING:
  * penalizes verbosity past the 200-word ceiling.
  *
  * NOTE: this is a heuristic keyword/pattern score, not a real quality
- * assessment — it rewards proposals that happen to contain certain phrases
- * and penalizes length. Treat/label it in the UI as a rough methodology
- * checklist score, not an objective "quality score".
+ * assessment — treat/label it in the UI as a rough methodology checklist
+ * score, not an objective "quality score".
  */
 function scoreProposal(text: string): number {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
@@ -400,16 +437,9 @@ function scoreProposal(text: string): number {
 /**
  * Incremental <think>...</think> scrubber for providers that leak reasoning
  * tags into the content stream (non-Groq providers; Groq strips reasoning
- * via `reasoning_format: hidden` so this isn't needed there).
- *
- * FIX: replaces the old marker-buffering cleaner (`createIncrementalCleaner`)
- * which waited for a "---PROPOSAL---" marker the model is instructed to
- * never produce, and for a "---SCORE:" tail marker that the stream prompt
- * never asks for either. Both markers were dead code paths that caused the
- * entire proposal to be buffered until the end of the stream instead of
- * streaming live. This scrubber only holds back the minimum needed to avoid
- * splitting a "<think>"/"</think>" tag across chunk boundaries, and streams
- * everything else immediately.
+ * via `reasoning_format: hidden` so this isn't needed there). Streams
+ * everything that isn't inside a think block immediately, holding back only
+ * the minimum needed to avoid splitting a tag across chunk boundaries.
  */
 function createThinkScrubber(emit: (chunk: string) => void) {
   const TAG_HOLD = 8; // length of "</think>", the longest tag we scrub
@@ -431,8 +461,6 @@ function createThinkScrubber(emit: (chunk: string) => void) {
 
       const open = buffer.indexOf("<think>");
       if (open === -1) {
-        // No open tag in what we have. Emit everything except a small tail
-        // that could be the start of a split "<think>" tag, unless flushing.
         const holdLen = flushAll ? 0 : Math.min(TAG_HOLD, buffer.length);
         const safeLen = buffer.length - holdLen;
         if (safeLen > 0) {
@@ -472,8 +500,6 @@ function cleanProposal(raw: string): string {
   // Self-hosted reasoning models leak chain-of-thought as <think>...</think>.
   text = text.replace(/<think>[\s\S]*?<\/think>/g, "").replace(/<\/?think>/g, "");
 
-  // Remove code fences and stray label lines some models still add despite
-  // being told not to.
   text = text
     .replace(/```/g, "")
     .split("\n")
@@ -496,6 +522,7 @@ function cleanProposal(raw: string): string {
 
 function generateFallbackProposal(input: ProposalInput): ProposalResult {
   const lines: string[] = [];
+  const jobSizeSignal = detectJobSizeSignal(input);
 
   // Move 1 — Anti-pitch opener
   const tools = input.skills?.slice(0, 3).filter(Boolean).join(", ");
@@ -513,20 +540,34 @@ function generateFallbackProposal(input: ProposalInput): ProposalResult {
   );
   lines.push("");
 
-  // Move 3 — Question
-  lines.push(
-    "One thing I'd confirm before quoting: is there a specific part of this project that has tripped up previous attempts, or a constraint I should know about before we start?"
-  );
-  lines.push("");
+  if (jobSizeSignal) {
+    // Small/urgent job: skip the clarifying question, acknowledge
+    // budget/timeline directly, and go straight to a lean plan + close.
+    if (input.budget) {
+      lines.push(`This fits within ${input.budget}, and I can get started right away.`);
+      lines.push("");
+    }
+    lines.push(
+      "Here's how I'd start: check the affected sections at common mobile widths, adjust the responsive spacing and alignment without touching desktop or tablet, then verify the fix live."
+    );
+    lines.push("");
+    lines.push("Send me access and I'll get this done today.");
+  } else {
+    // Move 3 — Question
+    lines.push(
+      "One thing I'd confirm before quoting: is there a specific part of this project that has tripped up previous attempts, or a constraint I should know about before we start?"
+    );
+    lines.push("");
 
-  // Move 4 — Day-one suggestions
-  lines.push(
-    "Here's how I'd start: review everything you have and flag anything unclear before touching a deliverable, then execute in a structured pass — you'd get a summary of every change and decision made."
-  );
-  lines.push("");
+    // Move 4 — Day-one suggestions
+    lines.push(
+      "Here's how I'd start: review everything you have and flag anything unclear before touching a deliverable, then execute in a structured pass — you'd get a summary of every change and decision made."
+    );
+    lines.push("");
 
-  // Move 5 — Close
-  lines.push("Happy to walk through my approach on a quick call if useful.");
+    // Move 5 — Close
+    lines.push("Happy to walk through my approach on a quick call if useful.");
+  }
 
   return {
     generated_text: lines.join("\n"),
