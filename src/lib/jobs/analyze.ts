@@ -42,7 +42,7 @@ export async function analyzeJob(
       reasoning: analysisData.reasoning || "",
       proposal_tips: Array.isArray(analysisData.proposal_tips) ? analysisData.proposal_tips.slice(0, 10) : [],
       red_flags: Array.isArray(analysisData.red_flags) ? analysisData.red_flags.slice(0, 10) : [],
-      model_used: process.env.UPSCORE_LLM_MODEL || process.env.GEMINI_MODEL || "gemini-2.5-flash",
+      model_used: "llm7-groq-chain",
     },
     { onConflict: "job_id, user_id", ignoreDuplicates: false }
   );
@@ -138,12 +138,13 @@ Return JSON only with these exact fields:
       messages: [
         {
           role: "system",
-          content: "You are an expert Upwork job analyst. Return only valid JSON.",
+          content: "You are an expert Upwork job analyst. Do NOT output your thinking process, reasoning, or analysis. Return ONLY valid JSON.",
         },
         { role: "user", content: prompt },
       ],
       temperature: 0.3,
       max_tokens: 1500,
+      ...(p.groqStyle ? { reasoning_format: "hidden" as const } : {}),
       response_format: { type: "json_object" },
     }),
   );
@@ -174,7 +175,7 @@ function serverSideKeywordFallback(job: any): Record<string, any> {
     },
     budget_fit: {
       type: job.hourly_min ? "hourly" : job.budget ? "fixed" : "unknown",
-      assessment: "Set up GROQ_API_KEY env var for detailed analysis",
+      assessment: "LLM analysis unavailable — check manually",
     },
     client_analysis: {
       country: job.client_country || "Unknown",
@@ -183,10 +184,10 @@ function serverSideKeywordFallback(job: any): Record<string, any> {
     },
     competition_analysis: {
       competition_level: "unknown",
-      advice: "Configure GroqCloud keys for detailed competition analysis",
+      advice: "LLM analysis unavailable — check job posting details manually",
     },
     recommendation: "consider",
-    reasoning: "Keyword fallback — configure GROQ_API_KEY for AI analysis",
+    reasoning: "Keyword fallback — LLM analysis temporarily unavailable",
     proposal_tips: ["Review job details on Upwork for tailored proposal"],
     red_flags: [],
   };

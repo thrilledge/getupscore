@@ -7,7 +7,7 @@ export interface LLMProvider {
   extraHeaders?: Record<string, string>;
 }
 
-export type ProviderName = "gemini" | "groq" | "deepshi";
+export type ProviderName = "groq";
 
 export interface LLMChainOptions {
   /** Force a specific provider, skipping the default chain order. */
@@ -16,56 +16,51 @@ export interface LLMChainOptions {
 }
 
 /**
- * Provider chain: Groq first (reliable, fast), Gemini second (best quality
- * but may hit quota), Deepshi as last-resort fallback.
- * Pass `provider: "groq"` to force Groq only (used for free-tier proposals).
+ * Provider chain: Multiple Groq API keys for high availability.
+ * Each key has its own daily quota. On 429, automatically skips to next key.
+ *
+ * Supports:
+ * - GROQ_API_KEYS: comma-separated list of API keys (preferred)
+ * - GROQ_API_KEY: single API key (backward compatible)
  */
 export function getProviderChain(opts?: LLMChainOptions): LLMProvider[] {
-  const all = buildAllProviders();
-
-  if (opts?.provider) {
-    const match = all.find((p) => p.name === opts.provider);
-    return match ? [match] : [];
-  }
-
-  return all;
+  return buildAllProviders();
 }
 
 function buildAllProviders(): LLMProvider[] {
   const chain: LLMProvider[] = [];
+  const model = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
+  const baseUrl = "https://api.groq.com/openai/v1";
 
-  const groqKey = process.env.GROQ_API_KEY;
-  if (groqKey) {
+  // Support multiple API keys (comma-separated)
+  const keysEnv = process.env.GROQ_API_KEYS;
+  if (keysEnv) {
+    const keys = keysEnv.split(",").map((k) => k.trim()).filter(Boolean);
+    keys.forEach((key, i) => {
+      chain.push({
+        name: `groq-${i + 1}`,
+        baseUrl,
+        apiKey: key,
+        model,
+        groqStyle: true,
+      });
+    });
+    console.log(`[LLM] Loaded ${chain.length} Groq API keys from GROQ_API_KEYS`);
+    return chain;
+  }
+
+  // Fallback: single GROQ_API_KEY
+  const singleKey = process.env.GROQ_API_KEY;
+  if (singleKey) {
     chain.push({
       name: "groq",
-      baseUrl: "https://api.groq.com/openai/v1",
-      apiKey: groqKey,
-      model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
+      baseUrl,
+      apiKey: singleKey,
+      model,
       groqStyle: true,
     });
+    console.log("[LLM] Loaded single Groq API key from GROQ_API_KEY");
   }
-
-  const geminiKey = process.env.GEMINI_API_KEY;
-  if (geminiKey) {
-    chain.push({
-      name: "gemini",
-      baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-      apiKey: geminiKey,
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-    });
-  }
-
-  const deepshiHeaders: Record<string, string> = {};
-  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-  if (bypassSecret) deepshiHeaders["x-vercel-protection-bypass"] = bypassSecret;
-
-  chain.push({
-    name: "deepshi",
-    baseUrl: process.env.UPSCORE_LLM_BASE_URL || "https://deepshi-proxy.vercel.app/v1",
-    apiKey: process.env.UPSCORE_LLM_API_KEY || "",
-    model: process.env.UPSCORE_LLM_MODEL || "deepshi-r1",
-    extraHeaders: Object.keys(deepshiHeaders).length > 0 ? deepshiHeaders : undefined,
-  });
 
   return chain;
 }
@@ -84,19 +79,25 @@ export function parseLlmJson<T = any>(content: string): T {
 /**
  * POST to each provider in the chain until one succeeds.
  *
- * - 429 with "quota" in body = permanent failure, skip immediately (no retry)
- * - 429 with Retry-After = transient rate limit, retry with backoff (max 2x)
- * - Other errors = skip to next provider
+ * - 429 = skip immediately to next provider (no retry — limits don't recover mid-request)
+ * - Network error = skip to next provider
+ * - Other non-2xx = skip to next provider
+ *
+ * With 10 Groq keys, each key is tried once. If key 1 is rate-limited,
+ * key 2 is tried immediately, and so on.
  */
 export async function chatCompletionWithRetry(
   bodyFactory: (provider: LLMProvider) => Record<string, unknown>,
   opts?: LLMChainOptions
 ): Promise<{ response: Response; provider: LLMProvider }> {
   const chain = getProviderChain(opts);
-  const maxAttempts = opts?.maxAttemptsPerProvider ?? 2;
+  // With multiple keys, try each key once (no retry per key)
+  const maxAttempts = opts?.maxAttemptsPerProvider ?? 1;
   let lastError = "";
+  let triedCount = 0;
 
   for (const provider of chain) {
+    triedCount++;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (provider.apiKey) headers.Authorization = `Bearer ${provider.apiKey}`;
@@ -108,7 +109,7 @@ export async function chatCompletionWithRetry(
           method: "POST",
           headers,
           body: JSON.stringify(bodyFactory(provider)),
-          signal: AbortSignal.timeout(45_000),
+          signal: AbortSignal.timeout(90_000),
         });
       } catch (err) {
         lastError = err instanceof Error ? err.message : "network error";
@@ -116,33 +117,17 @@ export async function chatCompletionWithRetry(
         break;
       }
 
-      if (res.ok) return { response: res, provider };
+      if (res.ok) {
+        console.log(`[LLM] ${provider.name} succeeded (${triedCount}/${chain.length} keys tried)`);
+        return { response: res, provider };
+      }
 
       if (res.status === 429) {
         const body = await res.text().catch(() => "");
-        // Gemini returns "You exceeded your current quota" for permanent quota exhaustion.
-        // Groq returns "rate_limit_exceeded" for transient daily token limits — do NOT skip those.
-        const isPermanentQuota = /exceeded your current quota|quota.*exceeded|billing.*required/i.test(body);
-
-        if (isPermanentQuota) {
-          console.warn(`[LLM] ${provider.name} quota exhausted — skipping to next provider`);
-          lastError = body.slice(0, 300);
-          break;
-        }
-
-        if (attempt === maxAttempts - 1) {
-          lastError = body.slice(0, 300);
-          console.warn(`[LLM] ${provider.name} rate limited (${maxAttempts} attempts exhausted)`);
-          break;
-        }
-
-        const retryAfter = Number(res.headers.get("retry-after"));
-        const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
-          ? Math.min(retryAfter * 1000, 5000)
-          : 1500 * (attempt + 1);
-        console.warn(`[LLM] ${provider.name} rate limited, retrying in ${waitMs}ms`);
-        await new Promise((r) => setTimeout(r, waitMs));
-        continue;
+        // Any 429 = skip to next key. Daily limits aren't recovering mid-request.
+        console.warn(`[LLM] ${provider.name} 429 — skipping to next key (${triedCount}/${chain.length})`);
+        lastError = body.slice(0, 300);
+        break;
       }
 
       lastError = await res.text().catch(() => "");
@@ -151,5 +136,5 @@ export async function chatCompletionWithRetry(
     }
   }
 
-  throw new Error(`All LLM providers failed. Last error: ${lastError.slice(0, 300)}`);
+  throw new Error(`All ${chain.length} LLM providers failed. Last error: ${lastError.slice(0, 300)}`);
 }

@@ -50,18 +50,21 @@ export async function generateProposal(
       (p) => ({
         model: p.model,
         messages: [
-          { role: "system", content: input.answerQuestion
-            ? buildAnswerSystemPrompt(input.systemPrompt)
-            : isPaid
-              ? buildProposalSystemPrompt("json", input.systemPrompt)
-              : buildBasicProposalPrompt() },
+          {
+            role: "system", content: input.answerQuestion
+              ? buildAnswerSystemPrompt(input.systemPrompt)
+              : isPaid
+                ? buildProposalSystemPrompt("json", input.systemPrompt)
+                : buildBasicProposalPrompt()
+          },
           { role: "user", content: buildPrompt(input) },
         ],
         temperature: 0.7,
         max_tokens: isPaid ? 4000 : 2000,
+        ...(p.groqStyle ? { reasoning_format: "hidden" as const } : {}),
         ...(isPaid ? { response_format: { type: "json_object" as const } } : {}),
       }),
-      isPaid ? {} : { provider: "groq", maxAttemptsPerProvider: 2 }
+      {}
     );
     console.log("[Proposal] Using provider:", provider.name, "model:", provider.model, "isPaid:", isPaid);
 
@@ -70,8 +73,19 @@ export async function generateProposal(
     if (!content) return generateFallbackProposal(input);
 
     if (isPaid) {
+      // FIX: previously fell back to raw `content` (the full JSON string) if
+      // `parsed.proposal` was missing, which risked leaking unparsed JSON
+      // straight to the client as their "proposal". Now falls back to the
+      // proper fallback generator instead.
       const parsed = parseLlmJson(content);
-      const proposalText = parsed.proposal || content;
+      const proposalText =
+        typeof parsed?.proposal === "string" && parsed.proposal.trim()
+          ? parsed.proposal
+          : null;
+      if (!proposalText) {
+        console.warn("[Proposal] JSON response missing usable 'proposal' field, using fallback.");
+        return generateFallbackProposal(input);
+      }
       return {
         generated_text: proposalText,
         score: scoreProposal(proposalText),
@@ -107,19 +121,21 @@ export async function streamProposal(
           (p) => ({
             model: p.model,
             messages: [
-              { role: "system", content: input.answerQuestion
-                ? buildAnswerSystemPrompt(input.systemPrompt)
-                : isPaid
-                  ? buildProposalSystemPrompt("stream", input.systemPrompt)
-                  : buildBasicProposalPrompt() },
+              {
+                role: "system", content: input.answerQuestion
+                  ? buildAnswerSystemPrompt(input.systemPrompt)
+                  : isPaid
+                    ? buildProposalSystemPrompt("stream", input.systemPrompt)
+                    : buildBasicProposalPrompt()
+              },
               { role: "user", content: buildPrompt(input) },
             ],
             stream: true,
-            ...(isPaid && p.groqStyle ? { reasoning_format: "parsed" as const } : {}),
+            ...(isPaid && p.groqStyle ? { reasoning_format: "hidden" as const } : {}),
             temperature: 0.7,
             max_tokens: isPaid ? 4000 : 2000,
           }),
-          isPaid ? {} : { provider: "groq", maxAttemptsPerProvider: 2 }
+          {}
         );
         console.log("[Proposal Stream] Using provider:", provider.name, "model:", provider.model, "isPaid:", isPaid);
 
@@ -139,13 +155,23 @@ export async function streamProposal(
           send("proposal", { text: clean });
         };
 
-        // Groq (reasoning_format: parsed) puts reasoning in delta.reasoning and
-        // keeps content clean — stream it live. Other providers may leak
-        // reasoning/markers into content, so route them through an incremental
-        // cleaner that only emits real proposal text.
+        // Groq (reasoning_format: hidden) hides all reasoning tokens.
+        // Non-Groq providers may leak stray <think> blocks into content,
+        // so route them through an incremental scrubber.
+        //
+        // FIX: the old cleaner buffered content waiting for a
+        // "---PROPOSAL---" / "**PROPOSAL:**" marker before streaming
+        // anything live. The system prompt explicitly forbids the model
+        // from ever emitting those markers, so that marker was never found
+        // and the cleaner silently buffered up to 4000 chars (i.e. the
+        // entire proposal, since proposals are capped under 200 words)
+        // before dumping it all at once at the end — defeating live
+        // streaming for every non-Groq provider. The new scrubber only
+        // strips <think>...</think> blocks and streams everything else
+        // immediately, chunk by chunk.
         const cleaner = provider.groqStyle
           ? null
-          : createIncrementalCleaner(emit);
+          : createThinkScrubber(emit);
 
         while (true) {
           const { done, value } = await reader.read();
@@ -306,6 +332,17 @@ FORMAT:
 - Direct and specific. Use the freelancer's real skills/experience from the FREELANCER PROFILE and PORTFOLIO sections above only where they genuinely answer the question.
 - If the question asks for past work, examples, or links (e.g., "share 2-3 websites you built"), cite the most relevant items listed in the PORTFOLIO section above and include each item's Link URL verbatim when one is present. Never invent a link, website, or project that is not in the profile.
 - If nothing in the profile fits the question, say so honestly in one short line, then point to the closest related capability from the profile. Never fabricate experience.`);
+  } else if (input.systemPrompt && input.systemPrompt.trim().length) {
+    // FIX: previously this directive always described the built-in
+    // "six moves" methodology by name (MOVE 1...MOVE 5), even when the user
+    // had saved a custom system prompt that may follow a totally different
+    // structure. That created a mismatch between the system prompt the
+    // model is told to follow and the user-turn instructions layered on
+    // top of it. When a custom system prompt is set, defer to it instead
+    // of re-asserting the default methodology here.
+    sections.push(`
+=== TASK ===
+Write the proposal now, strictly following the methodology and rules given in the system prompt above. Output only the final proposal text.`);
   } else {
     sections.push(`
 === WRITING DIRECTIVE ===
@@ -337,6 +374,11 @@ MANDATORY CHECKS BEFORE FINALIZING:
  * Deterministic rubric score shared by both JSON and stream paths so the
  * number means the same thing everywhere. Rewards methodology moves and
  * penalizes verbosity past the 200-word ceiling.
+ *
+ * NOTE: this is a heuristic keyword/pattern score, not a real quality
+ * assessment — it rewards proposals that happen to contain certain phrases
+ * and penalizes length. Treat/label it in the UI as a rough methodology
+ * checklist score, not an objective "quality score".
  */
 function scoreProposal(text: string): number {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
@@ -356,138 +398,71 @@ function scoreProposal(text: string): number {
 }
 
 /**
- * Incremental stream cleaner for providers that don't separate reasoning from
- * content. Buffers the reasoning preamble until a proposal-start marker is
- * seen (or a sanity cap is hit), then streams the proposal live while holding
- * back a tail so a trailing score marker can be stripped before it's sent.
+ * Incremental <think>...</think> scrubber for providers that leak reasoning
+ * tags into the content stream (non-Groq providers; Groq strips reasoning
+ * via `reasoning_format: hidden` so this isn't needed there).
+ *
+ * FIX: replaces the old marker-buffering cleaner (`createIncrementalCleaner`)
+ * which waited for a "---PROPOSAL---" marker the model is instructed to
+ * never produce, and for a "---SCORE:" tail marker that the stream prompt
+ * never asks for either. Both markers were dead code paths that caused the
+ * entire proposal to be buffered until the end of the stream instead of
+ * streaming live. This scrubber only holds back the minimum needed to avoid
+ * splitting a "<think>"/"</think>" tag across chunk boundaries, and streams
+ * everything else immediately.
  */
-function createIncrementalCleaner(emit: (chunk: string) => void) {
-  const PROPOSAL_START = ["---PROPOSAL---", "**PROPOSAL:**"];
-  const SCORE_MARKER = ["---SCORE:", "**SCORE:**"];
-  const TAIL = 200;
-  const PREAMBLE_CAP = 4000;
-
-  let preBuffer = "";
-  let pendingTail = "";
-  let proposalMode = false;
-  let done = false;
+function createThinkScrubber(emit: (chunk: string) => void) {
+  const TAG_HOLD = 8; // length of "</think>", the longest tag we scrub
+  let buffer = "";
   let thinkOpen = false;
 
-  function findFirst(s: string, markers: string[]): { index: number; len: number } | null {
-    let best: { index: number; len: number } | null = null;
-    for (const m of markers) {
-      const i = s.indexOf(m);
-      if (i !== -1 && (!best || i < best.index)) best = { index: i, len: m.length };
-    }
-    return best;
-  }
-
-  // Strip <think>...</think> blocks that may span chunk boundaries.
-  function scrubThink(text: string): string {
-    if (!text) return "";
-    if (thinkOpen) {
-      const close = text.indexOf("</think>");
-      if (close === -1) return "";
-      thinkOpen = false;
-      return scrubThink(text.slice(close + 8));
-    }
-    const open = text.indexOf("<think>");
-    if (open === -1) return text;
-    const close = text.indexOf("</think>", open);
-    if (close === -1) {
-      thinkOpen = true;
-      return text.slice(0, open);
-    }
-    return scrubThink(text.slice(0, open) + text.slice(close + 8));
-  }
-
-  // Longest suffix of `s` that is a prefix of any score marker.
-  function partialMarkerSuffix(s: string): number {
-    for (const m of SCORE_MARKER) {
-      for (let i = m.length; i >= 1; i--) {
-        if (s.endsWith(m.slice(0, i))) return i;
+  function process(flushAll: boolean) {
+    for (; ;) {
+      if (thinkOpen) {
+        const close = buffer.indexOf("</think>");
+        if (close === -1) {
+          if (flushAll) buffer = "";
+          return;
+        }
+        buffer = buffer.slice(close + 8);
+        thinkOpen = false;
+        continue;
       }
-    }
-    return 0;
-  }
 
-  function pushProposal(text: string) {
-    if (done) return;
-    let combined = pendingTail + text;
+      const open = buffer.indexOf("<think>");
+      if (open === -1) {
+        // No open tag in what we have. Emit everything except a small tail
+        // that could be the start of a split "<think>" tag, unless flushing.
+        const holdLen = flushAll ? 0 : Math.min(TAG_HOLD, buffer.length);
+        const safeLen = buffer.length - holdLen;
+        if (safeLen > 0) {
+          emit(buffer.slice(0, safeLen));
+          buffer = buffer.slice(safeLen);
+        }
+        return;
+      }
 
-    const marker = findFirst(combined, SCORE_MARKER);
-    if (marker) {
-      const before = combined.slice(0, marker.index);
-      if (before.trim()) emit(before);
-      done = true;
-      pendingTail = "";
-      return;
+      if (open > 0) emit(buffer.slice(0, open));
+      buffer = buffer.slice(open + 7);
+      thinkOpen = true;
     }
-
-    if (combined.length <= TAIL) {
-      pendingTail = combined;
-      return;
-    }
-
-    let cut = combined.length - TAIL;
-    let sendable = combined.slice(0, cut);
-    const hold = partialMarkerSuffix(sendable);
-    if (hold > 0) {
-      sendable = sendable.slice(0, sendable.length - hold);
-      pendingTail = combined.slice(sendable.length);
-    } else {
-      pendingTail = combined.slice(cut);
-    }
-    if (sendable.trim()) emit(sendable);
   }
 
   return {
     push(raw: string) {
-      if (done) return;
-      const text = scrubThink(raw);
-
-      if (!proposalMode) {
-        preBuffer += text;
-        if (preBuffer.length > PREAMBLE_CAP) {
-          // No marker ever seen; assume everything from the last paragraph
-          // break on is the proposal and stream the rest live.
-          proposalMode = true;
-          const lastBreak = preBuffer.lastIndexOf("\n\n");
-          const head = lastBreak !== -1 ? preBuffer.slice(0, lastBreak) : "";
-          if (head.trim()) emit(cleanProposal(head));
-          const tail = lastBreak !== -1 ? preBuffer.slice(lastBreak) : preBuffer;
-          preBuffer = "";
-          pushProposal(tail);
-          return;
-        }
-        const marker = findFirst(preBuffer, PROPOSAL_START);
-        if (!marker) return;
-        proposalMode = true;
-        const rest = preBuffer.slice(marker.index + marker.len);
-        preBuffer = "";
-        if (rest) pushProposal(rest);
-        return;
-      }
-
-      pushProposal(text);
+      if (!raw) return;
+      buffer += raw;
+      process(false);
     },
     flush() {
-      if (done) return;
-      done = true;
-      if (!proposalMode) {
-        const cleaned = cleanProposal(preBuffer);
-        if (cleaned) emit(cleaned);
-        return;
-      }
-      const tail = cleanProposal(pendingTail);
-      if (tail) emit(tail);
+      process(true);
     },
   };
 }
 
 /**
- * Strip any reasoning blocks, markers, fences, or score tails that a
- * reasoning-model provider may have leaked into the content stream.
+ * Strip any stray reasoning blocks, markdown fences, or leaked labels from a
+ * complete (non-streamed, or fully-assembled) proposal string.
  */
 function cleanProposal(raw: string): string {
   if (!raw) return "";
@@ -497,36 +472,20 @@ function cleanProposal(raw: string): string {
   // Self-hosted reasoning models leak chain-of-thought as <think>...</think>.
   text = text.replace(/<think>[\s\S]*?<\/think>/g, "").replace(/<\/?think>/g, "");
 
-  // "---PROPOSAL---" marker: keep only what follows it.
-  const dashMarker = text.indexOf("---PROPOSAL---");
-  if (dashMarker !== -1) {
-    text = text.slice(dashMarker + "---PROPOSAL---".length);
-  }
-
-  // "**PROPOSAL:**" marker inside a leaked "**REASONING:**" block.
-  const reasoningStart = text.indexOf("**REASONING:**");
-  const boldProposal = text.indexOf("**PROPOSAL:**");
-  if (reasoningStart !== -1 && boldProposal !== -1 && boldProposal > reasoningStart) {
-    text = text.slice(boldProposal + "**PROPOSAL:**".length);
-  }
-
-  // Trailing score marker: keep only what precedes it.
-  const scoreIdx = text.lastIndexOf("---SCORE:");
-  const boldScoreIdx = text.lastIndexOf("**SCORE:**");
-  const cut = Math.max(scoreIdx, boldScoreIdx);
-  if (cut !== -1) {
-    text = text.slice(0, cut);
-  }
-
-  // Remove code fences and stray label lines.
+  // Remove code fences and stray label lines some models still add despite
+  // being told not to.
   text = text
     .replace(/```/g, "")
     .split("\n")
     .filter((line) => {
       const t = line.trim();
-      return t !== "PROPOSAL:" && t !== "Proposal:" && !/^---(PROPOSAL|SCORE)/.test(t);
+      return t !== "PROPOSAL:" && t !== "Proposal:";
     })
     .join("\n")
+    // Replace en-dashes and em-dashes with simple dash.
+    .replace(/[–—]/g, "-")
+    // Add line break before numbered steps like "1.", "2.", "3." when preceded by text.
+    .replace(/(\S)\s+(?=\d+[\.\)]\s)/g, "$1\n")
     .replace(/\n{3,}/g, "\n\n")
     // Strip markdown emphasis (bold/italic/backticks) — plain text output only.
     .replace(/[*_`]/g, "")

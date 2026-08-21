@@ -152,23 +152,28 @@ export async function POST(request: Request) {
 
     if (scoreInserts.length > 0) {
       const admin = createSupabaseAdminClient();
-      Promise.allSettled(
-        scoreInserts.map(async (s) => {
+      (async () => {
+        let ok = 0;
+        for (const s of scoreInserts) {
           try {
             const { data: job } = await admin
               .from("jobs")
               .select("*")
               .eq("id", s.job_id)
               .single();
-            if (job) await analyzeJob(admin, job, s.job_id, s.user_id);
+            if (job) {
+              await analyzeJob(admin, job, s.job_id, s.user_id);
+              ok++;
+            }
           } catch (e: any) {
             console.warn("[Vibeworker] Analysis failed for", s.job_id, e.message);
           }
-        })
-      ).then((results) => {
-        const ok = results.filter((r) => r.status === "fulfilled").length;
+          if (scoreInserts.indexOf(s) < scoreInserts.length - 1) {
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
         console.log(`[Vibeworker] Analyzed ${ok}/${scoreInserts.length} jobs`);
-      });
+      })();
     }
 
     return response;

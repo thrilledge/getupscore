@@ -43,7 +43,7 @@ export async function streamChat(
               ...messages.map((m) => ({ role: m.role, content: m.content.slice(0, 3000) })),
             ],
             stream: true,
-            ...(p.groqStyle ? { reasoning_format: "parsed" as const } : {}),
+            ...(p.groqStyle ? { reasoning_format: "hidden" as const } : {}),
             temperature: 0.7,
             max_tokens: maxTokens,
           })

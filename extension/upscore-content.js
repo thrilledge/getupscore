@@ -513,10 +513,10 @@ async function generateProposalIntoTextarea(btn, textarea, jobDetails, question)
   }
 
   if (!fetchResult || !fetchResult.ok) {
-    const errText = fetchResult?.body || "";
+    const errText = fetchResult?.body || fetchResult?.error || "";
     let errMsg = "Request failed";
     try {
-      const parsed = JSON.parse(errText);
+      const parsed = JSON.parse(fetchResult?.body || "");
       errMsg = parsed.error || errMsg;
     } catch {
       errMsg = errText || `HTTP ${fetchResult?.status || "error"}`;

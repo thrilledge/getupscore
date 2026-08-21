@@ -4,6 +4,8 @@
  */
 export const DEFAULT_PROPOSAL_SYSTEM_PROMPT = `You are drafting an Upwork proposal for the freelancer whose profile is provided in the input, applying to the job post in the input.
 
+CRITICAL: Do NOT output your thinking process, reasoning, planning, or step-by-step analysis. Do NOT explain how you are crafting the proposal. Do NOT show your work. Output ONLY the final proposal text — nothing else. Any thinking or reasoning visible in your output will be shown directly to the client.
+
 THE METHOD — six moves, in this order:
 
 MOVE 1 — ANTI-PITCH OPENER (1-2 lines)
@@ -22,10 +24,13 @@ MOVE 5 — SCREENING ANSWERS + CLOSE
 Answer any application questions from the post directly, no filler. One-line call to action that invites the next step without begging.
 
 HARD RULES:
-- Every bolded claim must be something the freelancer actually did — use ONLY the past work, skills, and portfolio provided in the input. NEVER invent case studies, tools, or results.
+- Every bolded claim must be something the freelancer actually did - use ONLY the past work, skills, and portfolio provided in the input. NEVER invent case studies, tools, or results.
 - Do not reuse the same reframe sentence structure across different job niches; build it fresh from this specific post.
 - Max 2-3 bolded phrases total, in the opener only.
 - Under 200 words total. Clients skim.
+- Each move must be a separate paragraph with a blank line between them.
+- For numbered steps in Move 4, put each step on its own line (e.g., "1. Step one\\n2. Step two\\n3. Step three").
+- Use only plain dashes (-) for punctuation. Never use en-dashes or em-dashes.
 - No filler phrases: "passionate about", "excited to help", "look forward to working together", "great fit", "I saw your job post", opening with the freelancer's name, or a greeting like "Hi, I'm...".
 - "You/your" must appear more than "I/my".
 - Match the client's tone: casual post → conversational; formal spec → precise and structured.
@@ -36,12 +41,13 @@ HARD RULES:
  * job-chat system prompt so the assistant can write proposals on request.
  */
 export const proposalMethodology = `When the user asks you to write, draft, or improve a proposal for the job, follow this exact methodology:
+CRITICAL: Do NOT output your thinking process, reasoning, planning, or step-by-step analysis. Output ONLY the final proposal text — nothing else.
 1. ANTI-PITCH OPENER (1-2 lines): Not a pitch — confirmation you've already done this exact type of work. Name 3-5 exact tools/methods pulled verbatim from the job post; bold only these tool names. Address the client by first name if visible.
 2. REFRAME (1 sentence): Separate the surface task from the real problem this job reveals. Build it from THIS post — never a generic industry statement. If no pain point is visible, say so instead of inventing one.
 3. QUESTIONS (max 2): Each must reference something genuinely ambiguous in the post. Never ask what the post already answers. Drop the section if nothing is ambiguous.
 4. DAY-ONE SUGGESTIONS (max 3): Specific first actions framed as "here's how I'd start".
 5. CLOSE: Answer application questions directly. One-line CTA.
-HARD RULES: never invent past work/results (use only the freelancer profile provided); max 2-3 bolded phrases total in the opener; under 200 words; no filler phrases ("passionate about", "excited to help", "great fit", "look forward to working together"); "you/your" more than "I/my"; match the client's tone; if the post is too thin to build a real reframe/questions, say so.`;
+HARD RULES: never invent past work/results (use only the freelancer profile provided); max 2-3 bolded phrases total in the opener; under 200 words; no filler phrases ("passionate about", "excited to help", "great fit", "look forward to working together"); "you/your" more than "i/my"; match the client's tone; if the post is too thin to build a real reframe/questions, say so.`;
 
 /**
  * Build the full proposal-writing system prompt. Pass a user's custom prompt
@@ -58,25 +64,29 @@ export function buildProposalSystemPrompt(
       : DEFAULT_PROPOSAL_SYSTEM_PROMPT;
 
   if (mode === "json") {
+    // FIX: the old schema also asked for score, hook_type, key_differentiator,
+    // smart_question, word_count, and methodology_check — none of which the
+    // calling code ever reads (it only pulls `parsed.proposal` and computes
+    // its own score via scoreProposal()). That was pure wasted output tokens
+    // and latency on every paid generation. Schema trimmed to just the field
+    // that's actually used.
     return base + `
 
 OUTPUT FORMAT — Return ONLY valid JSON
 Return ONLY valid JSON with this exact structure — no markdown, no preamble, no explanation outside the JSON:
 {
-  "proposal": "The full proposal following the six moves above. Plain text only — no markdown, no bullet points, no headers inside the proposal itself. Natural paragraph breaks only.",
-  "score": <number 1-100 rating how well this proposal follows the methodology>,
-  "hook_type": "<anti-pitch / reframe / question-led / day-one — which move the opener uses>",
-  "key_differentiator": "<one sentence describing the main competitive angle taken>",
-  "smart_question": "<the exact closing question used, or 'none' if the section was dropped>",
-  "word_count": <integer count of words in the proposal>,
-  "methodology_check": "<confirmation the reframe was built from THIS post, not generic>"
+  "proposal": "The full proposal following the six moves above. Plain text only. Each move must be on its own paragraph separated by a blank line (\\n\\n). Format:\\n\\nMove 1 (opener)\\n\\nMove 2 (reframe)\\n\\nMove 3 (questions)\\n\\nMove 4 (day-one suggestions)\\n\\nMove 5 (close). No markdown, no bullet points, no headers inside the proposal itself."
 }`;
   }
 
   return base + `
 
-OUTPUT FORMAT — Proposal only
+OUTPUT FORMAT - Proposal only
 Write the proposal now, following the six moves. Output ONLY the proposal text itself:
+- Each move must be a separate paragraph with a blank line between them (double newline)
+- Move 1 (opener) -> blank line -> Move 2 (reframe) -> blank line -> Move 3 (questions) -> blank line -> Move 4 (day-one suggestions) -> blank line -> Move 5 (close)
+- For numbered steps in Move 4, put each step on its own line (e.g., "1. Step one\\n2. Step two\\n3. Step three")
+- Use only plain dashes (-) for punctuation. Never use en-dashes (–) or em-dashes (—)
 - No reasoning, no preamble, no commentary, no section headers
 - No markdown, no bullet points, no code fences
 - Plain prose, under 200 words
@@ -94,6 +104,8 @@ export function buildAnswerSystemPrompt(customBase?: string): string {
     customBase && customBase.trim().length ? customBase.trim() : undefined;
 
   return (base ? base + "\n\n" : "") + `You are answering a single application question for a freelancer applying to an Upwork job. Use ONLY the freelancer's real profile, skills and portfolio provided in the input — never invent experience, tools, or results.
+
+CRITICAL: Do NOT output your thinking process, reasoning, or analysis. Output ONLY the final answer text — nothing else.
 
 RULES:
 - Answer ONLY the specific question asked. No cover letter, no pitch, no opener, no sign-off, no call-to-action.
@@ -113,6 +125,8 @@ Output ONLY the answer text itself. Start directly with the answer. Do not wrap 
  */
 export function buildBasicProposalPrompt(): string {
   return `Write a concise Upwork proposal for the freelancer applying to this job. Use ONLY the freelancer's real profile, skills, and portfolio provided — never invent experience or results.
+
+CRITICAL: Do NOT output your thinking process, reasoning, planning, or step-by-step analysis. Output ONLY the final proposal text — nothing else.
 
 RULES:
 - Open with a brief confirmation of relevant experience (1-2 sentences)
