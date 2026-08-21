@@ -723,207 +723,207 @@ export default function SettingsPage() {
 
       {/* API Tokens — Pro only */}
       {subscription?.is_paid ? (
-      <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
-        <CardHeader className="border-b border-[#0A0A0A]/10 px-5 py-5 sm:px-6">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#00C98B]/10 text-[#00A975]">
-              <KeyRound className="size-5" />
-            </span>
+        <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
+          <CardHeader className="border-b border-[#0A0A0A]/10 px-5 py-5 sm:px-6">
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#00C98B]/10 text-[#00A975]">
+                <KeyRound className="size-5" />
+              </span>
 
-            <div>
-              <CardTitle className="font-heading text-lg font-bold text-[#0A0A0A]">
-                Extension API Tokens
-              </CardTitle>
+              <div>
+                <CardTitle className="font-heading text-lg font-bold text-[#0A0A0A]">
+                  Extension API Tokens
+                </CardTitle>
 
-              <CardDescription className="mt-0.5 text-sm text-[#0A0A0A]/45">
-                Connect the Chrome Extension to your account
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent className="space-y-5 px-5 py-5 sm:px-6">
-          <div className="space-y-2">
-            <Label
-              htmlFor="tokenName"
-              className="text-sm font-semibold text-[#0A0A0A]"
-            >
-              New Token
-            </Label>
-
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                id="tokenName"
-                value={newTokenName}
-                onChange={(event) =>
-                  setNewTokenName(event.target.value)
-                }
-                placeholder="Chrome Extension"
-                className="h-10 flex-1 rounded-xl border-[#0A0A0A]/10 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20"
-                maxLength={50}
-              />
-
-              <Button
-                onClick={handleGenerateToken}
-                disabled={generatingToken}
-                className="h-10 rounded-xl bg-[#0A0A0A] px-4 font-semibold text-white hover:bg-[#0A0A0A]/90"
-              >
-                {generatingToken ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Plus className="size-4" />
-                )}
-
-                Generate
-              </Button>
-            </div>
-          </div>
-
-          {showNewToken && newTokenValue && (
-            <div className="space-y-3 rounded-2xl border border-[#00C98B]/25 bg-[#00C98B]/5 p-4">
-              <div className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-[#00A975]" />
-
-                <div>
-                  <p className="text-sm font-semibold text-[#008F64]">
-                    Token generated successfully
-                  </p>
-
-                  <p className="mt-1 text-xs text-[#0A0A0A]/45">
-                    Copy this token now. You won&apos;t be
-                    able to see it again.
-                  </p>
-                </div>
+                <CardDescription className="mt-0.5 text-sm text-[#0A0A0A]/45">
+                  Connect the Chrome Extension to your account
+                </CardDescription>
               </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-5 px-5 py-5 sm:px-6">
+            <div className="space-y-2">
+              <Label
+                htmlFor="tokenName"
+                className="text-sm font-semibold text-[#0A0A0A]"
+              >
+                New Token
+              </Label>
 
               <div className="flex flex-col gap-2 sm:flex-row">
-                <code className="block min-w-0 flex-1 break-all rounded-xl border border-[#0A0A0A]/10 bg-white p-3 font-mono text-xs text-[#0A0A0A]/65">
-                  {tokenVisible
-                    ? newTokenValue
-                    : `${newTokenValue.slice(
-                      0,
-                      16
-                    )}${"•".repeat(32)}`}
-                </code>
+                <Input
+                  id="tokenName"
+                  value={newTokenName}
+                  onChange={(event) =>
+                    setNewTokenName(event.target.value)
+                  }
+                  placeholder="Chrome Extension"
+                  className="h-10 flex-1 rounded-xl border-[#0A0A0A]/10 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20"
+                  maxLength={50}
+                />
 
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="size-10 rounded-xl border-[#0A0A0A]/10 text-[#0A0A0A]/50 hover:border-[#00C98B]/30 hover:bg-[#00C98B]/5 hover:text-[#00A975]"
-                    onClick={() =>
-                      setTokenVisible(!tokenVisible)
-                    }
-                    title={
-                      tokenVisible ? "Hide" : "Show"
-                    }
-                  >
-                    {tokenVisible ? (
-                      <EyeOff className="size-4" />
-                    ) : (
-                      <Eye className="size-4" />
-                    )}
-                  </Button>
+                <Button
+                  onClick={handleGenerateToken}
+                  disabled={generatingToken}
+                  className="h-10 rounded-xl bg-[#0A0A0A] px-4 font-semibold text-white hover:bg-[#0A0A0A]/90"
+                >
+                  {generatingToken ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Plus className="size-4" />
+                  )}
 
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="size-10 rounded-xl border-[#0A0A0A]/10 text-[#0A0A0A]/50 hover:border-[#00C98B]/30 hover:bg-[#00C98B]/5 hover:text-[#00A975]"
-                    onClick={copyToken}
-                    title="Copy"
-                  >
-                    <Copy className="size-4" />
-                  </Button>
-                </div>
+                  Generate
+                </Button>
               </div>
             </div>
-          )}
 
-          <Separator className="bg-[#0A0A0A]/10" />
+            {showNewToken && newTokenValue && (
+              <div className="space-y-3 rounded-2xl border border-[#00C98B]/25 bg-[#00C98B]/5 p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-[#00A975]" />
 
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold text-[#0A0A0A]">
-              Active Tokens
-            </Label>
+                  <div>
+                    <p className="text-sm font-semibold text-[#008F64]">
+                      Token generated successfully
+                    </p>
 
-            {tokensLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="size-5 animate-spin text-[#00A975]" />
-              </div>
-            ) : tokens.length === 0 ? (
-              <div className="rounded-2xl border border-[#0A0A0A]/10 bg-[#F8F9F9] px-4 py-8 text-center">
-                <KeyRound className="mx-auto size-8 text-[#00A975]/50" />
+                    <p className="mt-1 text-xs text-[#0A0A0A]/45">
+                      Copy this token now. You won&apos;t be
+                      able to see it again.
+                    </p>
+                  </div>
+                </div>
 
-                <p className="mx-auto mt-2 max-w-md text-sm text-[#0A0A0A]/45">
-                  No API tokens yet. Generate one above for
-                  the Chrome Extension.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {tokens.map((token) => (
-                  <div
-                    key={token.id}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-[#0A0A0A]/10 bg-[#F8F9F9] p-3 transition-all hover:border-[#00C98B]/30 hover:bg-[#00C98B]/5"
-                  >
-                    <div className="min-w-0 space-y-1">
-                      <p className="truncate text-sm font-semibold text-[#0A0A0A]">
-                        {token.name ||
-                          "Chrome Extension"}
-                      </p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <code className="block min-w-0 flex-1 break-all rounded-xl border border-[#0A0A0A]/10 bg-white p-3 font-mono text-xs text-[#0A0A0A]/65">
+                    {tokenVisible
+                      ? newTokenValue
+                      : `${newTokenValue.slice(
+                        0,
+                        16
+                      )}${"•".repeat(32)}`}
+                  </code>
 
-                      <p className="font-mono text-xs text-[#00A975]">
-                        {token.token_preview}
-                      </p>
-
-                      <p className="text-[10px] leading-4 text-[#0A0A0A]/40">
-                        Last used:{" "}
-                        {formatDate(token.last_used_at)}
-                        <span className="mx-1.5">•</span>
-                        Created:{" "}
-                        {formatDate(token.created_at)}
-                      </p>
-                    </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="size-10 rounded-xl border-[#0A0A0A]/10 text-[#0A0A0A]/50 hover:border-[#00C98B]/30 hover:bg-[#00C98B]/5 hover:text-[#00A975]"
+                      onClick={() =>
+                        setTokenVisible(!tokenVisible)
+                      }
+                      title={
+                        tokenVisible ? "Hide" : "Show"
+                      }
+                    >
+                      {tokenVisible ? (
+                        <EyeOff className="size-4" />
+                      ) : (
+                        <Eye className="size-4" />
+                      )}
+                    </Button>
 
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="icon"
-                      className="size-9 shrink-0 rounded-xl text-[#0A0A0A]/35 hover:bg-[#0A0A0A]/5 hover:text-[#0A0A0A]"
-                      onClick={() =>
-                        handleRevokeToken(token.id)
-                      }
-                      title="Revoke"
+                      className="size-10 rounded-xl border-[#0A0A0A]/10 text-[#0A0A0A]/50 hover:border-[#00C98B]/30 hover:bg-[#00C98B]/5 hover:text-[#00A975]"
+                      onClick={copyToken}
+                      title="Copy"
                     >
-                      <Trash2 className="size-4" />
+                      <Copy className="size-4" />
                     </Button>
                   </div>
-                ))}
+                </div>
               </div>
             )}
-          </div>
-        </CardContent>
-      </Card>
+
+            <Separator className="bg-[#0A0A0A]/10" />
+
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-[#0A0A0A]">
+                Active Tokens
+              </Label>
+
+              {tokensLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="size-5 animate-spin text-[#00A975]" />
+                </div>
+              ) : tokens.length === 0 ? (
+                <div className="rounded-2xl border border-[#0A0A0A]/10 bg-[#F8F9F9] px-4 py-8 text-center">
+                  <KeyRound className="mx-auto size-8 text-[#00A975]/50" />
+
+                  <p className="mx-auto mt-2 max-w-md text-sm text-[#0A0A0A]/45">
+                    No API tokens yet. Generate one above for
+                    the Chrome Extension.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {tokens.map((token) => (
+                    <div
+                      key={token.id}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-[#0A0A0A]/10 bg-[#F8F9F9] p-3 transition-all hover:border-[#00C98B]/30 hover:bg-[#00C98B]/5"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <p className="truncate text-sm font-semibold text-[#0A0A0A]">
+                          {token.name ||
+                            "Chrome Extension"}
+                        </p>
+
+                        <p className="font-mono text-xs text-[#00A975]">
+                          {token.token_preview}
+                        </p>
+
+                        <p className="text-[10px] leading-4 text-[#0A0A0A]/40">
+                          Last used:{" "}
+                          {formatDate(token.last_used_at)}
+                          <span className="mx-1.5">•</span>
+                          Created:{" "}
+                          {formatDate(token.created_at)}
+                        </p>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-9 shrink-0 rounded-xl text-[#0A0A0A]/35 hover:bg-[#0A0A0A]/5 hover:text-[#0A0A0A]"
+                        onClick={() =>
+                          handleRevokeToken(token.id)
+                        }
+                        title="Revoke"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       ) : (
-      <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
-        <CardContent className="flex flex-col items-center px-5 py-8 text-center sm:px-6">
-          <span className="grid size-12 place-items-center rounded-2xl bg-[#0A0A0A]">
-            <Lock className="size-5 text-white/60" />
-          </span>
-          <h3 className="mt-3 font-heading text-sm font-bold text-[#0A0A0A]">
-            Extension API — Pro Only
-          </h3>
-          <p className="mt-1 max-w-sm text-xs text-[#0A0A0A]/45">
-            Upgrade to Pro to generate API tokens and connect the Chrome Extension.
-          </p>
-          <Button
-            onClick={() => window.location.href = "/billing"}
-            className="mt-4 h-9 rounded-xl bg-[#0A0A0A] px-4 text-xs font-semibold text-white hover:bg-[#0A0A0A]/90"
-          >
-            <Crown className="size-3.5" />
-            Upgrade to Pro
-          </Button>
-        </CardContent>
-      </Card>
+        <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
+          <CardContent className="flex flex-col items-center px-5 py-8 text-center sm:px-6">
+            <span className="grid size-12 place-items-center rounded-2xl bg-[#0A0A0A]">
+              <Lock className="size-5 text-white/60" />
+            </span>
+            <h3 className="mt-3 font-heading text-sm font-bold text-[#0A0A0A]">
+              Extension API — Pro Only
+            </h3>
+            <p className="mt-1 max-w-sm text-xs text-[#0A0A0A]/45">
+              Upgrade to Pro to generate API tokens and connect the Chrome Extension.
+            </p>
+            <Button
+              onClick={() => window.location.href = "/billing"}
+              className="mt-4 h-9 rounded-xl bg-[#0A0A0A] px-4 text-xs font-semibold text-white hover:bg-[#0A0A0A]/90"
+            >
+              <Crown className="size-3.5" />
+              Upgrade to Pro
+            </Button>
+          </CardContent>
+        </Card>
       )}
       <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
         <CardHeader className="border-b border-[#0A0A0A]/10 px-5 py-5 sm:px-6">

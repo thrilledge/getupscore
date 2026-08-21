@@ -278,6 +278,30 @@ export function AppSidebar() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+
+          {/* Admin link (only for admin users) */}
+          {user?.app_metadata?.is_admin === true && (
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      render={<Link href="/admin" onClick={() => isMobile && setOpenMobile(false)} />}
+                      isActive={pathname.startsWith("/admin")}
+                      className={`relative h-9 rounded-lg text-[13px] font-medium transition-all duration-200
+                        ${pathname.startsWith("/admin")
+                          ? "bg-[#FF6B35]/15 text-[#FF6B35] shadow-[inset_0_0_20px_rgba(255,107,53,0.08)]"
+                          : "text-white/50 hover:bg-white/[0.04] hover:text-white/80"
+                        }`}
+                    >
+                      <Shield className={`size-4 shrink-0 ${pathname.startsWith("/admin") ? "text-[#FF6B35]" : "text-white/40"}`} />
+                      <span className="truncate group-data-[collapsible=icon]:hidden">Admin Panel</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </SidebarContent>
 
         {/* User section */}

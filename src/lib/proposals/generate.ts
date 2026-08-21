@@ -1,5 +1,6 @@
 import { buildProposalSystemPrompt, buildAnswerSystemPrompt, buildBasicProposalPrompt } from "./system-prompt";
 import { chatCompletionWithRetry, parseLlmJson } from "@/lib/llm";
+import { logLlmUsage } from "@/lib/llm-logger";
 
 export interface ProposalInput {
   jobTitle: string;
@@ -26,6 +27,7 @@ export interface ProposalInput {
   customInstructions?: string;
   answerQuestion?: string;
   systemPrompt?: string;
+  userId?: string;
 }
 
 export interface ProposalResult {
@@ -46,6 +48,7 @@ export async function generateProposal(
   isPaid: boolean = true
 ): Promise<ProposalResult> {
   try {
+    const startTime = Date.now();
     const { response, provider } = await chatCompletionWithRetry(
       (p) => ({
         model: p.model,
@@ -69,6 +72,20 @@ export async function generateProposal(
     console.log("[Proposal] Using provider:", provider.name, "model:", provider.model, "isPaid:", isPaid);
 
     const data = await response.json();
+    const duration_ms = Date.now() - startTime;
+
+    logLlmUsage({
+      user_id: input.userId,
+      provider: provider.name,
+      model: provider.model,
+      endpoint: input.answerQuestion ? "answer" : "proposal",
+      prompt_tokens: data.usage?.prompt_tokens ?? 0,
+      completion_tokens: data.usage?.completion_tokens ?? 0,
+      total_tokens: data.usage?.total_tokens ?? 0,
+      duration_ms,
+      success: true,
+    }).catch(() => {});
+
     const content = data.choices?.[0]?.message?.content;
     if (!content) return generateFallbackProposal(input);
 
@@ -97,6 +114,17 @@ export async function generateProposal(
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.warn("[Proposal] Generation error:", message);
+    logLlmUsage({
+      user_id: input.userId,
+      provider: "unknown",
+      model: "unknown",
+      endpoint: input.answerQuestion ? "answer" : "proposal",
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+      success: false,
+      error_message: message.slice(0, 500),
+    }).catch(() => {});
     return generateFallbackProposal(input);
   }
 }

@@ -1,4 +1,5 @@
 import { chatCompletionWithRetry, parseLlmJson } from "@/lib/llm";
+import { logLlmUsage } from "@/lib/llm-logger";
 
 function clampScore(value: unknown): number | null {
   const n = typeof value === "number" ? value : parseFloat(String(value ?? ""));
@@ -15,7 +16,7 @@ export async function analyzeJob(
   let analysisData: Record<string, any>;
 
   try {
-    analysisData = await serverSideLlmAnalysis(job);
+    analysisData = await serverSideLlmAnalysis(job, userId);
   } catch (err) {
     console.warn("[Analyze] LLM analysis failed, using keyword fallback:", err instanceof Error ? err.message : err);
     analysisData = serverSideKeywordFallback(job);
@@ -61,6 +62,7 @@ export async function analyzeJob(
 
 async function serverSideLlmAnalysis(
   job: any,
+  userId?: string,
 ): Promise<Record<string, any>> {
   const title = job.title || "";
   const description = (job.description || "").slice(0, 3000);
@@ -132,6 +134,7 @@ Return JSON only with these exact fields:
   "red_flags": [strings]
 }`;
 
+  const startTime = Date.now();
   const response = await chatCompletionWithRetry(
     (p) => ({
       model: p.model,
@@ -155,6 +158,20 @@ Return JSON only with these exact fields:
   }
 
   const data = await response.response.json();
+  const duration_ms = Date.now() - startTime;
+
+  logLlmUsage({
+    user_id: userId,
+    provider: response.provider.name,
+    model: response.provider.model,
+    endpoint: "analysis",
+    prompt_tokens: data.usage?.prompt_tokens ?? 0,
+    completion_tokens: data.usage?.completion_tokens ?? 0,
+    total_tokens: data.usage?.total_tokens ?? 0,
+    duration_ms,
+    success: true,
+  }).catch(() => {});
+
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new Error("Empty LLM response");
 

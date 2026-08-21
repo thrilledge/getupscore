@@ -1,4 +1,5 @@
 import { chatCompletionWithRetry } from "@/lib/llm";
+import { logLlmUsage } from "@/lib/llm-logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 
@@ -33,8 +34,10 @@ export async function streamChat(
       };
 
       let fullContent = "";
+      let tokenEstimate = 0;
 
       try {
+        const startTime = Date.now();
         const { response, provider } = await chatCompletionWithRetry(
           (p) => ({
             model: p.model,
@@ -70,6 +73,7 @@ export async function streamChat(
               const delta = parsed.choices?.[0]?.delta;
               if (delta?.content) {
                 fullContent += delta.content;
+                tokenEstimate += Math.ceil(delta.content.length / 4);
                 send({ content: delta.content });
               }
             } catch {
@@ -98,6 +102,17 @@ export async function streamChat(
 
         send({ done: true });
         controller.close();
+
+        logLlmUsage({
+          provider: provider.name,
+          model: provider.model,
+          endpoint: "chat",
+          prompt_tokens: 0,
+          completion_tokens: tokenEstimate,
+          total_tokens: tokenEstimate,
+          duration_ms: Date.now() - startTime,
+          success: true,
+        }).catch(() => {});
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
         console.warn("[Chat] Streaming error:", message);
