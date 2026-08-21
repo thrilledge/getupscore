@@ -90,7 +90,9 @@ export function AppSidebar() {
   }
 
   const initials =
-    user?.email?.charAt(0).toUpperCase() ?? "U";
+    user?.user_metadata?.display_name?.charAt(0).toUpperCase() ??
+    user?.email?.charAt(0).toUpperCase() ??
+    "U";
 
   return (
     <>
@@ -302,7 +304,7 @@ export function AppSidebar() {
 
                     <div className="grid min-w-0 flex-1 text-left leading-tight group-data-[collapsible=icon]:hidden">
                       <span className="truncate font-heading text-[13px] font-semibold text-white">
-                        {user?.email?.split("@")[0] ??
+                        {user?.user_metadata?.display_name ? user?.user_metadata?.display_name : user?.email?.split("@")[0] ??
                           "User"}
                       </span>
 
@@ -330,7 +332,7 @@ export function AppSidebar() {
 
                         <div className="min-w-0">
                           <p className="truncate font-heading text-sm font-semibold text-white">
-                            {user?.email?.split("@")[0] ??
+                            {user?.user_metadata?.display_name ? user?.user_metadata?.display_name : user?.email?.split("@")[0] ??
                               "User"}
                           </p>
 
