@@ -15,6 +15,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Check,
   Zap,
@@ -25,6 +27,8 @@ import {
   Clock,
   ArrowLeft,
   Sparkles,
+  Tag,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -53,8 +57,55 @@ export default function BillingPage() {
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
   const checkoutUserIdRef = useRef<string | null>(null);
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [couponResult, setCouponResult] = useState<any>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
   const isPaid = subscription?.is_paid ?? false;
   const isLoading = userLoading || subLoading;
+
+  // Calculate discounted price
+  const basePrice = period === "monthly" ? 12 : 130;
+  let discountedPrice = basePrice;
+  if (couponResult?.valid) {
+    if (couponResult.discount_type === "percent") {
+      discountedPrice = basePrice * (1 - couponResult.discount_value / 100);
+    } else {
+      discountedPrice = Math.max(0, basePrice - couponResult.discount_value);
+    }
+  }
+
+  async function validateCoupon() {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError(null);
+    setCouponResult(null);
+    try {
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: couponCode.trim(), plan: period }),
+      });
+      const data = await res.json();
+      if (data.valid) {
+        setCouponResult(data);
+        toast.success(`Coupon applied! ${data.discount_type === "percent" ? `${data.discount_value}% off` : `$${data.discount_value} off`}`);
+      } else {
+        setCouponError(data.error || "Invalid coupon");
+      }
+    } catch {
+      setCouponError("Failed to validate coupon");
+    }
+    setCouponLoading(false);
+  }
+
+  function clearCoupon() {
+    setCouponCode("");
+    setCouponResult(null);
+    setCouponError(null);
+  }
 
   useEffect(() => {
     setCheckoutCompletedHandler(async (data: any) => {
@@ -95,7 +146,7 @@ export default function BillingPage() {
         : process.env.NEXT_PUBLIC_PADDLE_YEARLY_PRICE_ID;
 
     try {
-      paddle.Checkout.open({
+      const checkoutOptions: any = {
         items: [
           {
             priceId: priceId as string,
@@ -104,18 +155,26 @@ export default function BillingPage() {
         ],
         customData: {
           user_id: user.id,
+          ...(couponResult?.valid ? { coupon_code: couponResult.code, coupon_id: couponResult.coupon_id } : {}),
         },
         settings: {
           displayMode: "overlay",
           theme: "light",
           locale: "en",
         },
-      });
+      };
+
+      // Apply discount via Paddle's discount code if coupon is valid
+      if (couponResult?.valid && couponResult.code) {
+        checkoutOptions.discountCode = couponResult.code;
+      }
+
+      paddle.Checkout.open(checkoutOptions);
     } catch {
       setCheckoutLoading(false);
       toast.error("Checkout failed. Please try again.");
     }
-  }, [user, paddle, period]);
+  }, [user, paddle, period, couponResult]);
 
   if (isLoading) {
     return (
@@ -269,6 +328,88 @@ export default function BillingPage() {
               ))}
             </ul>
 
+            {/* Coupon Input */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Have a coupon?</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Tag className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Enter coupon code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === "Enter" && validateCoupon()}
+                    disabled={!!couponResult}
+                    className="h-11 rounded-xl border-[#0A0A0A]/10 bg-white pl-10 font-mono font-bold uppercase"
+                  />
+                </div>
+                {couponResult ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={clearCoupon}
+                    className="h-11 rounded-xl border-red-500/20 text-red-600 hover:bg-red-500/5"
+                  >
+                    <X className="size-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={validateCoupon}
+                    disabled={couponLoading || !couponCode.trim()}
+                    className="h-11 rounded-xl border-[#0A0A0A]/15"
+                  >
+                    {couponLoading ? (
+                      <span className="size-4 animate-spin rounded-full border-2 border-[#0A0A0A]/20 border-t-[#0A0A0A]" />
+                    ) : (
+                      "Apply"
+                    )}
+                  </Button>
+                )}
+              </div>
+              {couponError && (
+                <p className="text-xs text-red-600">{couponError}</p>
+              )}
+              {couponResult?.valid && (
+                <div className="flex items-center gap-2 rounded-xl border border-[#00C98B]/20 bg-[#00C98B]/5 px-3 py-2">
+                  <Check className="size-4 text-[#00C98B]" />
+                  <span className="text-sm font-semibold text-[#00A975]">
+                    {couponResult.discount_type === "percent"
+                      ? `${couponResult.discount_value}% off`
+                      : `$${couponResult.discount_value} off`}{" "}
+                    applied!
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Price Summary */}
+            {couponResult?.valid && (
+              <div className="rounded-xl border border-[#0A0A0A]/10 bg-[#0A0A0A]/5 p-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Original price</span>
+                  <span className="line-through text-muted-foreground">
+                    ${basePrice}{period === "monthly" ? "/mo" : "/yr"}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-sm font-semibold">You pay</span>
+                  <span className="font-heading text-2xl font-bold text-[#00A975]">
+                    ${discountedPrice.toFixed(2)}{period === "monthly" ? "/mo" : "/yr"}
+                  </span>
+                </div>
+                <div className="mt-1 flex items-center justify-between text-xs">
+                  <span className="text-[#00A975]">
+                    You save ${Math.max(0, basePrice - discountedPrice).toFixed(2)}
+                  </span>
+                  <span className="text-muted-foreground">
+                    with code {couponResult.code}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* CTA */}
             <Button
               onClick={handleCheckout}
@@ -283,7 +424,10 @@ export default function BillingPage() {
               ) : (
                 <>
                   <Zap className="size-4" />
-                  Upgrade to Pro — ${period === "monthly" ? "12/mo" : "130/yr"}
+                  {couponResult?.valid
+                    ? `Upgrade — $${discountedPrice.toFixed(2)}/${period === "monthly" ? "mo" : "yr"}`
+                    : `Upgrade to Pro — $${period === "monthly" ? "12/mo" : "130/yr"}`
+                  }
                 </>
               )}
             </Button>

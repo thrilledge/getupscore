@@ -24,6 +24,7 @@ export const appConfig = {
       { title: "Extension", href: "/extension", icon: "ExternalLink" },
       { title: "Settings", href: "/settings", icon: "Settings" },
       { title: "Billing", href: "/billing", icon: "CreditCard" },
+      { title: "Affiliates", href: "/affiliates", icon: "Link2" },
     ],
   },
 

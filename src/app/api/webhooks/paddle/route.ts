@@ -4,6 +4,7 @@ import {
   upsertSubscription,
   cancelSubscription,
 } from "@/lib/subscription-server";
+import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 const WEBHOOK_SECRET = process.env.PADDLE_WEBHOOK_SECRET ?? "";
 
@@ -95,6 +96,13 @@ export async function POST(request: NextRequest) {
         console.log("[Paddle WH] Activating subscription:", { userId, subscriptionId, priceId });
         await upsertSubscription(userId, subscriptionId, priceId, "active", periodEnd);
         console.log("[Paddle WH] Subscription activated for:", userId);
+
+        // Record affiliate commission if user was referred
+        try {
+          await recordAffiliateCommission(userId, data);
+        } catch (e) {
+          console.error("[Paddle WH] Failed to record affiliate commission:", e);
+        }
         break;
       }
 
@@ -153,4 +161,76 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Record affiliate commission when a referred user makes a payment.
+ * Checks if the paying user has a referral_signups record, then creates a commission.
+ */
+async function recordAffiliateCommission(userId: string, transactionData: any) {
+  const admin = createSupabaseAdminClient() as any;
+
+  // Find the referral signup for this user
+  const { data: referral } = await admin
+    .from("referral_signups")
+    .select("id, affiliate_id, referral_code")
+    .eq("user_id", userId)
+    .single();
+
+  if (!referral) {
+    // User wasn't referred — no commission to record
+    return;
+  }
+
+  // Check if commission already recorded for this transaction
+  const transactionId = transactionData.id ?? transactionData.subscription_id;
+  const { data: existingCommission } = await admin
+    .from("commissions")
+    .select("id")
+    .eq("referral_signup_id", referral.id)
+    .eq("transaction_id", String(transactionId))
+    .single();
+
+  if (existingCommission) {
+    console.log("[Paddle WH] Commission already recorded for transaction:", transactionId);
+    return;
+  }
+
+  // Get affiliate details for commission rate
+  const { data: affiliate } = await admin
+    .from("affiliates")
+    .select("id, commission_rate")
+    .eq("id", referral.affiliate_id)
+    .single();
+
+  if (!affiliate) {
+    return;
+  }
+
+  // Calculate commission amount
+  const totalAmount = parseFloat(transactionData.total ?? "0") / 100; // Paddle amounts are in cents
+  const commissionRate = parseFloat(affiliate.commission_rate ?? "0.20"); // Default 20%
+  const commissionAmount = totalAmount * commissionRate;
+
+  // Record the commission
+  await admin.from("commissions").insert({
+    affiliate_id: referral.affiliate_id,
+    referral_signup_id: referral.id,
+    transaction_id: String(transactionId),
+    amount: commissionAmount,
+    currency: (transactionData.currency_code ?? "USD").toUpperCase(),
+    status: "pending",
+  });
+
+  // Update referral signup status
+  await admin
+    .from("referral_signups")
+    .update({ status: "converted" })
+    .eq("id", referral.id);
+
+  console.log("[Paddle WH] Commission recorded:", {
+    affiliate_id: referral.affiliate_id,
+    amount: commissionAmount,
+    transaction_id: transactionId,
+  });
 }

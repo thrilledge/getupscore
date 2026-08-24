@@ -24,6 +24,8 @@ const pageTitles: Record<string, string> = {
   "/admin/bulk-email": "Bulk Email",
   "/admin/feedback": "User Feedback",
   "/admin/ab-tests": "A/B Tests",
+  "/admin/coupons": "Coupons",
+  "/admin/affiliates": "Affiliates",
 };
 
 export default function AdminLayout({

@@ -150,7 +150,7 @@ export default function SignupPage() {
       return;
     }
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -164,6 +164,23 @@ export default function SignupPage() {
       setError(signUpError.message);
       setLoading(false);
       return;
+    }
+
+    // Track referral if ?ref= cookie exists
+    try {
+      const refMatch = document.cookie.match(/(?:^|;\s*)ref=([^;]*)/);
+      if (refMatch && data?.user?.id) {
+        fetch("/api/affiliate/record-signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            referral_code: decodeURIComponent(refMatch[1]),
+            user_id: data.user.id,
+          }),
+        }).catch(() => {});
+      }
+    } catch {
+      // Ignore referral tracking errors
     }
 
     router.push("/dashboard");
