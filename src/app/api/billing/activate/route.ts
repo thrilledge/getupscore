@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "Transaction not found" }, { status: 400 });
     }
 
-    const status = tx.status === "completed" ? "active" : tx.status;
+    const status = ["completed", "approved", "paid"].includes(tx.status) ? "active" : tx.status;
     const subscriptionId = tx.subscription_id ?? tx.id ?? "";
     const priceId = tx.items?.[0]?.price?.id ?? "";
     const periodEnd =
