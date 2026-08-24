@@ -88,7 +88,7 @@ export async function GET(
     // Filter analyses to current user only (can't use !inner with optional join)
     if (data?.job_analyses) {
       data.job_analyses = data.job_analyses.filter((a: any) => a.user_id === user.id);
-      if (data.job_analyses.length === 0) data.job_analyses = null;
+      if (data.job_analyses.length === 0) (data as any).job_analyses = null;
     }
 
     return data;
