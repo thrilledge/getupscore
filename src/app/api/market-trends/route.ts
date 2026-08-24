@@ -14,5 +14,20 @@ export async function GET(request: Request) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json(data);
+
+  // PostgreSQL json_agg() returns null when no rows match.
+  // Ensure array fields are always [] so client components can safely .reduce() etc.
+  const d = data as Record<string, any> | null;
+  if (d && typeof d === "object") {
+    for (const key of ["history", "skills", "skillTrend", "skillPairs", "budgetBands", "hourlyBands", "categories", "subcategories", "geography"]) {
+      if (!Array.isArray(d[key])) d[key] = [];
+    }
+    if (d.timing) {
+      if (!Array.isArray(d.timing.byDay)) d.timing.byDay = [];
+      if (!Array.isArray(d.timing.byHour)) d.timing.byHour = [];
+    }
+    if (d.clients?.tiers && !Array.isArray(d.clients.tiers)) d.clients.tiers = [];
+  }
+
+  return NextResponse.json(d);
 }

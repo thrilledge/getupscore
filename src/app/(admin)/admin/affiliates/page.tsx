@@ -28,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Link from "next/link";
 import {
   Users,
   DollarSign,
@@ -237,10 +238,10 @@ export default function AdminAffiliatesPage() {
                 {filtered.map((a) => (
                   <TableRow key={a.id} className="border-[#0A0A0A]/5">
                     <TableCell>
-                      <div>
-                        <p className="font-semibold text-sm">{a.name || "Unknown"}</p>
-                        <p className="text-xs text-muted-foreground">{a.email}</p>
-                      </div>
+                      <Link href={`/admin/affiliates/${a.id}`} className="group">
+                        <p className="font-semibold text-sm text-[#0A0A0A] transition-colors group-hover:text-[#00A975]">{a.name || "Unknown"}</p>
+                        <p className="text-xs text-muted-foreground group-hover:text-[#00A975]/70">{a.email}</p>
+                      </Link>
                     </TableCell>
                     <TableCell>
                       <code className="rounded-lg bg-[#0A0A0A]/5 px-2 py-1 font-mono text-xs font-bold">

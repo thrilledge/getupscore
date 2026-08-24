@@ -6,13 +6,9 @@ export const config = {
      * Match all request paths except for:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (public/*)
-     * - api/webhooks
-     * - api/jobs/cron (authenticated via Bearer token)
-     * - api/extension/* (extension API routes authenticated via Bearer token)
-     * - api/notifications/send (authenticated via Bearer token)
+     * - Static assets in public/ (served from root, not /public/)
+     * - api/webhooks, api/inngest, etc. (authenticated via Bearer token)
      */
-    "/((?!_next/static|_next/image|favicon.ico|public|api/webhooks|api/inngest|api/jobs/cron|api/extension/|api/notifications/send|api/proposals/generate).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*.png|.*.jpg|.*.jpeg|.*.gif|.*.svg|.*.webp|.*.ico|.*.woff|.*.woff2|.*.ttf|.*.eot|.*.otf|api/webhooks|api/inngest|api/jobs/cron|api/extension/|api/notifications/send|api/proposals/generate).*)",
   ],
 };

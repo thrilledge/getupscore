@@ -85,6 +85,19 @@ interface DailyClick {
   count: number;
 }
 
+interface Payout {
+  id: string;
+  amount: number;
+  commission_count: number;
+  payout_method: string;
+  bank_name: string | null;
+  account_number: string | null;
+  status: string;
+  notes: string | null;
+  processed_at: string | null;
+  created_at: string;
+}
+
 export default function AffiliateDashboard() {
   const [stats, setStats] = useState<AffiliateStats | null>(null);
   const [referrals, setReferrals] = useState<Referral[]>([]);
@@ -94,8 +107,10 @@ export default function AffiliateDashboard() {
   const [registering, setRegistering] = useState(false);
   const [copied, setCopied] = useState(false);
   const [payoutDialog, setPayoutDialog] = useState(false);
-  const [payoutEmail, setPayoutEmail] = useState("");
-  const [payoutMethod, setPayoutMethod] = useState("paypal");
+  const [bankName, setBankName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [requestingPayout, setRequestingPayout] = useState(false);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
 
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://www.getupscore.com";
 
@@ -106,9 +121,10 @@ export default function AffiliateDashboard() {
   async function fetchData() {
     setLoading(true);
     try {
-      const [statsRes, referralsRes] = await Promise.all([
+      const [statsRes, referralsRes, payoutsRes] = await Promise.all([
         fetch("/api/affiliate/register"),
         fetch("/api/affiliate/referrals"),
+        fetch("/api/affiliate/payouts"),
       ]);
 
       const statsData = await statsRes.json();
@@ -119,6 +135,11 @@ export default function AffiliateDashboard() {
         setReferrals(referralsData.referrals);
         setCommissions(referralsData.commissions);
         setDailyClicks(referralsData.dailyClicks);
+      }
+
+      const payoutsData = await payoutsRes.json();
+      if (payoutsData.ok) {
+        setPayouts(payoutsData.payouts);
       }
     } catch {
       console.error("Failed to fetch affiliate data");
@@ -150,6 +171,34 @@ export default function AffiliateDashboard() {
     setCopied(true);
     toast.success("Referral link copied!");
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleRequestPayout() {
+    if (!bankName.trim() || !accountNumber.trim()) {
+      toast.error("Fill in both fields");
+      return;
+    }
+    setRequestingPayout(true);
+    try {
+      const res = await fetch("/api/affiliate/payouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bank_name: bankName, account_number: accountNumber }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast.success("Payout request submitted!");
+        setPayoutDialog(false);
+        setBankName("");
+        setAccountNumber("");
+        fetchData();
+      } else {
+        toast.error(data.error || "Failed to submit request");
+      }
+    } catch {
+      toast.error("Network error");
+    }
+    setRequestingPayout(false);
   }
 
   function getStatusBadge(status: string) {
@@ -356,6 +405,28 @@ export default function AffiliateDashboard() {
         </Card>
       </div>
 
+      {/* Request Payout Button */}
+      {stats.pending_commission >= 1 && (
+        <Card className="border-[#00C98B]/30 bg-[#00C98B]/5">
+          <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-heading text-sm font-bold">Ready to withdraw?</p>
+              <p className="text-xs text-muted-foreground">
+                You have <span className="font-bold text-[#00A975]">${stats.pending_commission.toFixed(2)}</span> pending commission.
+                Request a payout to receive it via bank transfer.
+              </p>
+            </div>
+            <Button
+              onClick={() => setPayoutDialog(true)}
+              className="shrink-0 rounded-xl bg-[#00C98B] font-bold text-[#0A0A0A] hover:bg-[#00C98B]/90"
+            >
+              <Wallet className="size-4" />
+              Request Payout
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Clicks Chart */}
       <Card className="border-[#0A0A0A]/10">
         <CardHeader>
@@ -459,6 +530,95 @@ export default function AffiliateDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Payout Requests */}
+      {payouts.length > 0 && (
+        <Card className="border-[#0A0A0A]/10">
+          <CardHeader>
+            <CardTitle className="font-heading text-sm">Payout Requests</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-[#0A0A0A]/5 hover:bg-transparent">
+                  <TableHead className="font-semibold">Amount</TableHead>
+                  <TableHead className="font-semibold">Bank</TableHead>
+                  <TableHead className="font-semibold">Account</TableHead>
+                  <TableHead className="font-semibold">Status</TableHead>
+                  <TableHead className="font-semibold">Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payouts.map((p) => (
+                  <TableRow key={p.id} className="border-[#0A0A0A]/5">
+                    <TableCell className="font-heading font-bold">${p.amount.toFixed(2)}</TableCell>
+                    <TableCell>{p.bank_name || "-"}</TableCell>
+                    <TableCell className="font-mono text-xs">{p.account_number || "-"}</TableCell>
+                    <TableCell>{getStatusBadge(p.status)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {new Date(p.created_at).toLocaleDateString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Payout Request Dialog */}
+      <Dialog open={payoutDialog} onOpenChange={setPayoutDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading">Request Payout</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-xl bg-[#00C98B]/5 p-3 text-center">
+              <p className="text-xs text-muted-foreground">Payout amount</p>
+              <p className="font-heading text-2xl font-bold text-[#00A975]">${stats.pending_commission.toFixed(2)}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bank-name">Bank Name</Label>
+              <Input
+                id="bank-name"
+                placeholder="e.g. Meezan Bank, JazzCash, Wise"
+                value={bankName}
+                onChange={(e) => setBankName(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="account-number">Account Number / IBAN</Label>
+              <Input
+                id="account-number"
+                placeholder="e.g. PK36MEZN0000102345678901"
+                value={accountNumber}
+                onChange={(e) => setAccountNumber(e.target.value)}
+                className="rounded-xl"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Your payout request will be reviewed and processed within 3-5 business days.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setPayoutDialog(false); setBankName(""); setAccountNumber(""); }}
+              className="rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRequestPayout}
+              disabled={requestingPayout || !bankName.trim() || !accountNumber.trim()}
+              className="rounded-xl bg-[#00C98B] font-bold text-[#0A0A0A] hover:bg-[#00C98B]/90"
+            >
+              {requestingPayout ? <Loader2 className="size-4 animate-spin" /> : "Submit Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

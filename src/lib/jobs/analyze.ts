@@ -16,7 +16,15 @@ export async function analyzeJob(
   let analysisData: Record<string, any>;
 
   try {
-    analysisData = await serverSideLlmAnalysis(job, userId);
+    // Fetch user's active filters for personalized analysis
+    const { data: filters } = await supabase
+      .from("job_filters")
+      .select("name, keywords, skills, min_budget, max_budget, hourly_min, hourly_max, client_countries, max_proposals, job_type, contractor_tier, category, subcategory")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .limit(5);
+
+    analysisData = await serverSideLlmAnalysis(job, userId, filters);
   } catch (err) {
     console.warn("[Analyze] LLM analysis failed, using keyword fallback:", err instanceof Error ? err.message : err);
     analysisData = serverSideKeywordFallback(job);
@@ -43,7 +51,7 @@ export async function analyzeJob(
       reasoning: analysisData.reasoning || "",
       proposal_tips: Array.isArray(analysisData.proposal_tips) ? analysisData.proposal_tips.slice(0, 10) : [],
       red_flags: Array.isArray(analysisData.red_flags) ? analysisData.red_flags.slice(0, 10) : [],
-      model_used: "llm7-groq-chain",
+      model_used: "groq-multikey",
     },
     { onConflict: "job_id, user_id", ignoreDuplicates: false }
   );
@@ -63,6 +71,7 @@ export async function analyzeJob(
 async function serverSideLlmAnalysis(
   job: any,
   userId?: string,
+  userFilters?: any[],
 ): Promise<Record<string, any>> {
   const title = job.title || "";
   const description = (job.description || "").slice(0, 3000);
@@ -115,7 +124,28 @@ Reviews/Feedback: ${clientFeedbackCount}
 Company Size: ${clientCompanySize}
 Hire Rate: ${clientHireRate}
 Member Since: ${clientMemberSince}
-Payment Verified: ${paymentVerified ? "YES (verified)" : "No (not verified)"}
+Payment Verified: ${paymentVerified ? "YES (verified)" : "No (not verified)"}${userFilters && userFilters.length > 0 ? `
+
+=== USER'S SAVED FILTER PREFERENCES ===
+${userFilters.map((f: any, i: number) => {
+  const parts = [`Filter ${i + 1}: "${f.name || "Unnamed"}"`];
+  if (f.keywords?.length) parts.push(`  Keywords: ${f.keywords.join(", ")}`);
+  if (f.skills?.length) parts.push(`  Desired skills: ${f.skills.join(", ")}`);
+  if (f.job_type) parts.push(`  Job type: ${f.job_type}`);
+  if (f.contractor_tier) parts.push(`  Experience level: ${f.contractor_tier}`);
+  if (f.min_budget) parts.push(`  Min budget: $${f.min_budget}`);
+  if (f.max_budget) parts.push(`  Max budget: $${f.max_budget}`);
+  if (f.hourly_min) parts.push(`  Hourly min: $${f.hourly_min}/hr`);
+  if (f.hourly_max) parts.push(`  Hourly max: $${f.hourly_max}/hr`);
+  if (f.client_countries?.length) parts.push(`  Preferred client countries: ${f.client_countries.join(", ")}`);
+  if (f.max_proposals) parts.push(`  Max competition: ${f.max_proposals} proposals`);
+  if (f.category) parts.push(`  Category: ${f.category}`);
+  if (f.subcategory) parts.push(`  Subcategory: ${f.subcategory}`);
+  return parts.join("\n");
+}).join("\n\n")}
+Use these preferences to personalize your match_score, recommendation, and proposal_tips.
+For example: if the job requires Python but the user filters only mention React, lower the skills_match.
+If the user prefers US clients and this job is from India, note that as a mismatch.` : ""}
 
 IMPORTANT: If client score is >= 4.0, payment is verified, and client has history of hires/spending, these are strong POSITIVE signals. Do NOT flag them as red flags. Only flag as red flags when data is actually missing or negative.
 

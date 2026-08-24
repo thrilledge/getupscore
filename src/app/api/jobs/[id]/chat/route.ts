@@ -95,22 +95,28 @@ export async function POST(
        client_hire_rate,
        client_payment_verified,
        client_location_country,
-       job_analyses!inner (
+       job_analyses (
         match_score,
         opportunity_score,
         win_probability,
         recommendation,
         reasoning,
         proposal_tips,
-        red_flags
+        red_flags,
+        user_id
        )`
     )
     .eq("id", id)
-    .eq("job_analyses.user_id", user.id)
     .single();
 
   if (jobError || !job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+
+  // Filter analyses to current user only (can't use !inner with optional join)
+  if ((job as any).job_analyses) {
+    (job as any).job_analyses = (job as any).job_analyses.filter((a: any) => a.user_id === user.id);
+    if ((job as any).job_analyses.length === 0) (job as any).job_analyses = null;
   }
 
   const { data: profile } = await supabase

@@ -182,13 +182,13 @@ async function recordAffiliateCommission(userId: string, transactionData: any) {
     return;
   }
 
-  // Check if commission already recorded for this transaction
+  // Check if commission already recorded for this transaction (idempotency)
   const transactionId = transactionData.id ?? transactionData.subscription_id;
   const { data: existingCommission } = await admin
     .from("commissions")
     .select("id")
     .eq("referral_signup_id", referral.id)
-    .eq("transaction_id", String(transactionId))
+    .eq("paddle_transaction_id", String(transactionId))
     .single();
 
   if (existingCommission) {
