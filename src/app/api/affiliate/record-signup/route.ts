@@ -13,6 +13,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { referral_code, user_id } = body;
 
+    console.log("[record-signup] Called with:", { referral_code, user_id });
+
     if (!referral_code || !user_id) {
       return NextResponse.json({ ok: false, error: "Missing referral_code or user_id" });
     }
@@ -28,8 +30,11 @@ export async function POST(request: Request) {
       .single();
 
     if (affErr || !affiliate) {
+      console.error("[record-signup] Affiliate not found:", { referral_code, affErr: affErr?.message });
       return NextResponse.json({ ok: false, error: "Invalid referral code" });
     }
+
+    console.log("[record-signup] Found affiliate:", { id: affiliate.id, code: referral_code });
 
     // Check if user already referred
     const { data: existing } = await admin

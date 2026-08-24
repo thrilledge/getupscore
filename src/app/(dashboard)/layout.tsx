@@ -5,6 +5,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ReferralSignupRecorder } from "@/components/referral-signup-recorder";
 import { useUser } from "@/hooks/use-user";
 import {
   useRouter,
@@ -107,6 +108,7 @@ export default function DashboardLayout({
       className="min-h-screen bg-[#F7F8F8]"
     >
       <AppSidebar />
+      <ReferralSignupRecorder />
 
       <main
         className="relative h-svh min-w-0 flex-1 overflow-y-auto bg-[#F7F8F8]"

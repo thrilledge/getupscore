@@ -229,7 +229,7 @@ async function recordAffiliateCommission(userId: string, transactionData: any) {
   // Update referral signup status
   await admin
     .from("referral_signups")
-    .update({ status: "converted" })
+    .update({ status: "paid" })
     .eq("id", referral.id);
 
   console.log("[Paddle WH] Commission recorded:", {
