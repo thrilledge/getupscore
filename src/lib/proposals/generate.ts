@@ -308,53 +308,31 @@ ${input.recommendation ? `AI Recommendation: ${input.recommendation}` : ""}`);
   // ── COMPETITION SIGNALS ───────────────────────────────────────────────────
   const signalFields: string[] = [];
   if (input.proposalsCount !== undefined) {
-    const competitionLevel =
-      input.proposalsCount < 5
-        ? "LOW — early mover advantage"
-        : input.proposalsCount < 20
-          ? "MEDIUM — be specific and fast"
-          : input.proposalsCount < 50
-            ? "HIGH — hook must be razor sharp"
-            : "VERY HIGH — only radical specificity wins";
-    signalFields.push(`Proposals already submitted: ${input.proposalsCount} (Competition: ${competitionLevel})`);
+    const level = input.proposalsCount < 5 ? "LOW" : input.proposalsCount < 20 ? "MED" : input.proposalsCount < 50 ? "HIGH" : "VERY HIGH";
+    signalFields.push(`Proposals: ${input.proposalsCount} (${level}${level === "LOW" ? " - early mover" : level === "VERY HIGH" ? " - radical specificity only" : ""})`);
   }
-  if (input.postedAt) signalFields.push(`Job posted at: ${input.postedAt}`);
-  sections.push(`\n=== COMPETITION SIGNALS ===
-${signalFields.length ? signalFields.join("\n") : "No competition data available."}
-Strategic note: If competition is HIGH or VERY HIGH, lead with the most specific hook possible.`);
+  if (input.postedAt) signalFields.push(`Posted: ${input.postedAt}`);
+  sections.push(`\n=== COMPETITION ===
+${signalFields.length ? signalFields.join("\n") : "No data."}
+If HIGH+: lead with most specific hook.`);
 
   // ── CLIENT INTELLIGENCE ───────────────────────────────────────────────────
   const clientFields: string[] = [];
   if (input.clientTotalSpend !== undefined) {
-    const spendSignal =
-      input.clientTotalSpend > 10000
-        ? "Serious buyer — values quality over price"
-        : input.clientTotalSpend > 1000
-          ? "Moderate buyer — balance value and cost"
-          : "New or cautious buyer — reduce perceived risk";
-    clientFields.push(`Total client spend: $${input.clientTotalSpend} (${spendSignal})`);
+    const sig = input.clientTotalSpend > 10000 ? "serious buyer" : input.clientTotalSpend > 1000 ? "moderate" : "cautious/new";
+    clientFields.push(`Spend: $${input.clientTotalSpend} (${sig})`);
   }
   if (input.clientHireRate !== undefined) {
-    const hireSignal =
-      input.clientHireRate >= 75
-        ? "High hire rate — client is decisive and serious"
-        : input.clientHireRate >= 40
-          ? "Average hire rate — needs more convincing"
-          : "Low hire rate — picky or inexperienced. Minimize friction in your CTA.";
-    clientFields.push(`Client hire rate: ${input.clientHireRate}% (${hireSignal})`);
+    const sig = input.clientHireRate >= 75 ? "decisive" : input.clientHireRate >= 40 ? "average" : "picky";
+    clientFields.push(`Hire rate: ${input.clientHireRate}% (${sig})`);
   }
   if (input.clientRating !== undefined) {
-    const ratingSignal =
-      input.clientRating >= 4.5
-        ? "Great client — has positive history with freelancers"
-        : input.clientRating >= 3.5
-          ? "Average client — proceed normally"
-          : "Low client rating — may have had conflict with past freelancers. Emphasize communication and clear deliverables.";
-    clientFields.push(`Client rating: ${input.clientRating}/5 (${ratingSignal})`);
+    const sig = input.clientRating >= 4.5 ? "great" : input.clientRating >= 3.5 ? "average" : "low";
+    clientFields.push(`Rating: ${input.clientRating}/5 (${sig})`);
   }
-  sections.push(`\n=== CLIENT INTELLIGENCE ===
-${clientFields.length ? clientFields.join("\n") : "No client intelligence data available."}
-Use this data to calibrate tone, CTA friction level, and whether to emphasize risk reversal.`);
+  sections.push(`\n=== CLIENT ===
+${clientFields.length ? clientFields.join("\n") : "No data."}
+Use to calibrate tone and CTA friction.`);
 
   // ── AI TIPS ───────────────────────────────────────────────────────────────
   if (input.proposalTips?.length) {
@@ -370,15 +348,14 @@ ${input.proposalTips.map((t) => `- ${t}`).join("\n")}`);
   if (input.userExperience) {
     profileFields.push(`Background:\n${input.userExperience.slice(0, 2500)}`);
   }
-  sections.push(`\n=== FREELANCER PROFILE ===
-${profileFields.length ? profileFields.join("\n") : "No profile data available."}
-IMPORTANT: Reference ONLY the skills and experience directly relevant to this specific job. Do not list all skills — that is a fatal mistake.`);
+  sections.push(`\n=== PROFILE ===
+${profileFields.length ? profileFields.join("\n") : "No data."}
+Use only skills/experience relevant to this job. Never list all skills.`);
 
   // ── PORTFOLIO ─────────────────────────────────────────────────────────────
   if (input.portfolioItems) {
-    sections.push(`\n=== PORTFOLIO ITEMS (reference only if directly relevant to this job) ===
-${input.portfolioItems}
-WARNING: Do not reference portfolio items that don't mirror this client's use case. Irrelevant portfolio = confusion, not confidence.`);
+    sections.push(`\n=== PORTFOLIO (reference if relevant) ===
+${input.portfolioItems}`);
   }
 
   // ── CUSTOM INSTRUCTIONS ───────────────────────────────────────────────────
@@ -391,46 +368,26 @@ ${input.customInstructions}`);
   if (input.answerQuestion) {
     sections.push(`
 === TASK ===
-Answer this application question from the client's job post. Write ONLY the answer to the question — do NOT write a cover letter, proposal, or pitch. Do not add pricing, timelines, or sign-offs unless the question itself asks for them.
+Answer this Upwork application question only. Do NOT write a proposal/cover letter.
 
 Question: ${input.answerQuestion}
 
-FORMAT:
-- Plain text only — no markdown, no bullet points, no headers, no labels
-- Concise: 40 to 100 words
-- Direct and specific. Use the freelancer's real skills/experience from the FREELANCER PROFILE and PORTFOLIO sections above only where they genuinely answer the question.
-- If the question asks for past work, examples, or links (e.g., "share 2-3 websites you built"), cite the most relevant items listed in the PORTFOLIO section above and include each item's Link URL verbatim when one is present. Never invent a link, website, or project that is not in the profile.
-- If nothing in the profile fits the question, say so honestly in one short line, then point to the closest related capability from the profile. Never fabricate experience.`);
+FORMAT: 40-100 words. Plain text only. No markdown/headers/labels. Reference relevant profile skills only. If no fit, say so briefly and point to closest skill. Include portfolio URLs if asked for past work. Start directly with the answer.`);
   } else if (input.systemPrompt && input.systemPrompt.trim().length) {
-    // When a custom system prompt is set, defer to it rather than
-    // re-asserting the default six-move structure by name here — but still
-    // point the model at the JOB SIZE SIGNAL section if one was added above.
     sections.push(`
 === TASK ===
-Write the proposal now, strictly following the methodology and rules given in the system prompt above.${jobSizeSignal ? " Apply the JOB SIZE SIGNAL guidance above if it conflicts with a more elaborate default structure." : ""} Output only the final proposal text.`);
+Write proposal strictly following system prompt methodology.${jobSizeSignal ? " Apply JOB SIZE SIGNAL guidance." : ""} Output only proposal text.`);
   } else {
     sections.push(`
 === WRITING DIRECTIVE ===
-Write the proposal now following the six moves from the system prompt:
-  MOVE 1 — Anti-pitch opener (1-2 lines, confirmation not pitch, verbatim tools bolded)
-  MOVE 2 — Reframe (1 sentence naming the real problem this post reveals)
-  MOVE 3 — Role-clarifying questions (max 2, only if something is genuinely ambiguous, and NONE if a JOB SIZE SIGNAL above says to skip them)
-  MOVE 4 — Day-one suggestions (max 3, concrete first actions)
-  MOVE 5 — Screening answers + close (answer application questions, one-line CTA — direct action if a JOB SIZE SIGNAL above applies)
+Write proposal following 5 moves from system prompt:
+  1: Opener (1-2 lines, confirmation not pitch, verbatim tools bolded)
+  2: Reframe (1 sentence, real problem from THIS post)
+  3: Questions (max 2, skip if ambiguous or JOB SIZE SIGNAL says skip)
+  4: Day-one (max 3, concrete first actions)
+  5: Close + CTA (answer app questions, one-line CTA — direct action if JOB SIZE SIGNAL present)
 
-MANDATORY CHECKS BEFORE FINALIZING:
-✓ First sentence does NOT start with "Hi", the freelancer's name, "I saw your job", or "I'm interested"
-✓ Opener states this is not a pitch — it's confirmation of past, relevant work
-✓ Reframe is built from THIS post's specific pain point, not a generic industry statement
-✓ Word count is under 200 (hard ceiling: 200)
-✓ Max 2-3 bolded tool/method names, in the opener only
-✓ "You/your" appears more than "I/my"
-✓ Never invented past work — only the freelancer profile provided is used
-✓ Zero filler phrases: passionate about, excited to help, great fit, look forward to working together
-✓ Ends with exactly ONE line inviting the next step — no begging
-✓ Tone matches the client's writing style
-✓ No markdown formatting inside the proposal — plain text paragraphs only
-✓ If a JOB SIZE SIGNAL section is present above, its guidance overrides the defaults (drop non-essential questions, confirm budget/timeline explicitly, close with a direct action)`);
+CHECKS: No "Hi"/name opener | Not a pitch | Reframe from this post | <200 words | Max 2-3 bold opener | "You" > "I" | No invented past work | No filler | One CTA line | Match tone | Plain text paragraphs | JOB SIZE SIGNAL overrides defaults`);
   }
 
   return sections.join("\n\n");

@@ -15,6 +15,29 @@ type SaveProposal = {
 };
 
 /**
+ * Compresses long chat histories: keeps the most recent messages intact,
+ * truncates older ones to ~150 chars each. This avoids an extra LLM call
+ * while still significantly reducing token usage for long conversations.
+ */
+function compressMessages(messages: ChatMessage[]): ChatMessage[] {
+  if (messages.length <= 6) return messages;
+
+  // Keep last 5 messages intact
+  const recentCount = 5;
+  const recent = messages.slice(-recentCount);
+  const old = messages.slice(0, -recentCount);
+
+  const compressed: ChatMessage[] = old.map((m) => ({
+    role: m.role,
+    content: m.content.length > 150
+      ? m.content.slice(0, 150) + "… [compressed]"
+      : m.content,
+  }));
+
+  return [...compressed, ...recent];
+}
+
+/**
  * Streams an SSE chat response from the LLM. Optionally persists a full
  * proposal draft (>= 50 chars) to the `proposals` table and emits a
  * `{ saved: true }` event so the client can confirm.
@@ -43,7 +66,7 @@ export async function streamChat(
             model: p.model,
             messages: [
               { role: "system", content: systemPrompt },
-              ...messages.map((m) => ({ role: m.role, content: m.content.slice(0, 3000) })),
+              ...compressMessages(messages).map((m) => ({ role: m.role, content: m.content.slice(0, 3000) })),
             ],
             stream: true,
             ...(p.groqStyle ? { reasoning_format: "hidden" as const } : {}),

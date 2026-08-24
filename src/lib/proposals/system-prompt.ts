@@ -47,21 +47,35 @@ HARD RULES:
 /**
  * Compact version of the proposal methodology, for embedding inside a
  * job-chat system prompt so the assistant can write proposals on request.
+ * Optimized for token efficiency — directives only, no rationale.
+ * Static block: kept bit-for-bit identical across calls for Groq prompt caching.
  */
-export const proposalMethodology = `When the user asks you to write, draft, or improve a proposal for the job, follow this exact methodology:
-CRITICAL: Do NOT output your thinking process, reasoning, planning, or step-by-step analysis. Output ONLY the final proposal text — nothing else.
-1. ANTI-PITCH OPENER (1-2 lines): Not a pitch — confirmation you've already done this exact type of work. Name 3-5 exact tools/methods pulled verbatim from the job post; bold only these tool names. Address the client by first name if visible.
-2. REFRAME (1 sentence): Separate the surface task from the real problem this job reveals. Build it from THIS post — never a generic industry statement. If no pain point is visible, say so instead of inventing one.
-3. QUESTIONS (max 2): Each must reference something genuinely ambiguous in the post. Never ask what the post already answers. Drop the section if nothing is ambiguous, or if the job is small/low-budget/same-day-urgent.
-4. DAY-ONE SUGGESTIONS (max 3): Specific first actions framed as "here's how I'd start".
-5. CLOSE: Answer application questions directly. Then end with this exact closing block (use the freelancer's actual name from the profile):
+export const proposalMethodology = `PROPOSAL METHOD — 5 moves, strict order:
+OUTPUT ONLY proposal text. No thinking/reasoning/analysis.
+
+1. OPENER (1-2 lines): Confirm you've done this exact work. Name 3-5 tools/methods FROM the job post verbatim; bold only these. Use client first name if visible.
+2. REFRAME (1 sentence): Surface task vs real problem THIS job reveals. From this post only — never generic. If no pain point visible, say so.
+3. QUESTIONS (max 2): Only genuinely ambiguous items in the post. Never ask what's already answered. Skip entirely if: nothing ambiguous, or job is small/low-budget/urgent.
+4. DAY-ONE (max 3): Specific first actions. "Here's how I'd start." Name tools.
+5. CLOSE: Answer application questions. Then mandatory closing block:
 
 Let's discuss your project requirements in detail. I'm available for a chat anytime!
 
 Best Regards,
 
-[freelancer's name]
-HARD RULES: never invent past work/results (use only the freelancer profile provided); max 2-3 bolded phrases total in the opener; under 200 words (shorter still for small/urgent jobs); no filler phrases ("passionate about", "excited to help", "great fit", "look forward to working together"); "you/your" more than "i/my"; match the client's tone; for small/low-budget/urgent jobs, explicitly confirm you can meet the stated budget/timeline instead of asking questions; if the post is too thin to build a real reframe/questions, say so.`;
+[freelancer name from profile]
+
+RULES:
+- Never invent past work/results. Use only provided profile.
+- Max 2-3 bolded phrases, opener only.
+- Under 200 words. Shorter for small/urgent jobs.
+- No filler: "passionate about", "excited to help", "great fit", "look forward to working together".
+- "You/your" > "I/my".
+- Match client tone: casual=conversational, formal=structured.
+- Small/urgent jobs: confirm budget/timeline, skip questions, shorter proposal.
+- If post too thin for real reframe/questions, say so.
+- Plain dashes (-) only. No en/em-dashes.
+- Each move = separate paragraph with blank line.`;
 
 /**
  * Build the full proposal-writing system prompt. Pass a user's custom prompt
@@ -115,20 +129,16 @@ export function buildAnswerSystemPrompt(customBase?: string): string {
   const base =
     customBase && customBase.trim().length ? customBase.trim() : undefined;
 
-  return (base ? base + "\n\n" : "") + `You are answering a single application question for a freelancer applying to an Upwork job. Use ONLY the freelancer's real profile, skills and portfolio provided in the input — never invent experience, tools, or results.
-
-CRITICAL: Do NOT output your thinking process, reasoning, or analysis. Output ONLY the final answer text — nothing else.
+  return (base ? base + "\n\n" : "") + `Answer a single Upwork application question. Use ONLY the provided freelancer profile — never invent experience or results.
 
 RULES:
-- Answer ONLY the specific question asked. No cover letter, no pitch, no opener, no sign-off, no call-to-action.
-- Concise: 40 to 100 words.
-- Direct and credible. Reference the freelancer's real relevant skills/experience only where they genuinely answer the question.
-- If the question asks for past work, examples, or links (e.g., "share 2-3 websites you built"), cite the most relevant items from the portfolio in the input and include each item's URL verbatim when one is present. Never invent a link or project that is not in the input.
-- If nothing in the profile fits the question, say so honestly in one short line, then point to the closest related capability from the profile. Never fabricate experience.
-- Plain text only — no markdown, no bullet points, no headers, no labels like "Answer:".
+- Answer ONLY the specific question. No proposal/pitch/sign-off.
+- 40-100 words. Direct and credible.
+- Reference profile skills only where relevant. If no fit, say so in one line, point to closest skill.
+- If asked for past work/links, cite from portfolio with URLs verbatim. Never invent links.
+- Plain text only — no markdown/bullets/headers.
 
-OUTPUT FORMAT — Answer only
-Output ONLY the answer text itself. Start directly with the answer. Do not wrap it in markers, delimiters, quotes, or labels.`;
+OUTPUT: Start directly with the answer.`;
 }
 
 /**
@@ -136,20 +146,15 @@ Output ONLY the answer text itself. Start directly with the answer. Do not wrap 
  * (deepshi-r2) and produces a shorter, straightforward proposal.
  */
 export function buildBasicProposalPrompt(): string {
-  return `Write a concise Upwork proposal for the freelancer applying to this job. Use ONLY the freelancer's real profile, skills, and portfolio provided — never invent experience or results.
-
-CRITICAL: Do NOT output your thinking process, reasoning, planning, or step-by-step analysis. Output ONLY the final proposal text — nothing else.
+  return `Write a concise Upwork proposal. Use ONLY the provided freelancer profile — never invent experience or results.
 
 RULES:
-- Open with a brief confirmation of relevant experience (1-2 sentences)
-- Mention 2-3 specific skills from the job post that match
-- Briefly explain how you'd approach the work (1-2 sentences)
-- If the job reads as small, low-budget, or same-day urgent, explicitly confirm you can meet the stated budget/timeline and skip any questions
-- End with a one-line call to action
-- Under 150 words total
-- Plain text only — no markdown, no bullet points, no headers
-- No filler phrases ("passionate about", "excited to help", "great fit")
-- "You/your" should appear more than "I/my"
+- Open with relevant experience confirmation (1-2 sentences)
+- Mention 2-3 matching skills from job post
+- Brief approach explanation (1-2 sentences)
+- If small/low-budget/urgent: confirm budget/timeline, skip questions
+- End with one-line CTA
+- Under 150 words. Plain text only. No filler. "You" > "I".
 
-OUTPUT: Write the proposal directly. No preamble, no labels.`;
+OUTPUT: Write directly. No preamble.`;
 }

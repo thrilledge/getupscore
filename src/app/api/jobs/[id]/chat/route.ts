@@ -199,40 +199,37 @@ function buildChatSystemPrompt(
   if (profile?.bio) profileFields.push(`Background:\n${String(profile.bio).slice(0, 1200)}`);
   if (portfolioPreview) profileFields.push(`Portfolio:\n${portfolioPreview}`);
 
-  return `You are an AI assistant inside UpScore that helps a freelancer evaluate Upwork jobs and write proposals. You have context about exactly ONE job.
+  // STATIC BLOCK FIRST — same for every request per custom prompt,
+  // so Groq's automatic prefix cache serves the cached tokens.
+  const staticMethodology = customPrompt && customPrompt.trim().length
+    ? customPrompt.trim()
+    : proposalMethodology;
 
-=== THIS JOB ===
-Title: ${job.title || "Untitled"}
-Description:
-${String(job.description || "").slice(0, 4000)}
-Skills: ${skills}
-Budget: ${budget}
-Job type: ${job.job_type || "Not specified"}
-Experience level: ${job.contractor_tier || "Not specified"}
-Duration: ${job.duration_label || "Not specified"}
-Proposals submitted so far: ${job.proposals_count ?? "Unknown"}
-Client: ${clientCountry} | Score: ${job.client_score != null ? job.client_score + "/5" : "N/A"} | Total spend: ${job.client_total_spend != null ? "$" + job.client_total_spend : "N/A"} | Hire rate: ${job.client_hire_rate != null ? job.client_hire_rate + "%" : "N/A"} | Payment: ${paymentVerified}
-
-=== AI ANALYSIS OF THIS JOB ===
-${analysis ? `Match: ${analysis.match_score}/100
-Opportunity: ${analysis.opportunity_score}/100
-Win probability: ${analysis.win_probability != null ? analysis.win_probability + "%" : "N/A"}
-Recommendation: ${analysis.recommendation || "consider"}
-Reasoning: ${analysis.reasoning || "N/A"}
-Proposal tips:
-${(analysis.proposal_tips || []).map((t: string) => `- ${t}`).join("\n")}
-Red flags:
-${(analysis.red_flags || []).map((f: string) => `- ${f}`).join("\n") || "- None"}` : "No AI analysis available yet. You can reason about the job from the description alone."}
-
-=== FREELANCER PROFILE (the logged-in user) ===
-${profileFields.length ? profileFields.join("\n") : "No profile data available. Do not invent past work — keep any proof generic or ask the user for specifics."}
-
-=== PROPOSAL METHODOLOGY ===
-${customPrompt && customPrompt.trim().length ? customPrompt.trim() : proposalMethodology}
+  const staticBlock = `You are an AI assistant inside UpScore. Help the freelancer evaluate this Upwork job and write proposals.
 
 === BEHAVIOR ===
-- Answer questions about this job, its client, whether to apply, and how to position the application. Use the AI analysis above as your baseline but feel free to go deeper.
-- When the user asks to write, draft, or improve a proposal, produce it using the PROPOSAL METHODOLOGY and the freelancer's real profile. NEVER invent past results, tools, or case studies not present in the profile — if the profile is empty, say so and offer to write a generic draft the user can personalize.
+- Answer questions about the job, client, whether to apply, and how to position the application.
+- When asked to write/draft/improve a proposal, use the PROPOSAL METHODOLOGY and the freelancer's real profile. Never invent past results, tools, or case studies not present in the profile — if the profile is empty, say so and offer a generic draft the user can personalize.
 - Keep conversational answers concise (under ~350 words) unless the user asks for a full proposal.
-- Format with plain text: short paragraphs, occasionally light markdown bullets. No headers inside proposals.`;
+- Format: plain text, short paragraphs, occasional light markdown bullets. No headers inside proposals.
+
+=== PROPOSAL METHODOLOGY ===
+${staticMethodology}
+
+=== FREELANCER PROFILE (the logged-in user) ===
+${profileFields.length ? profileFields.join("\n") : "No profile data. Do not invent past work — keep proof generic or ask user for specifics."}`;
+
+  // DYNAMIC BLOCK — changes every request; placed after static for cache.
+  const dynamicBlock = `=== THIS JOB ===
+Title: ${job.title || "Untitled"}
+Description: ${String(job.description || "").slice(0, 4000)}
+Skills: ${skills} | Budget: ${budget} | Type: ${job.job_type || "N/A"} | Level: ${job.contractor_tier || "N/A"} | Duration: ${job.duration_label || "N/A"} | Proposals: ${job.proposals_count ?? "N/A"}
+Client: ${clientCountry} | Score: ${job.client_score ?? "N/A"}/5 | Spend: ${job.client_total_spend != null ? "$" + job.client_total_spend : "N/A"} | Hire rate: ${job.client_hire_rate != null ? job.client_hire_rate + "%" : "N/A"} | Payment: ${paymentVerified}
+
+=== AI ANALYSIS ===
+${analysis ? `Match: ${analysis.match_score}/100 | Opp: ${analysis.opportunity_score}/100 | Win: ${analysis.win_probability ?? "N/A"}% | Rec: ${analysis.recommendation || "consider"}
+Tips: ${(analysis.proposal_tips || []).join("; ") || "None"}
+Flags: ${(analysis.red_flags || []).join("; ") || "None"}` : "No analysis available. Reason from the job description alone."}`;
+
+  return staticBlock + "\n\n" + dynamicBlock;
 }

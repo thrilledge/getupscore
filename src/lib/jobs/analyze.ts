@@ -98,71 +98,21 @@ async function serverSideLlmAnalysis(
   const proposalsCount = job.proposals_count ?? "Unknown";
   const duration = job.duration_label ? `${job.duration_label}${job.duration_weeks ? ` (${job.duration_weeks} weeks)` : ""}` : "Not specified";
 
-  const prompt = `Analyze this Upwork job:
+  const prompt = `Analyze this Upwork job. Return ONLY valid JSON.
 
-=== JOB DETAILS ===
-Title: ${title}
-Description: ${description}
-Skills: ${skills}
-Budget: ${budgetInfo}
-Budget Type: ${budgetType}
-Experience Level: ${experienceLevel}
-Duration: ${duration}
-Hours/Week: ${hoursPerWeek}
-Proposals Submitted: ${proposalsCount}
+JOB: ${title}
+Desc: ${description}
+Skills: ${skills} | Budget: ${budgetInfo} (${budgetType}) | Level: ${experienceLevel} | Duration: ${duration} | Hrs/wk: ${hoursPerWeek} | Proposals: ${proposalsCount}
 
-=== CLIENT DETAILS ===
-Country: ${clientCountry}${clientCity ? `, City: ${clientCity}` : ""}
-Client Score: ${clientScore}
-Rating: ${clientRating}
-Total Spend: ${clientTotalSpend}
-Total Hires: ${clientTotalHires}
-Jobs Posted: ${clientJobsPosted}
-Active Assignments: ${clientActiveAssignments}
-Hours Logged: ${clientHoursCount}
-Reviews/Feedback: ${clientFeedbackCount}
-Company Size: ${clientCompanySize}
-Hire Rate: ${clientHireRate}
-Member Since: ${clientMemberSince}
-Payment Verified: ${paymentVerified ? "YES (verified)" : "No (not verified)"}${userFilters && userFilters.length > 0 ? `
+CLIENT: ${clientCountry}${clientCity ? `, ${clientCity}` : ""} | Score: ${clientScore} | Rating: ${clientRating} | Spend: ${clientTotalSpend} | Hires: ${clientTotalHires} | Jobs posted: ${clientJobsPosted} | Active: ${clientActiveAssignments} | Hours: ${clientHoursCount} | Reviews: ${clientFeedbackCount} | Size: ${clientCompanySize} | Hire rate: ${clientHireRate} | Since: ${clientMemberSince} | Payment: ${paymentVerified ? "verified" : "not verified"}${userFilters && userFilters.length > 0 ? `
 
-=== USER'S SAVED FILTER PREFERENCES ===
-${userFilters.map((f: any, i: number) => {
-  const parts = [`Filter ${i + 1}: "${f.name || "Unnamed"}"`];
-  if (f.keywords?.length) parts.push(`  Keywords: ${f.keywords.join(", ")}`);
-  if (f.skills?.length) parts.push(`  Desired skills: ${f.skills.join(", ")}`);
-  if (f.job_type) parts.push(`  Job type: ${f.job_type}`);
-  if (f.contractor_tier) parts.push(`  Experience level: ${f.contractor_tier}`);
-  if (f.min_budget) parts.push(`  Min budget: $${f.min_budget}`);
-  if (f.max_budget) parts.push(`  Max budget: $${f.max_budget}`);
-  if (f.hourly_min) parts.push(`  Hourly min: $${f.hourly_min}/hr`);
-  if (f.hourly_max) parts.push(`  Hourly max: $${f.hourly_max}/hr`);
-  if (f.client_countries?.length) parts.push(`  Preferred client countries: ${f.client_countries.join(", ")}`);
-  if (f.max_proposals) parts.push(`  Max competition: ${f.max_proposals} proposals`);
-  if (f.category) parts.push(`  Category: ${f.category}`);
-  if (f.subcategory) parts.push(`  Subcategory: ${f.subcategory}`);
-  return parts.join("\n");
-}).join("\n\n")}
-Use these preferences to personalize your match_score, recommendation, and proposal_tips.
-For example: if the job requires Python but the user filters only mention React, lower the skills_match.
-If the user prefers US clients and this job is from India, note that as a mismatch.` : ""}
+FILTERS: ${userFilters.map((f: any) => `"${f.name || "Unnamed"}" skills:${(f.skills || []).join(",")} keywords:${(f.keywords || []).join(",")} budget:${f.min_budget || "?"}-${f.max_budget || "?"} level:${f.contractor_tier || "?"} countries:${(f.client_countries || []).join(",")}`).join("; ")}
+Personalize match_score and tips based on these preferences.` : ""}
 
-IMPORTANT: If client score is >= 4.0, payment is verified, and client has history of hires/spending, these are strong POSITIVE signals. Do NOT flag them as red flags. Only flag as red flags when data is actually missing or negative.
+RULES: High client score (>=4), verified payment, hire history = POSITIVE signals. Do NOT flag as red flags. Only flag missing/negative data.
 
-Return JSON only with these exact fields:
-{
-  "match_score": <0-100>,
-  "opportunity_score": <0-100>,
-  "win_probability": <0-100>,
-  "skills_match": { "matched_skills": [strings], "missing_skills": [strings], "overall_fit": "Good"|"Moderate"|"Weak" },
-  "budget_fit": { "type": "hourly"|"fixed"|"unknown", "assessment": "string" },
-  "client_analysis": { "country": "string", "payment_risk": "low"|"medium"|"high", "experience": "string", "recommendation": "string" },
-  "competition_analysis": { "competition_level": "low"|"medium"|"high", "advice": "string" },
-  "recommendation": "strong_apply"|"apply"|"consider"|"skip"|"hide",
-  "reasoning": "string",
-  "proposal_tips": [strings],
-  "red_flags": [strings]
-}`;
+JSON schema:
+{"match_score":<0-100>,"opportunity_score":<0-100>,"win_probability":<0-100>,"skills_match":{"matched_skills":[str],"missing_skills":[str],"overall_fit":"Good|Moderate|Weak"},"budget_fit":{"type":"hourly|fixed|unknown","assessment":str},"client_analysis":{"country":str,"payment_risk":"low|medium|high","experience":str,"recommendation":str},"competition_analysis":{"competition_level":"low|medium|high","advice":str},"recommendation":"strong_apply|apply|consider|skip|hide","reasoning":str,"proposal_tips":[str],"red_flags":[str]}`;
 
   const startTime = Date.now();
   const response = await chatCompletionWithRetry(
