@@ -62,7 +62,7 @@ export async function GET(
         weekly_retainer,
         skills,
         created_at,
-        job_analyses!inner (
+        job_analyses (
           id,
           match_score,
           opportunity_score,
@@ -76,14 +76,21 @@ export async function GET(
           proposal_tips,
           red_flags,
           model_used,
-          analyzed_at
+          analyzed_at,
+          user_id
         )
       `)
       .eq("id", id)
-      .eq("job_analyses.user_id", user.id)
       .single();
 
     if (error) throw error;
+
+    // Filter analyses to current user only (can't use !inner with optional join)
+    if (data?.job_analyses) {
+      data.job_analyses = data.job_analyses.filter((a: any) => a.user_id === user.id);
+      if (data.job_analyses.length === 0) data.job_analyses = null;
+    }
+
     return data;
   });
 
