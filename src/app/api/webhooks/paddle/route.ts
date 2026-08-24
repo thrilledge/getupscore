@@ -232,6 +232,29 @@ async function recordAffiliateCommission(userId: string, transactionData: any) {
     .update({ status: "paid" })
     .eq("id", referral.id);
 
+  // Update affiliate earnings summary
+  await admin.rpc("increment_affiliate_earnings", {
+    p_affiliate_id: referral.affiliate_id,
+    p_amount: commissionAmount,
+  }).then(() => {}).catch(async () => {
+    // Fallback: direct update if RPC doesn't exist
+    const { data: aff } = await admin
+      .from("affiliates")
+      .select("total_earned, pending_commission")
+      .eq("id", referral.affiliate_id)
+      .single();
+    if (aff) {
+      await admin
+        .from("affiliates")
+        .update({
+          total_earned: (aff.total_earned ?? 0) + commissionAmount,
+          pending_commission: (aff.pending_commission ?? 0) + commissionAmount,
+          total_conversions: ((aff as any).total_conversions ?? 0) + 1,
+        })
+        .eq("id", referral.affiliate_id);
+    }
+  });
+
   console.log("[Paddle WH] Commission recorded:", {
     affiliate_id: referral.affiliate_id,
     amount: commissionAmount,
