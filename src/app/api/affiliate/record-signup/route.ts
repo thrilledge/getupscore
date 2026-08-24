@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/affiliate/record-signup
  * Records a referral signup after a new user registers.
- * Called by the signup page when a ?ref= cookie is present.
+ * Called via sendBeacon from the signup page when a ref cookie is present.
  */
 export async function POST(request: Request) {
   try {
@@ -14,20 +14,20 @@ export async function POST(request: Request) {
     const { referral_code, user_id } = body;
 
     if (!referral_code || !user_id) {
-      return NextResponse.json({ ok: false });
+      return NextResponse.json({ ok: false, error: "Missing referral_code or user_id" });
     }
 
     const admin = createSupabaseAdminClient() as any;
 
     // Find affiliate by referral code
-    const { data: affiliate } = await admin
+    const { data: affiliate, error: affErr } = await admin
       .from("affiliates")
       .select("id")
       .ilike("referral_code", referral_code.trim())
       .eq("status", "active")
       .single();
 
-    if (!affiliate) {
+    if (affErr || !affiliate) {
       return NextResponse.json({ ok: false, error: "Invalid referral code" });
     }
 
@@ -36,10 +36,10 @@ export async function POST(request: Request) {
       .from("referral_signups")
       .select("id")
       .eq("user_id", user_id)
-      .single();
+      .maybeSingle();
 
     if (existing) {
-      return NextResponse.json({ ok: false, error: "User already referred" });
+      return NextResponse.json({ ok: true, message: "Already recorded" });
     }
 
     // Find the most recent click from this referral code (for attribution)
@@ -49,10 +49,10 @@ export async function POST(request: Request) {
       .ilike("referral_code", referral_code.trim())
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    // Record the signup
-    await admin.from("referral_signups").insert({
+    // Insert signup record
+    const { error: insertErr } = await admin.from("referral_signups").insert({
       affiliate_id: affiliate.id,
       referral_code: referral_code.trim().toUpperCase(),
       user_id: user_id,
@@ -60,7 +60,12 @@ export async function POST(request: Request) {
       status: "signup",
     });
 
-    // Update click as converted if we found one
+    if (insertErr) {
+      console.error("[record-signup] Insert failed:", insertErr.message);
+      return NextResponse.json({ ok: false, error: insertErr.message }, { status: 500 });
+    }
+
+    // Mark click as converted
     if (recentClick?.id) {
       await admin
         .from("referral_clicks")
@@ -72,22 +77,15 @@ export async function POST(request: Request) {
     await admin
       .from("affiliates")
       .update({
-        total_referrals: admin.rpc ? undefined : undefined, // Stats updated via trigger or manual
+        total_referrals: (affiliate.total_referrals ?? 0) + 1,
+        total_signups: (affiliate.total_signups ?? 0) + 1,
         updated_at: new Date().toISOString(),
       })
       .eq("id", affiliate.id);
 
-    // Use the RPC to properly increment
-    await admin.rpc("record_referral_signup", {
-      p_referral_code: referral_code.trim().toUpperCase(),
-      p_user_id: user_id,
-      p_click_id: recentClick?.id ?? null,
-    }).catch(() => {
-      // RPC might fail if duplicate — that's OK, we already inserted above
-    });
-
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (err: any) {
+    console.error("[record-signup] Error:", err?.message ?? err);
     return NextResponse.json({ ok: false, error: "Failed to record signup" }, { status: 500 });
   }
 }

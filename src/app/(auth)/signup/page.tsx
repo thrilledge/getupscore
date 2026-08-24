@@ -166,18 +166,18 @@ export default function SignupPage() {
       return;
     }
 
-    // Track referral if ?ref= cookie exists
+    // Track referral if ref cookie exists — use sendBeacon to survive navigation
     try {
       const refMatch = document.cookie.match(/(?:^|;\s*)ref=([^;]*)/);
       if (refMatch && data?.user?.id) {
-        fetch("/api/affiliate/record-signup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            referral_code: decodeURIComponent(refMatch[1]),
-            user_id: data.user.id,
-          }),
-        }).catch(() => {});
+        const payload = JSON.stringify({
+          referral_code: decodeURIComponent(refMatch[1]),
+          user_id: data.user.id,
+        });
+        navigator.sendBeacon(
+          new URL("/api/affiliate/record-signup", window.location.origin),
+          new Blob([payload], { type: "application/json" })
+        );
       }
     } catch {
       // Ignore referral tracking errors

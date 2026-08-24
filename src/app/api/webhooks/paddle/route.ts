@@ -208,17 +208,21 @@ async function recordAffiliateCommission(userId: string, transactionData: any) {
   }
 
   // Calculate commission amount
-  const totalAmount = parseFloat(transactionData.total ?? "0") / 100; // Paddle amounts are in cents
+  const totalAmount = parseFloat(transactionData.total ?? "0") / 100; // Paddle amounts in cents
   const commissionRate = parseFloat(affiliate.commission_rate ?? "0.20"); // Default 20%
   const commissionAmount = totalAmount * commissionRate;
+  const plan = transactionData.subscription_id ? "subscription" : "one_time";
 
-  // Record the commission
+  // Record the commission (column names match commissions table schema)
   await admin.from("commissions").insert({
     affiliate_id: referral.affiliate_id,
     referral_signup_id: referral.id,
-    transaction_id: String(transactionId),
-    amount: commissionAmount,
-    currency: (transactionData.currency_code ?? "USD").toUpperCase(),
+    paddle_transaction_id: String(transactionId),
+    customer_user_id: userId,
+    plan: plan,
+    sale_amount: totalAmount,
+    commission_rate: commissionRate,
+    commission_amount: commissionAmount,
     status: "pending",
   });
 
