@@ -215,8 +215,9 @@ async function recordAffiliateCommission(userId: string, transactionData: any) {
     ?? transactionData.payments?.[0]?.amount
     ?? 0;
   const totalAmount = parseFloat(String(rawTotal)) / 100;
-  const commissionRate = parseFloat(affiliate.commission_rate ?? "0.20"); // Default 20%
-  const commissionAmount = totalAmount * commissionRate;
+  const commissionRate = parseFloat(affiliate.commission_rate ?? "20"); // Default 20%
+  const commissionRateDecimal = commissionRate > 1 ? commissionRate / 100 : commissionRate;
+  const commissionAmount = totalAmount * commissionRateDecimal;
   const plan = transactionData.subscription_id ? "subscription" : "one_time";
 
   console.log("[Paddle WH] Commission calc:", { rawTotal, totalAmount, commissionRate, commissionAmount });
