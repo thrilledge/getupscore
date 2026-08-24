@@ -4,6 +4,69 @@ import { requireAdmin } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
 
+const PADDLE_API_KEY = process.env.PADDLE_API_KEY ?? "";
+const PADDLE_BASE = "https://sandbox-api.paddle.com";
+
+async function paddleCreateDiscount(code: string, description: string | null, discountType: string, discountValue: number, expiresAt: string | null) {
+  if (!PADDLE_API_KEY) return null;
+  try {
+    const body: any = {
+      code,
+      description: description || `${discountValue}${discountType === "percent" ? "%" : "$"} off`,
+      amount: discountType === "percent" ? String(discountValue) : String(Math.round(discountValue * 100)),
+      type: discountType === "percent" ? "percentage" : "flat",
+    };
+    if (expiresAt) body.expires_at = new Date(expiresAt).toISOString();
+
+    const res = await fetch(`${PADDLE_BASE}/discounts`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${PADDLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      console.error("[Coupons] Paddle create discount failed:", json?.error);
+      return null;
+    }
+    // Enable for checkout
+    const discountId = json.data.id;
+    await fetch(`${PADDLE_BASE}/discounts/${discountId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${PADDLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled_for_checkout: true }),
+    });
+    return discountId;
+  } catch (e) {
+    console.error("[Coupons] Paddle create discount error:", e);
+    return null;
+  }
+}
+
+async function paddleUpdateDiscount(paddleId: string, fields: Record<string, any>) {
+  if (!PADDLE_API_KEY || !paddleId) return;
+  try {
+    await fetch(`${PADDLE_BASE}/discounts/${paddleId}`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${PADDLE_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(fields),
+    });
+  } catch (e) {
+    console.error("[Coupons] Paddle update discount error:", e);
+  }
+}
+
+async function paddleDeleteDiscount(paddleId: string) {
+  if (!PADDLE_API_KEY || !paddleId) return;
+  try {
+    await fetch(`${PADDLE_BASE}/discounts/${paddleId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${PADDLE_API_KEY}` },
+    });
+  } catch (e) {
+    console.error("[Coupons] Paddle delete discount error:", e);
+  }
+}
+
 // GET — list all coupons with usage stats
 export async function GET() {
   const supabase = await createSupabaseServerClient();
@@ -25,7 +88,6 @@ export async function GET() {
 
     if (error) throw error;
 
-    // Get usage counts per coupon
     const { data: usages } = await admin
       .from("coupon_usages")
       .select("coupon_id, discount_applied");
@@ -51,7 +113,7 @@ export async function GET() {
   }
 }
 
-// POST — create a new coupon
+// POST — create a new coupon (auto-syncs to Paddle)
 export async function POST(request: Request) {
   const supabase = await createSupabaseServerClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -80,7 +142,6 @@ export async function POST(request: Request) {
 
     const admin = createSupabaseAdminClient() as any;
 
-    // Check unique code
     const { data: existing } = await admin
       .from("coupons")
       .select("id")
@@ -91,10 +152,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "A coupon with this code already exists" }, { status: 409 });
     }
 
+    const upperCode = code.toUpperCase().trim();
+
+    // Create discount in Paddle
+    const paddleDiscountId = await paddleCreateDiscount(upperCode, description, discount_type, discount_value, expires_at);
+
     const { data: coupon, error } = await admin
       .from("coupons")
       .insert({
-        code: code.toUpperCase().trim(),
+        code: upperCode,
         description: description?.trim() || null,
         discount_type,
         discount_value,
@@ -104,6 +170,7 @@ export async function POST(request: Request) {
         starts_at: starts_at || new Date().toISOString(),
         expires_at: expires_at || null,
         created_by: user.id,
+        paddle_discount_id: paddleDiscountId,
       })
       .select()
       .single();
@@ -119,7 +186,7 @@ export async function POST(request: Request) {
   }
 }
 
-// PUT — update a coupon
+// PUT — update a coupon (syncs to Paddle)
 export async function PUT(request: Request) {
   const supabase = await createSupabaseServerClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -139,6 +206,13 @@ export async function PUT(request: Request) {
     }
 
     const admin = createSupabaseAdminClient() as any;
+
+    // Fetch existing coupon to get paddle_discount_id
+    const { data: existingCoupon } = await admin
+      .from("coupons")
+      .select("paddle_discount_id")
+      .eq("id", id)
+      .single();
 
     // Clean up updates
     const cleanUpdates: any = {};
@@ -163,13 +237,26 @@ export async function PUT(request: Request) {
 
     if (error) throw error;
 
+    // Sync to Paddle
+    if (existingCoupon?.paddle_discount_id) {
+      const paddleFields: Record<string, any> = {};
+      if (cleanUpdates.code) paddleFields.code = cleanUpdates.code;
+      if (cleanUpdates.description !== undefined) paddleFields.description = cleanUpdates.description;
+      if (cleanUpdates.discount_value !== undefined) paddleFields.amount = String(cleanUpdates.discount_value);
+      if (cleanUpdates.expires_at !== undefined) paddleFields.expires_at = cleanUpdates.expires_at ? new Date(cleanUpdates.expires_at).toISOString() : null;
+      if (cleanUpdates.active !== undefined) paddleFields.enabled_for_checkout = cleanUpdates.active;
+      if (Object.keys(paddleFields).length > 0) {
+        await paddleUpdateDiscount(existingCoupon.paddle_discount_id, paddleFields);
+      }
+    }
+
     return NextResponse.json({ ok: true, coupon });
   } catch {
     return NextResponse.json({ error: "Failed to update coupon" }, { status: 500 });
   }
 }
 
-// DELETE — delete a coupon
+// DELETE — delete a coupon (removes from Paddle too)
 export async function DELETE(request: Request) {
   const supabase = await createSupabaseServerClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -190,11 +277,22 @@ export async function DELETE(request: Request) {
 
     const admin = createSupabaseAdminClient() as any;
 
-    // Delete usages first, then coupon
+    // Get paddle_discount_id before deleting
+    const { data: existingCoupon } = await admin
+      .from("coupons")
+      .select("paddle_discount_id")
+      .eq("id", id)
+      .single();
+
     await admin.from("coupon_usages").delete().eq("coupon_id", id);
     const { error } = await admin.from("coupons").delete().eq("id", id);
 
     if (error) throw error;
+
+    // Delete from Paddle
+    if (existingCoupon?.paddle_discount_id) {
+      await paddleDeleteDiscount(existingCoupon.paddle_discount_id);
+    }
 
     return NextResponse.json({ ok: true });
   } catch {
