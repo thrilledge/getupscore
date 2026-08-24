@@ -208,10 +208,18 @@ async function recordAffiliateCommission(userId: string, transactionData: any) {
   }
 
   // Calculate commission amount
-  const totalAmount = parseFloat(transactionData.total ?? "0") / 100; // Paddle amounts in cents
+  // Paddle Billing v2: amounts are in smallest currency unit (cents)
+  // total may be at data.total, data.details.totals.gross, or data.payments[0].amount
+  const rawTotal = transactionData.total
+    ?? transactionData.details?.totals?.gross
+    ?? transactionData.payments?.[0]?.amount
+    ?? 0;
+  const totalAmount = parseFloat(String(rawTotal)) / 100;
   const commissionRate = parseFloat(affiliate.commission_rate ?? "0.20"); // Default 20%
   const commissionAmount = totalAmount * commissionRate;
   const plan = transactionData.subscription_id ? "subscription" : "one_time";
+
+  console.log("[Paddle WH] Commission calc:", { rawTotal, totalAmount, commissionRate, commissionAmount });
 
   // Record the commission (column names match commissions table schema)
   await admin.from("commissions").insert({
