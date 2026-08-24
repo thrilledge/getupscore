@@ -536,11 +536,11 @@ export function ProfileAuditChat({
                         components={mdComponents}
                       >
                         {message.content ||
-                          (streaming &&
+                          ((streaming &&
                             index ===
                             messages.length - 1)
-                          ? "…"
-                          : ""}
+                            ? "…"
+                            : "")}
                       </ReactMarkdown>
                     </div>
                   )}
