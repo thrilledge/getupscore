@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FavoriteButton } from "@/components/favorite-button";
+import { formatJobType } from "@/lib/format-job";
 import {
   ExternalLink,
   Heart,
@@ -93,10 +94,7 @@ export default function SavedJobsPage() {
   }
 
   function jobTypeLabel(jobType: string | null) {
-    if (jobType === "HOURLY") return "Hourly";
-    if (jobType === "FIXED_PRICE") return "Fixed";
-
-    return "—";
+    return formatJobType(jobType);
   }
 
   function budgetLabel(job: SavedJobItem) {

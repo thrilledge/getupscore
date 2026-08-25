@@ -147,3 +147,95 @@
     background-size: 40px 40px;
   }
 }
+
+/* ------------------------------------------------------------------------ */
+/* Dark mode: remap the app's hardcoded neutral utility classes to theme     */
+/* tokens so every page flips with the .dark class on <html>.                */
+/*                                                                           */
+/* These rules are intentionally UNLAYERED so they win over Tailwind's       */
+/* `utilities` layer, and every selector is scoped under `.dark` — light     */
+/* mode is left 100% untouched. `[class~="…"]` matches a single whitespace-  */
+/* delimited class token, so no CSS escaping is needed and opacity/state     */
+/* variants stay distinct (e.g. `bg-white` never matches `bg-white/10`).     */
+/*                                                                           */
+/* Deliberately NOT remapped (they already read correctly on dark):          */
+/*   • brand greens (#00C98B / #00A975 / #008F64 / #007A56 / #00b57d)        */
+/*   • hero surfaces `bg-[#0A0A0A]` and dark scrims `/60 /90 /95`            */
+/*   • translucent white overlays (`bg-white/NN`, `border-white/NN`)         */
+/*   • `text-white*`, light grays already meant for dark (`text-gray-300`)   */
+/* ------------------------------------------------------------------------ */
+
+/* Surfaces --------------------------------------------------------------- */
+.dark [class~="bg-white"] { background-color: var(--card); }
+.dark [class~="bg-[#F8F9F9]"],
+.dark [class~="bg-[#FAFAFA]"],
+.dark [class~="bg-[#F7FFFC]"],
+.dark [class~="bg-gray-50"],
+.dark [class~="bg-gray-100"] { background-color: var(--muted); }
+.dark [class~="bg-[#F7F8F8]"] { background-color: var(--background); }
+
+/* Near-black foreground text — opacity hierarchy preserved via color-mix -- */
+.dark [class~="text-[#0A0A0A]"],
+.dark [class~="text-black"] { color: var(--foreground); }
+.dark [class~="text-[#0A0A0A]/75"],
+.dark [class~="text-black/75"] { color: color-mix(in oklab, var(--foreground) 75%, transparent); }
+.dark [class~="text-[#0A0A0A]/70"],
+.dark [class~="text-black/70"] { color: color-mix(in oklab, var(--foreground) 70%, transparent); }
+.dark [class~="text-[#0A0A0A]/65"],
+.dark [class~="text-black/65"] { color: color-mix(in oklab, var(--foreground) 65%, transparent); }
+.dark [class~="text-[#0A0A0A]/60"],
+.dark [class~="text-black/60"] { color: color-mix(in oklab, var(--foreground) 60%, transparent); }
+.dark [class~="text-[#0A0A0A]/55"],
+.dark [class~="text-black/55"] { color: color-mix(in oklab, var(--foreground) 55%, transparent); }
+.dark [class~="text-[#0A0A0A]/50"],
+.dark [class~="text-black/50"] { color: color-mix(in oklab, var(--foreground) 50%, transparent); }
+.dark [class~="text-[#0A0A0A]/45"],
+.dark [class~="text-black/45"] { color: color-mix(in oklab, var(--foreground) 45%, transparent); }
+.dark [class~="text-[#0A0A0A]/40"],
+.dark [class~="text-black/40"] { color: color-mix(in oklab, var(--foreground) 40%, transparent); }
+.dark [class~="text-[#0A0A0A]/35"],
+.dark [class~="text-black/35"] { color: color-mix(in oklab, var(--foreground) 35%, transparent); }
+.dark [class~="text-[#0A0A0A]/30"],
+.dark [class~="text-black/30"] { color: color-mix(in oklab, var(--foreground) 30%, transparent); }
+.dark [class~="text-[#0A0A0A]/25"],
+.dark [class~="text-black/25"] { color: color-mix(in oklab, var(--foreground) 25%, transparent); }
+.dark [class~="text-[#0A0A0A]/20"],
+.dark [class~="text-black/20"] { color: color-mix(in oklab, var(--foreground) 20%, transparent); }
+.dark [class~="text-[#0A0A0A]/5"] { color: color-mix(in oklab, var(--foreground) 5%, transparent); }
+
+/* Muted gray body text --------------------------------------------------- */
+.dark [class~="text-gray-700"],
+.dark [class~="text-gray-600"] { color: var(--muted-foreground); }
+
+/* Placeholders ----------------------------------------------------------- */
+.dark [class~="placeholder:text-[#0A0A0A]/30"]::placeholder { color: color-mix(in oklab, var(--foreground) 30%, transparent); }
+.dark [class~="placeholder:text-[#0A0A0A]/35"]::placeholder { color: color-mix(in oklab, var(--foreground) 35%, transparent); }
+
+/* Borders — collapse the whole near-black range onto the border token ---- */
+.dark [class~="border-[#0A0A0A]"],
+.dark [class~="border-[#0A0A0A]/25"],
+.dark [class~="border-[#0A0A0A]/20"],
+.dark [class~="border-[#0A0A0A]/15"],
+.dark [class~="border-[#0A0A0A]/12"],
+.dark [class~="border-[#0A0A0A]/10"],
+.dark [class~="border-[#0A0A0A]/9"],
+.dark [class~="border-[#0A0A0A]/7"],
+.dark [class~="border-[#0A0A0A]/5"],
+.dark [class~="border-black/25"],
+.dark [class~="border-black/20"],
+.dark [class~="border-black/15"],
+.dark [class~="border-black/10"],
+.dark [class~="border-black/5"] { border-color: var(--border); }
+
+/* Translucent dark overlays → translucent white on dark surfaces --------- */
+.dark [class~="bg-[#0A0A0A]/5"],
+.dark [class~="bg-black/5"] { background-color: oklch(1 0 0 / 0.05); }
+.dark [class~="bg-[#0A0A0A]/7"] { background-color: oklch(1 0 0 / 0.07); }
+.dark [class~="bg-[#0A0A0A]/10"],
+.dark [class~="bg-black/10"] { background-color: oklch(1 0 0 / 0.10); }
+.dark [class~="bg-[#0A0A0A]/15"],
+.dark [class~="bg-black/15"] { background-color: oklch(1 0 0 / 0.15); }
+.dark [class~="bg-[#0A0A0A]/20"],
+.dark [class~="bg-black/20"] { background-color: oklch(1 0 0 / 0.20); }
+.dark [class~="bg-black/25"] { background-color: oklch(1 0 0 / 0.25); }
+.dark [class~="bg-black/30"] { background-color: oklch(1 0 0 / 0.30); }

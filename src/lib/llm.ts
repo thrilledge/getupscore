@@ -15,15 +15,42 @@ export interface LLMChainOptions {
   maxAttemptsPerProvider?: number;
 }
 
+export type LlmErrorCode = "rate_limit" | "all_failed" | "no_providers";
+
 /**
- * Provider chain: Multiple Groq API keys for high availability.
- * Each key has its own daily quota. On 429, automatically skips to next key.
+ * Typed error thrown by {@link chatCompletionWithRetry} so callers can render
+ * a graceful, user-facing message instead of leaking raw provider JSON.
+ *
+ * - `rate_limit`  — every available key is rate-limited (usually Groq's daily
+ *   token cap, which is shared across all keys in one Groq organization).
+ * - `all_failed`  — every key failed for mixed/other reasons.
+ * - `no_providers`— no API keys are configured at all.
+ */
+export class LlmError extends Error {
+  code: LlmErrorCode;
+  retryAfterSeconds?: number;
+  constructor(message: string, code: LlmErrorCode, retryAfterSeconds?: number) {
+    super(message);
+    this.name = "LlmError";
+    this.code = code;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+/**
+ * Provider chain: multiple Groq API keys for high availability.
+ *
+ * IMPORTANT: Groq enforces its token-per-day (TPD) limit per *organization*,
+ * not per API key. Multiple keys created inside a single Groq account all draw
+ * from the same daily quota, so they do NOT multiply capacity — they only help
+ * when a per-minute (RPM/TPM) burst limit is hit. To actually raise the daily
+ * ceiling, the keys in GROQ_API_KEYS must come from separate Groq accounts.
  *
  * Supports:
  * - GROQ_API_KEYS: comma-separated list of API keys (preferred)
  * - GROQ_API_KEY: single API key (backward compatible)
  */
-export function getProviderChain(opts?: LLMChainOptions): LLMProvider[] {
+export function getProviderChain(_opts?: LLMChainOptions): LLMProvider[] {
   return buildAllProviders();
 }
 
@@ -45,7 +72,6 @@ function buildAllProviders(): LLMProvider[] {
         groqStyle: true,
       });
     });
-    console.log(`[LLM] Loaded ${chain.length} Groq API keys from GROQ_API_KEYS`);
     return chain;
   }
 
@@ -59,16 +85,89 @@ function buildAllProviders(): LLMProvider[] {
       model,
       groqStyle: true,
     });
-    console.log("[LLM] Loaded single Groq API key from GROQ_API_KEY");
   }
 
   return chain;
 }
 
+// ─── Load spreading & cooldown state (module-level, per server instance) ──────
+//
+// When a key returns 429 we stop hammering it: it's parked in a cooldown map
+// until its rate window is likely to have recovered. Subsequent requests skip
+// parked keys entirely, which (a) fails over instantly instead of re-probing
+// dead keys and (b) spreads load so we don't always burn key #1 first.
+const keyCooldownUntil = new Map<string, number>();
+let rotationCursor = 0;
+
+/** Parse "Please try again in 4m32.16s" / "in 12.5s" or a Retry-After header. */
+function parseRetryAfterSeconds(body: string, headerVal: string | null): number | null {
+  if (headerVal) {
+    const n = parseInt(headerVal, 10);
+    if (!Number.isNaN(n)) return n;
+  }
+  const m = body.match(/try again in\s+(?:(\d+)m)?\s*([\d.]+)\s*s/i);
+  if (m) {
+    const mins = m[1] ? parseInt(m[1], 10) : 0;
+    const secs = m[2] ? parseFloat(m[2]) : 0;
+    const total = Math.ceil(mins * 60 + secs);
+    if (total > 0) return total;
+  }
+  return null;
+}
+
+/** How long to park a rate-limited key, based on the 429 body/header. */
+function computeCooldownSeconds(body: string, retryAfterHeader: string | null): number {
+  const parsed = parseRetryAfterSeconds(body, retryAfterHeader);
+  const isDaily = /per day|tokens per day|\btpd\b|daily/i.test(body);
+  if (parsed != null) {
+    // Respect the provider's hint, but cap so a stale estimate can't park a
+    // key for hours: 30 min for daily caps, 2 min for per-minute bursts.
+    return Math.max(5, Math.min(parsed, isDaily ? 1800 : 120));
+  }
+  return isDaily ? 900 : 60;
+}
+
+/**
+ * Returns providers that aren't currently cooling down, rotated so requests
+ * don't always start at the same key. Also reports the soonest cooldown
+ * expiry (used to tell the user when to retry if everything is parked).
+ */
+function availableProviders(chain: LLMProvider[]): {
+  available: LLMProvider[];
+  soonestRetrySeconds: number | null;
+} {
+  const now = Date.now();
+  const available: LLMProvider[] = [];
+  let soonestUntil: number | null = null;
+
+  for (const p of chain) {
+    const until = keyCooldownUntil.get(p.apiKey) ?? 0;
+    if (until > now) {
+      soonestUntil = soonestUntil == null ? until : Math.min(soonestUntil, until);
+      continue;
+    }
+    if (until) keyCooldownUntil.delete(p.apiKey); // expired — clean up
+    available.push(p);
+  }
+
+  let rotated = available;
+  if (available.length > 1) {
+    const start = rotationCursor % available.length;
+    rotationCursor = (rotationCursor + 1) % available.length;
+    rotated = [...available.slice(start), ...available.slice(0, start)];
+  }
+
+  return {
+    available: rotated,
+    soonestRetrySeconds:
+      soonestUntil == null ? null : Math.max(1, Math.ceil((soonestUntil - now) / 1000)),
+  };
+}
+
 /**
  * Parse an LLM response body that should contain a JSON object. Strips the
- * markdown code fences (```json ... ```) that some providers (e.g. deepshi)
- * wrap around the payload before attempting to parse.
+ * markdown code fences (```json ... ```) that some providers wrap around the
+ * payload before attempting to parse.
  */
 export function parseLlmJson<T = any>(content: string): T {
   const fenced = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
@@ -77,26 +176,61 @@ export function parseLlmJson<T = any>(content: string): T {
 }
 
 /**
- * POST to each provider in the chain until one succeeds.
+ * Turn any thrown LLM error into a short, safe, user-facing message.
+ * Never leaks raw provider JSON or key details.
+ */
+export function friendlyLlmError(err: unknown): string {
+  if (err instanceof LlmError) {
+    if (err.code === "rate_limit") {
+      const mins = err.retryAfterSeconds
+        ? Math.max(1, Math.ceil(err.retryAfterSeconds / 60))
+        : null;
+      return mins
+        ? `The AI is temporarily rate-limited (daily token cap reached). Please try again in about ${mins} minute${mins === 1 ? "" : "s"}.`
+        : "The AI is temporarily rate-limited (daily token cap reached). Please try again in a few minutes.";
+    }
+    if (err.code === "no_providers") {
+      return "The AI is not configured yet. Please contact support.";
+    }
+  }
+  return "The AI had trouble responding. Please try again in a moment.";
+}
+
+/**
+ * POST to each available provider until one succeeds.
  *
- * - 429 = skip immediately to next provider (no retry — limits don't recover mid-request)
- * - Network error = skip to next provider
- * - Other non-2xx = skip to next provider
- *
- * With 10 Groq keys, each key is tried once. If key 1 is rate-limited,
- * key 2 is tried immediately, and so on.
+ * - 429 = park the key in a cooldown and skip to the next available key.
+ * - Network / other non-2xx = skip to the next key.
+ * - If every key is parked or fails, throws {@link LlmError} with a code the
+ *   caller can map to a friendly message via {@link friendlyLlmError}.
  */
 export async function chatCompletionWithRetry(
   bodyFactory: (provider: LLMProvider) => Record<string, unknown>,
   opts?: LLMChainOptions
 ): Promise<{ response: Response; provider: LLMProvider }> {
   const chain = getProviderChain(opts);
-  // With multiple keys, try each key once (no retry per key)
+  if (chain.length === 0) {
+    throw new LlmError("No LLM provider configured (set GROQ_API_KEYS).", "no_providers");
+  }
+
+  const { available, soonestRetrySeconds } = availableProviders(chain);
+  if (available.length === 0) {
+    // Everything is cooling down from earlier 429s.
+    throw new LlmError(
+      `All ${chain.length} Groq keys are rate-limited.`,
+      "rate_limit",
+      soonestRetrySeconds ?? undefined
+    );
+  }
+
   const maxAttempts = opts?.maxAttemptsPerProvider ?? 1;
   let lastError = "";
+  let saw429 = false;
+  let sawOther = false;
+  let minRetrySeconds: number | null = soonestRetrySeconds;
   let triedCount = 0;
 
-  for (const provider of chain) {
+  for (const provider of available) {
     triedCount++;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -113,28 +247,46 @@ export async function chatCompletionWithRetry(
         });
       } catch (err) {
         lastError = err instanceof Error ? err.message : "network error";
+        sawOther = true;
         console.warn(`[LLM] ${provider.name} network error:`, lastError);
         break;
       }
 
       if (res.ok) {
-        console.log(`[LLM] ${provider.name} succeeded (${triedCount}/${chain.length} keys tried)`);
+        keyCooldownUntil.delete(provider.apiKey); // healthy again
+        console.log(`[LLM] ${provider.name} succeeded (${triedCount}/${available.length} available keys tried)`);
         return { response: res, provider };
       }
 
       if (res.status === 429) {
         const body = await res.text().catch(() => "");
-        // Any 429 = skip to next key. Daily limits aren't recovering mid-request.
-        console.warn(`[LLM] ${provider.name} 429 — skipping to next key (${triedCount}/${chain.length})`);
+        const cooldown = computeCooldownSeconds(body, res.headers.get("retry-after"));
+        keyCooldownUntil.set(provider.apiKey, Date.now() + cooldown * 1000);
+        minRetrySeconds = minRetrySeconds == null ? cooldown : Math.min(minRetrySeconds, cooldown);
+        saw429 = true;
         lastError = body.slice(0, 300);
+        console.warn(`[LLM] ${provider.name} 429 — parked ${cooldown}s, trying next (${triedCount}/${available.length})`);
         break;
       }
 
       lastError = await res.text().catch(() => "");
+      sawOther = true;
       console.warn(`[LLM] ${provider.name} error ${res.status}:`, lastError.slice(0, 300));
       break;
     }
   }
 
-  throw new Error(`All ${chain.length} LLM providers failed. Last error: ${lastError.slice(0, 300)}`);
+  // Only-rate-limits → actionable "try again later"; anything else → generic.
+  if (saw429 && !sawOther) {
+    throw new LlmError(
+      `All available Groq keys are rate-limited. Last error: ${lastError.slice(0, 200)}`,
+      "rate_limit",
+      minRetrySeconds ?? undefined
+    );
+  }
+
+  throw new LlmError(
+    `All ${chain.length} LLM providers failed. Last error: ${lastError.slice(0, 200)}`,
+    "all_failed"
+  );
 }

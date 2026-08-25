@@ -20,6 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EXPERIENCE_LEVELS } from "@/lib/filter-options";
+import { formatJobType } from "@/lib/format-job";
 import {
   Card,
   CardContent,
@@ -132,10 +134,42 @@ export default function JobsPage() {
     setSubcategoryFilter,
   ] = useState("");
 
+  const [durationFilter, setDurationFilter] =
+    useState("");
+
+  const [facets, setFacets] = useState<{
+    categories: string[];
+    subcategories: {
+      category: string | null;
+      subcategory: string;
+    }[];
+    durations: string[];
+  }>({
+    categories: [],
+    subcategories: [],
+    durations: [],
+  });
+
   const [
     initialFiltersLoaded,
     setInitialFiltersLoaded,
   ] = useState(false);
+
+  // Load the distinct category / subcategory / project-length values that
+  // actually exist in the job feed so every dropdown option returns results.
+  useEffect(() => {
+    fetch("/api/jobs/facets")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d) return;
+        setFacets({
+          categories: Array.isArray(d.categories) ? d.categories : [],
+          subcategories: Array.isArray(d.subcategories) ? d.subcategories : [],
+          durations: Array.isArray(d.durations) ? d.durations : [],
+        });
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     supabase
@@ -281,6 +315,13 @@ export default function JobsPage() {
       );
     }
 
+    if (durationFilter) {
+      params.set(
+        "duration",
+        durationFilter
+      );
+    }
+
     return params.toString();
   }
 
@@ -346,6 +387,7 @@ export default function JobsPage() {
     skillFilter,
     categoryFilter,
     subcategoryFilter,
+    durationFilter,
   ]);
 
   useEffect(() => {
@@ -361,6 +403,7 @@ export default function JobsPage() {
     skillFilter,
     categoryFilter,
     subcategoryFilter,
+    durationFilter,
   ]);
 
   useEffect(() => {
@@ -433,6 +476,7 @@ export default function JobsPage() {
     setSkillFilter("");
     setCategoryFilter("");
     setSubcategoryFilter("");
+    setDurationFilter("");
   }
 
   function downloadCSV() {
@@ -523,7 +567,19 @@ export default function JobsPage() {
     hourlyMax ||
     skillFilter ||
     categoryFilter ||
-    subcategoryFilter;
+    subcategoryFilter ||
+    durationFilter;
+
+  // Subcategories that belong to the selected category (or all, if none).
+  const availableSubcategories = Array.from(
+    new Set(
+      facets.subcategories
+        .filter(
+          (s) => !categoryFilter || s.category === categoryFilter
+        )
+        .map((s) => s.subcategory)
+    )
+  ).sort();
 
   return (
     <SubscriptionGate feature="Access the full jobs dashboard with AI-powered scoring, filters, and real-time job feeds">
@@ -748,6 +804,195 @@ export default function JobsPage() {
               className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
             />
           </div>
+
+          {/* Experience level */}
+          <div className="min-w-0 md:col-span-1 xl:col-span-2">
+            <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+              Experience
+            </label>
+
+            <Select
+              value={tierFilter || null}
+              onValueChange={(value) =>
+                setTierFilter(value ?? "")
+              }
+            >
+              <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
+                <SelectValue placeholder="Any level" />
+              </SelectTrigger>
+
+              <SelectContent className="rounded-xl border-[#0A0A0A]/10 bg-white">
+                <SelectItem
+                  value=""
+                  className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                >
+                  Any level
+                </SelectItem>
+
+                {EXPERIENCE_LEVELS.map((lvl) => (
+                  <SelectItem
+                    key={lvl.value}
+                    value={lvl.value}
+                    className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                  >
+                    {lvl.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Hourly rate min */}
+          <div className="min-w-0 md:col-span-1 xl:col-span-1">
+            <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+              Rate min/hr
+            </label>
+
+            <Input
+              type="number"
+              placeholder="$0"
+              value={hourlyMin}
+              onChange={(event) =>
+                setHourlyMin(event.target.value)
+              }
+              className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
+            />
+          </div>
+
+          {/* Hourly rate max */}
+          <div className="min-w-0 md:col-span-1 xl:col-span-1">
+            <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+              Rate max/hr
+            </label>
+
+            <Input
+              type="number"
+              placeholder="$99"
+              value={hourlyMax}
+              onChange={(event) =>
+                setHourlyMax(event.target.value)
+              }
+              className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
+            />
+          </div>
+
+          {/* Category */}
+          {facets.categories.length > 0 && (
+            <div className="min-w-0 min-[560px]:col-span-2 md:col-span-2 xl:col-span-3">
+              <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                Category
+              </label>
+
+              <Select
+                value={categoryFilter || null}
+                onValueChange={(value) => {
+                  setCategoryFilter(value ?? "");
+                  setSubcategoryFilter("");
+                }}
+              >
+                <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
+                  <SelectValue placeholder="All categories" />
+                </SelectTrigger>
+
+                <SelectContent className="max-h-72 rounded-xl border-[#0A0A0A]/10 bg-white">
+                  <SelectItem
+                    value=""
+                    className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                  >
+                    All categories
+                  </SelectItem>
+
+                  {facets.categories.map((c) => (
+                    <SelectItem
+                      key={c}
+                      value={c}
+                      className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                    >
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Subcategory */}
+          {availableSubcategories.length > 0 && (
+            <div className="min-w-0 min-[560px]:col-span-2 md:col-span-2 xl:col-span-3">
+              <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                Subcategory
+              </label>
+
+              <Select
+                value={subcategoryFilter || null}
+                onValueChange={(value) =>
+                  setSubcategoryFilter(value ?? "")
+                }
+              >
+                <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
+                  <SelectValue placeholder="All subcategories" />
+                </SelectTrigger>
+
+                <SelectContent className="max-h-72 rounded-xl border-[#0A0A0A]/10 bg-white">
+                  <SelectItem
+                    value=""
+                    className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                  >
+                    All subcategories
+                  </SelectItem>
+
+                  {availableSubcategories.map((s) => (
+                    <SelectItem
+                      key={s}
+                      value={s}
+                      className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                    >
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Project length */}
+          {facets.durations.length > 0 && (
+            <div className="min-w-0 md:col-span-1 xl:col-span-2">
+              <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                Project length
+              </label>
+
+              <Select
+                value={durationFilter || null}
+                onValueChange={(value) =>
+                  setDurationFilter(value ?? "")
+                }
+              >
+                <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
+                  <SelectValue placeholder="Any length" />
+                </SelectTrigger>
+
+                <SelectContent className="max-h-72 rounded-xl border-[#0A0A0A]/10 bg-white">
+                  <SelectItem
+                    value=""
+                    className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                  >
+                    Any length
+                  </SelectItem>
+
+                  {facets.durations.map((d) => (
+                    <SelectItem
+                      key={d}
+                      value={d}
+                      className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                    >
+                      {d}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Skill */}
           <div className="min-w-0 min-[560px]:col-span-2 md:col-span-2 xl:col-span-3">
@@ -985,11 +1230,7 @@ export default function JobsPage() {
                             >
                               <Briefcase className="mr-1 size-2.5" />
 
-                              {job.job_type === "HOURLY"
-                                ? "Hourly"
-                                : job.job_type === "FIXED"
-                                  ? "Fixed"
-                                  : "—"}
+                              {formatJobType(job.job_type)}
                             </Badge>
 
                             <span className="inline-flex items-center gap-1 text-[10px] text-[#0A0A0A]/40">
@@ -1192,13 +1433,7 @@ export default function JobsPage() {
                                 variant="secondary"
                                 className="rounded-full bg-[#00C98B]/10 px-2 py-0.5 text-[10px] font-semibold text-[#008F64]"
                               >
-                                {job.job_type ===
-                                  "HOURLY"
-                                  ? "Hourly"
-                                  : job.job_type ===
-                                    "FIXED"
-                                    ? "Fixed"
-                                    : "—"}
+                                {formatJobType(job.job_type)}
                               </Badge>
                             </div>
                           </td>

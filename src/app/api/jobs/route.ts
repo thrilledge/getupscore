@@ -25,9 +25,11 @@ export async function GET(request: Request) {
   const hourlyMax = searchParams.get("hourly_max") ? parseFloat(searchParams.get("hourly_max")!) : null;
   const skill = searchParams.get("skill")?.trim() || null;
   const category = searchParams.get("category")?.trim() || null;
+  const subcategory = searchParams.get("subcategory")?.trim() || null;
+  const duration = searchParams.get("duration")?.trim() || null;
 
   // Build a cache key from all filter params (include user for per-user analyses)
-  const cacheKey = `jobs:${user.id}:${page}:${limit}:${q || ""}:${jobType || ""}:${tier || ""}:${budgetMin || ""}:${budgetMax || ""}:${hourlyMin || ""}:${hourlyMax || ""}:${skill || ""}:${category || ""}:${ids || ""}`;
+  const cacheKey = `jobs:${user.id}:${page}:${limit}:${q || ""}:${jobType || ""}:${tier || ""}:${budgetMin || ""}:${budgetMax || ""}:${hourlyMin || ""}:${hourlyMax || ""}:${skill || ""}:${category || ""}:${subcategory || ""}:${duration || ""}:${ids || ""}`;
 
   try {
     const result = await cached(cacheKey, TTL.JOBS_LIST, async () => {
@@ -42,6 +44,8 @@ export async function GET(request: Request) {
         p_skill: skill,
         p_country: null,
         p_category: category,
+        p_subcategory: subcategory,
+        p_duration: duration,
         p_ids: ids ? ids.split(",").map((id) => id.trim()).filter(Boolean) : null,
         p_limit: limit,
         p_offset: (page - 1) * limit,

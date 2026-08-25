@@ -84,8 +84,8 @@ function buildProfileAuditSystemPrompt(
   const portfolio = profile?.portfolio as { title: string; description?: string }[] | null;
   const portfolioPreview = Array.isArray(portfolio)
     ? portfolio
-        .slice(0, 8)
-        .map((p) => `- ${p.title}${p.description ? ": " + p.description.slice(0, 180) : ""}`)
+        .slice(0, 6)
+        .map((p) => `- ${p.title}${p.description ? ": " + p.description.slice(0, 140) : ""}`)
         .join("\n")
     : undefined;
 
@@ -98,7 +98,7 @@ function buildProfileAuditSystemPrompt(
   fields.push(`Jobs completed: ${profile?.total_jobs_done != null ? profile.total_jobs_done : "Not set"}`);
   fields.push(`Client rating: ${profile?.client_rating != null ? profile.client_rating + "/5" : "Not set"}`);
   fields.push(`Skills: ${Array.isArray(profile?.skills) ? (profile.skills as string[]).join(", ") : "Not set"}`);
-  if (profile?.bio) fields.push(`Bio:\n${String(profile.bio).slice(0, 1500)}`);
+  if (profile?.bio) fields.push(`Bio:\n${String(profile.bio).slice(0, 1000)}`);
   if (portfolioPreview) fields.push(`Portfolio:\n${portfolioPreview}`);
 
   return `You are an AI career coach inside UpScore that audits a freelancer's Upwork profile and helps them improve it.
