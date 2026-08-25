@@ -1,4 +1,4 @@
-import { chatCompletionWithRetry } from "@/lib/llm";
+import { chatCompletionWithRetry, friendlyLlmError, LlmError } from "@/lib/llm";
 import { logLlmUsage } from "@/lib/llm-logger";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
@@ -46,7 +46,7 @@ export async function streamChat(
   systemPrompt: string,
   messages: ChatMessage[],
   saveProposal?: SaveProposal,
-  maxTokens = 2000
+  maxTokens = 1500
 ): Promise<Response> {
   const encoder = new TextEncoder();
 
@@ -139,7 +139,11 @@ export async function streamChat(
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
         console.warn("[Chat] Streaming error:", message);
-        send({ error: message });
+        // Surface a friendly, safe message to the client — never raw provider JSON.
+        send({
+          error: friendlyLlmError(err),
+          code: err instanceof LlmError ? err.code : "error",
+        });
         controller.close();
       }
     },

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
 import { useSubscription } from "@/hooks/use-subscription";
+import { useTheme, type Theme } from "@/components/theme-provider";
 import {
   updateDisplayName,
   sendPasswordReset,
@@ -44,7 +45,6 @@ import {
   ExternalLink,
   CheckCircle2,
   Palette,
-  Globe,
   Clock,
   Plus,
   Copy,
@@ -56,19 +56,29 @@ import {
   RotateCcw,
   Settings,
   Lock,
-  Zap,
   Crown,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
+
+const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Monitor },
+];
 
 export default function SettingsPage() {
   const { user, loading } = useUser();
   const { subscription } = useSubscription();
+  const { theme, setTheme } = useTheme();
 
-  const [displayName, setDisplayName] = useState(
-    user?.user_metadata?.display_name ??
-    user?.email?.split("@")[0] ??
-    ""
-  );
+  // A stable identity for the signed-in user. `user` itself is a fresh object on
+  // every auth event (token refresh, tab focus…), so effects must key on the id —
+  // otherwise they re-run constantly and clobber unsaved edits (e.g. timezone).
+  const userId = user?.id;
+
+  const [displayName, setDisplayName] = useState("");
 
   const [savingName, setSavingName] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
@@ -90,11 +100,25 @@ export default function SettingsPage() {
     useState(false);
   const [tokenVisible, setTokenVisible] = useState(false);
 
+  // Populate the display-name field once the user loads. Keyed on the id (not the
+  // user object) so a background auth refresh doesn't overwrite what's being typed.
   useEffect(() => {
-    if (!loading && user) {
+    if (!userId) return;
+    const metadata = user?.user_metadata ?? {};
+    setDisplayName(
+      metadata.display_name ??
+      metadata.full_name ??
+      user?.email?.split("@")[0] ??
+      ""
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  useEffect(() => {
+    if (!loading && userId) {
       loadPrefs();
     }
-  }, [loading, user]);
+  }, [loading, userId]);
 
   async function loadPrefs() {
     setPrefsLoading(true);
@@ -175,10 +199,10 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && userId) {
       loadTokens();
     }
-  }, [loading, user]);
+  }, [loading, userId]);
 
   async function loadTokens() {
     setTokensLoading(true);
@@ -505,19 +529,37 @@ export default function SettingsPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-sm font-semibold text-[#0A0A0A]">
-                    <Globe className="size-4 text-[#00A975]" />
+                    <Palette className="size-4 text-[#00A975]" />
                     Theme
                   </div>
 
                   <p className="text-xs text-[#0A0A0A]/40">
-                    Light mode only. Dark mode is not
-                    available.
+                    Choose light, dark, or match your system.
                   </p>
                 </div>
 
-                <span className="inline-flex h-9 items-center rounded-xl border border-[#00C98B]/20 bg-[#00C98B]/10 px-4 text-xs font-semibold text-[#008F64]">
-                  Light
-                </span>
+                <div className="inline-flex shrink-0 rounded-xl border border-[#0A0A0A]/10 bg-[#F8F9F9] p-1">
+                  {THEME_OPTIONS.map((option) => {
+                    const active = theme === option.value;
+                    const Icon = option.icon;
+
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setTheme(option.value)}
+                        aria-pressed={active}
+                        className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-colors ${active
+                          ? "bg-white text-[#0A0A0A] shadow-[0_1px_3px_rgba(0,0,0,0.08)]"
+                          : "text-[#0A0A0A]/45 hover:text-[#0A0A0A]"
+                          }`}
+                      >
+                        <Icon className="size-3.5" />
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <Separator className="bg-[#0A0A0A]/10" />

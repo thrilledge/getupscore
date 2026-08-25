@@ -467,10 +467,8 @@ export default function UpworkProfilePage() {
         </div>
 
         {/* Profile audit chat */}
-        <aside className="min-w-0 lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)]">
-          <div className="h-full overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white shadow-[0_8px_28px_rgba(0,0,0,0.045)]">
-            <ProfileAuditChat className="h-full" />
-          </div>
+        <aside className="min-w-0 lg:sticky lg:top-20 lg:h-[calc(100svh-6rem)]">
+          <ProfileAuditChat className="h-full" />
         </aside>
       </div>
     </div>

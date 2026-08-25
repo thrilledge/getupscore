@@ -13,23 +13,29 @@ CREATE TABLE IF NOT EXISTS saved_jobs (
 -- Enable RLS
 ALTER TABLE saved_jobs ENABLE ROW LEVEL SECURITY;
 
--- Policies: Users can manage their own saved jobs
+-- Policies: Users can manage their own saved jobs.
+-- Dropped first so this migration is safe to re-run against a live DB
+-- (CREATE POLICY has no IF NOT EXISTS).
+DROP POLICY IF EXISTS "users can select own saved jobs" ON saved_jobs;
 CREATE POLICY "users can select own saved jobs"
   ON saved_jobs FOR SELECT
   TO authenticated
   USING ((select auth.uid()) = user_id);
 
+DROP POLICY IF EXISTS "users can insert own saved jobs" ON saved_jobs;
 CREATE POLICY "users can insert own saved jobs"
   ON saved_jobs FOR INSERT
   TO authenticated
   WITH CHECK ((select auth.uid()) = user_id);
 
+DROP POLICY IF EXISTS "users can delete own saved jobs" ON saved_jobs;
 CREATE POLICY "users can delete own saved jobs"
   ON saved_jobs FOR DELETE
   TO authenticated
   USING ((select auth.uid()) = user_id);
 
 -- Allow service_role full access for admin operations
+DROP POLICY IF EXISTS "service_role full access on saved_jobs" ON saved_jobs;
 CREATE POLICY "service_role full access on saved_jobs"
   ON saved_jobs FOR ALL
   TO service_role

@@ -222,7 +222,7 @@ ${profileFields.length ? profileFields.join("\n") : "No profile data. Do not inv
   // DYNAMIC BLOCK — changes every request; placed after static for cache.
   const dynamicBlock = `=== THIS JOB ===
 Title: ${job.title || "Untitled"}
-Description: ${String(job.description || "").slice(0, 4000)}
+Description: ${String(job.description || "").slice(0, 2500)}
 Skills: ${skills} | Budget: ${budget} | Type: ${job.job_type || "N/A"} | Level: ${job.contractor_tier || "N/A"} | Duration: ${job.duration_label || "N/A"} | Proposals: ${job.proposals_count ?? "N/A"}
 Client: ${clientCountry} | Score: ${job.client_score ?? "N/A"}/5 | Spend: ${job.client_total_spend != null ? "$" + job.client_total_spend : "N/A"} | Hire rate: ${job.client_hire_rate != null ? job.client_hire_rate + "%" : "N/A"} | Payment: ${paymentVerified}
 

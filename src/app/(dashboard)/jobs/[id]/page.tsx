@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import { FavoriteButton } from "@/components/favorite-button";
 import { JobChat } from "@/components/job-chat";
+import { formatJobType } from "@/lib/format-job";
 
 type Analysis = {
   match_score: number;
@@ -281,7 +282,7 @@ export default function JobDetailPage() {
                       variant="secondary"
                       className="text-[11px] px-2.5 py-0.5 font-medium rounded-full"
                     >
-                      {job.job_type === "HOURLY" ? "Hourly" : "Fixed Price"}
+                      {formatJobType(job.job_type)}
                     </Badge>
                   )}
                   {job.contractor_tier && (

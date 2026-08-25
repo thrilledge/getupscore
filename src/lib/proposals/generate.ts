@@ -1,5 +1,5 @@
 import { buildProposalSystemPrompt, buildAnswerSystemPrompt, buildBasicProposalPrompt } from "./system-prompt";
-import { chatCompletionWithRetry, parseLlmJson } from "@/lib/llm";
+import { chatCompletionWithRetry, parseLlmJson, friendlyLlmError } from "@/lib/llm";
 import { logLlmUsage } from "@/lib/llm-logger";
 
 export interface ProposalInput {
@@ -231,7 +231,7 @@ export async function streamProposal(
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
         console.warn("[Proposal Stream] Error:", message);
-        send("error", { text: `Proposal generation failed: ${message.slice(0, 200)}` });
+        send("error", { text: friendlyLlmError(err) });
         controller.close();
       }
     },
