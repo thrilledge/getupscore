@@ -248,9 +248,13 @@ export type Database = {
           client_active_assignments: number | null
           client_city: string | null
           client_company_size: string | null
+          client_contracts_active: number | null
+          client_contracts_total: number | null
           client_country: string | null
           client_feedback_count: number | null
+          client_feedback_score: number | null
           client_hire_rate: number | null
+          client_hourly_budget_type: string | null
           client_hours_count: number | null
           client_industry: string | null
           client_location_country: string | null
@@ -259,8 +263,11 @@ export type Database = {
           client_payment_verified: boolean | null
           client_rating: number | null
           client_recent_history: Json | null
+          client_region: string | null
           client_score: number | null
           client_spend: number | null
+          client_state: string | null
+          client_timezone: string | null
           client_total_assignments: number | null
           client_total_hires: number | null
           client_total_jobs_with_hires: number | null
@@ -271,13 +278,16 @@ export type Database = {
           description: string | null
           duration_label: string | null
           duration_weeks: number | null
+          engagement_type: string | null
           hourly_max: number | null
           hourly_min: number | null
           hours_per_week: string | null
           id: string
           job_type: string | null
           payment_verified: boolean | null
+          persons_to_hire: number | null
           posted_at: string | null
+          preferred_qualifications: Json | null
           proposals_count: number | null
           skills: string[]
           source: string | null
@@ -295,9 +305,13 @@ export type Database = {
           client_active_assignments?: number | null
           client_city?: string | null
           client_company_size?: string | null
+          client_contracts_active?: number | null
+          client_contracts_total?: number | null
           client_country?: string | null
           client_feedback_count?: number | null
+          client_feedback_score?: number | null
           client_hire_rate?: number | null
+          client_hourly_budget_type?: string | null
           client_hours_count?: number | null
           client_industry?: string | null
           client_location_country?: string | null
@@ -306,8 +320,11 @@ export type Database = {
           client_payment_verified?: boolean | null
           client_rating?: number | null
           client_recent_history?: Json | null
+          client_region?: string | null
           client_score?: number | null
           client_spend?: number | null
+          client_state?: string | null
+          client_timezone?: string | null
           client_total_assignments?: number | null
           client_total_hires?: number | null
           client_total_jobs_with_hires?: number | null
@@ -318,13 +335,16 @@ export type Database = {
           description?: string | null
           duration_label?: string | null
           duration_weeks?: number | null
+          engagement_type?: string | null
           hourly_max?: number | null
           hourly_min?: number | null
           hours_per_week?: string | null
           id?: string
           job_type?: string | null
           payment_verified?: boolean | null
+          persons_to_hire?: number | null
           posted_at?: string | null
+          preferred_qualifications?: Json | null
           proposals_count?: number | null
           skills?: string[]
           source?: string | null
@@ -342,9 +362,13 @@ export type Database = {
           client_active_assignments?: number | null
           client_city?: string | null
           client_company_size?: string | null
+          client_contracts_active?: number | null
+          client_contracts_total?: number | null
           client_country?: string | null
           client_feedback_count?: number | null
+          client_feedback_score?: number | null
           client_hire_rate?: number | null
+          client_hourly_budget_type?: string | null
           client_hours_count?: number | null
           client_industry?: string | null
           client_location_country?: string | null
@@ -353,8 +377,11 @@ export type Database = {
           client_payment_verified?: boolean | null
           client_rating?: number | null
           client_recent_history?: Json | null
+          client_region?: string | null
           client_score?: number | null
           client_spend?: number | null
+          client_state?: string | null
+          client_timezone?: string | null
           client_total_assignments?: number | null
           client_total_hires?: number | null
           client_total_jobs_with_hires?: number | null
@@ -365,13 +392,16 @@ export type Database = {
           description?: string | null
           duration_label?: string | null
           duration_weeks?: number | null
+          engagement_type?: string | null
           hourly_max?: number | null
           hourly_min?: number | null
           hours_per_week?: string | null
           id?: string
           job_type?: string | null
           payment_verified?: boolean | null
+          persons_to_hire?: number | null
           posted_at?: string | null
+          preferred_qualifications?: Json | null
           proposals_count?: number | null
           skills?: string[]
           source?: string | null

@@ -55,6 +55,23 @@ type Analysis = {
   model_used: string;
 };
 
+type PreferredQualifications = {
+  english_proficiency?: string | null;
+  has_portfolio?: boolean | null;
+  min_hours_worked?: number | null;
+  min_job_success_score?: number | null;
+  rising_talent?: boolean | null;
+  [key: string]: unknown;
+};
+
+type ClientWorkHistory = {
+  closed?: Array<{ id?: string; title?: string; postedDate?: string; totalHours?: number; type?: string }>;
+  open?: Array<{ id?: string; title?: string; postedDate?: string; totalHours?: number; type?: string }>;
+  more_available?: boolean | null;
+  note?: string | null;
+  [key: string]: unknown;
+};
+
 type Job = {
   id: string;
   upwork_job_id: string;
@@ -84,12 +101,23 @@ type Job = {
   client_score: number | null;
   client_hours_count: number | null;
   client_feedback_count: number | null;
+  client_feedback_score: number | null;
+  client_contracts_active: number | null;
+  client_contracts_total: number | null;
+  client_timezone: string | null;
+  client_state: string | null;
+  client_region: string | null;
+  persons_to_hire: number | null;
+  engagement_type: string | null;
+  client_hourly_budget_type: string | null;
+  preferred_qualifications: PreferredQualifications | null;
   client_payment_verified: boolean | null;
   client_city: string | null;
   client_company_size: number | null;
   client_total_jobs_with_hires: number | null;
   client_active_assignments: number | null;
   client_location_country: string | null;
+  client_recent_history: ClientWorkHistory | null;
   proposals_count: number | null;
   connects_required: number | null;
   total_invited: number | null;
@@ -166,6 +194,37 @@ function clientLocation(job: Job): string {
   if (job.client_country) return job.client_country;
   if (job.client_score != null || job.client_total_spend != null) return "Location not available";
   return "New client — no history yet";
+}
+
+function ClientWorkHistorySection({ history }: { history: ClientWorkHistory }) {
+  const entries = history.closed || [];
+  if (entries.length === 0) return null;
+  return (
+    <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="rounded-lg bg-accent-purple/10 p-1.5">
+          <Briefcase className="size-4 text-accent-purple" />
+        </div>
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Client Work History
+        </span>
+      </div>
+      <div className="space-y-2">
+        {entries.slice(0, 10).map((job, i) => (
+          <div key={job.id || i} className="flex items-center justify-between gap-4 border-b border-border/40 pb-2 text-sm">
+            <span className="font-medium truncate">{job.title || "Untitled"}</span>
+            <span className="text-muted-foreground whitespace-nowrap shrink-0">
+              {job.type ? `${job.type.replace(/_/g, " ")} · ` : ""}
+              {job.totalHours != null ? `${job.totalHours.toLocaleString()} hrs` : "—"}
+            </span>
+          </div>
+        ))}
+        {history.more_available && (
+          <p className="text-xs text-muted-foreground pt-1">…and more on Upwork</p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function JobDetailPage() {
@@ -497,6 +556,40 @@ export default function JobDetailPage() {
                       <p className="text-base font-bold tabular-nums">{job.client_feedback_count}</p>
                     </div>
                   )}
+                  {job.client_feedback_score != null && (
+                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Feedback</p>
+                      <p className="text-base font-bold tabular-nums">{job.client_feedback_score.toFixed(2)}</p>
+                    </div>
+                  )}
+                  {(job.client_contracts_active != null || job.client_contracts_total != null) && (
+                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Open / Total Contracts</p>
+                      <p className="text-base font-bold tabular-nums">
+                        {job.client_contracts_active ?? "—"} / {job.client_contracts_total ?? "—"}
+                      </p>
+                    </div>
+                  )}
+                  {job.persons_to_hire != null && (
+                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Hiring</p>
+                      <p className="text-base font-bold tabular-nums">
+                        {job.persons_to_hire} {job.persons_to_hire === 1 ? "person" : "people"}
+                      </p>
+                    </div>
+                  )}
+                  {job.engagement_type && (
+                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Engagement</p>
+                      <p className="text-sm font-bold">{job.engagement_type.replace(/_/g, " ")}</p>
+                    </div>
+                  )}
+                  {job.client_timezone && (
+                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Timezone</p>
+                      <p className="text-sm font-bold">{job.client_timezone}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -525,6 +618,57 @@ export default function JobDetailPage() {
                 ))}
               </div>
             </div>
+          )}
+
+          {/* ── Preferred Qualifications ── */}
+          {job.preferred_qualifications && Object.keys(job.preferred_qualifications).length > 0 && (
+            <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="rounded-lg bg-accent-blue/10 p-1.5">
+                  <Target className="size-4 text-accent-blue" />
+                </div>
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Preferred Qualifications
+                </span>
+              </div>
+              <div className="space-y-2 text-sm">
+                {(job.preferred_qualifications.english_proficiency != null && job.preferred_qualifications.english_proficiency !== "" && job.preferred_qualifications.english_proficiency !== "Any") && (
+                  <p className="flex justify-between gap-4 border-b border-border/40 pb-2">
+                    <span className="text-muted-foreground">English</span>
+                    <span className="font-medium text-right">{job.preferred_qualifications.english_proficiency}</span>
+                  </p>
+                )}
+                {job.preferred_qualifications.min_job_success_score != null && job.preferred_qualifications.min_job_success_score > 0 && (
+                  <p className="flex justify-between gap-4 border-b border-border/40 pb-2">
+                    <span className="text-muted-foreground">Min Job Success Score</span>
+                    <span className="font-medium text-right">{job.preferred_qualifications.min_job_success_score}%</span>
+                  </p>
+                )}
+                {job.preferred_qualifications.min_hours_worked != null && job.preferred_qualifications.min_hours_worked > 0 && (
+                  <p className="flex justify-between gap-4 border-b border-border/40 pb-2">
+                    <span className="text-muted-foreground">Min Hours Worked</span>
+                    <span className="font-medium text-right">{job.preferred_qualifications.min_hours_worked.toLocaleString()}</span>
+                  </p>
+                )}
+                {job.preferred_qualifications.has_portfolio != null && (
+                  <p className="flex justify-between gap-4 border-b border-border/40 pb-2">
+                    <span className="text-muted-foreground">Portfolio Required</span>
+                    <span className="font-medium text-right">{job.preferred_qualifications.has_portfolio ? "Yes" : "No"}</span>
+                  </p>
+                )}
+                {job.preferred_qualifications.rising_talent != null && (
+                  <p className="flex justify-between gap-4">
+                    <span className="text-muted-foreground">Rising Talent</span>
+                    <span className="font-medium text-right">{job.preferred_qualifications.rising_talent ? "Yes" : "No"}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Client Work History ── */}
+          {job.client_recent_history && (
+            <ClientWorkHistorySection history={job.client_recent_history} />
           )}
 
           {/* ── Description ── */}

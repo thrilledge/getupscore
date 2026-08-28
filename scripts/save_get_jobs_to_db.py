@@ -42,9 +42,12 @@ JOBS_COLUMNS = {
     "client_total_assignments", "client_total_hires", "client_total_spend",
     "client_member_since", "client_industry", "total_invited", "total_hired",
     "client_recent_history", "client_score", "client_hours_count",
-    "client_feedback_count", "client_payment_verified", "client_city",
+    "client_feedback_count",     "client_payment_verified", "client_city",
     "client_company_size", "client_total_jobs_with_hires", "client_active_assignments",
     "client_location_country", "connects_required",
+    "client_feedback_score", "client_timezone", "client_state", "client_region",
+    "client_contracts_active", "client_contracts_total", "persons_to_hire",
+    "engagement_type", "client_hourly_budget_type", "preferred_qualifications",
 }
 
 
@@ -145,8 +148,14 @@ def map_get_response(resp):
     hourly_max = hourly.get("hourlyBudgetMax")
     budget = fixed.get("budget") or fixed.get("maxBudget") or resp.get("budget")
 
-    # client spend from search-style fields if present
+    # client spend from search-style fields, else from MCP client_record
     client_spend = resp.get("client_spend") or resp.get("clientSpent") or resp.get("client_total_spend")
+    client_spend_total = parse_money(client_rec.get("spend_total"))
+    if client_spend is None and client_spend_total is not None:
+        client_spend = client_spend_total
+
+    # client feedback score (0-5) from MCP client_record
+    feedback_score = parse_money(client_rec.get("feedback_score"))
 
     proposals = mjp.get("clientProposals") or {}
     proposals_count = proposals.get("count")
@@ -179,14 +188,27 @@ def map_get_response(resp):
         "client_total_jobs_with_hires": to_int(client_rec.get("jobs_with_hires") or activity.get("totalHired")),
         "client_hours_count": parse_money(client_rec.get("hours_total")),
         "client_feedback_count": to_int(client_rec.get("feedback_count")),
+        "client_feedback_score": feedback_score,
+        "client_contracts_active": to_int(client_rec.get("contracts_active")),
+        "client_contracts_total": to_int(client_rec.get("contracts_total")),
         "client_total_assignments": to_int(resp.get("client_total_assignments")),
         "client_active_assignments": to_int(activity.get("totalOffered") or resp.get("client_active_assignments")),
-        "client_name": norm(resp.get("client_name") or resp.get("client_name")),
-        "client_rating": parse_money(resp.get("client_rating") or resp.get("clientRating")),
+        "client_name": norm(resp.get("client_name") or client_company.get("name")),
+        "client_rating": parse_money(resp.get("client_rating") or resp.get("clientRating")) or feedback_score,
         "client_industry": norm(resp.get("client_industry")),
-        "client_city": norm(resp.get("client_city")),
-        "client_company_size": norm(resp.get("client_company_size")),
+        "client_city": norm(client_company.get("city") or resp.get("client_city")),
+        "client_timezone": norm(client_company.get("timezone")),
+        "client_state": norm(client_company.get("state")),
+        "client_region": norm(country.get("region")),
+        "client_company_size": norm(resp.get("client_company_size") or client_company.get("company_size")),
         "client_member_since": norm(resp.get("client_member_since")),
+        "persons_to_hire": to_int(terms.get("personsToHire")),
+        "engagement_type": norm(hourly.get("engagementType")),
+        "client_hourly_budget_type": norm(hourly.get("hourlyBudgetType")),
+        # Keep preferred_qualifications as a real JSON object so the client
+        # can read it directly (unlike client_recent_history, which stores the
+        # full raw dump as an escaped string).
+        "preferred_qualifications": (preq if isinstance(preq, dict) and preq else None),
         # Keep the ENTIRE raw `get` response so nothing is ever lost.
         "client_recent_history": json.dumps(resp) if isinstance(resp, dict) else None,
         "source": "upwork_mcp",
