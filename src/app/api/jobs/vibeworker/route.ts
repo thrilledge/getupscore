@@ -153,8 +153,28 @@ export async function POST(request: Request) {
     if (scoreInserts.length > 0) {
       const admin = createSupabaseAdminClient();
       (async () => {
+        const jobIds = [...new Set(scoreInserts.map((s) => s.job_id))];
+        const userIds = [...new Set(scoreInserts.map((s) => s.user_id))];
+        const { data: existingAnalyses } = await admin
+          .from("job_analyses")
+          .select("job_id, user_id")
+          .in("job_id", jobIds)
+          .in("user_id", userIds);
+        const analyzedSet = new Set(
+          (existingAnalyses || []).map((a) => `${a.job_id}:${a.user_id}`)
+        );
+        const toAnalyze = scoreInserts.filter(
+          (s) => !analyzedSet.has(`${s.job_id}:${s.user_id}`)
+        );
+        if (toAnalyze.length === 0) {
+          console.log("[Vibeworker] All jobs already analyzed, skipping");
+          return;
+        }
+        console.log(
+          `[Vibeworker] Analyzing ${toAnalyze.length}/${scoreInserts.length} (skipped ${scoreInserts.length - toAnalyze.length} already analyzed)`
+        );
         let ok = 0;
-        for (const s of scoreInserts) {
+        for (const s of toAnalyze) {
           try {
             const { data: job } = await admin
               .from("jobs")
@@ -168,11 +188,11 @@ export async function POST(request: Request) {
           } catch (e: any) {
             console.warn("[Vibeworker] Analysis failed for", s.job_id, e.message);
           }
-          if (scoreInserts.indexOf(s) < scoreInserts.length - 1) {
+          if (toAnalyze.indexOf(s) < toAnalyze.length - 1) {
             await new Promise((r) => setTimeout(r, 2000));
           }
         }
-        console.log(`[Vibeworker] Analyzed ${ok}/${scoreInserts.length} jobs`);
+        console.log(`[Vibeworker] Analyzed ${ok}/${toAnalyze.length} jobs`);
       })();
     }
 

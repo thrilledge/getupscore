@@ -38,13 +38,15 @@ export class LlmError extends Error {
 }
 
 /**
- * Provider chain: multiple Groq API keys for high availability.
+ * Provider chain: multiple Groq API keys + Pollinations AI fallback.
  *
  * IMPORTANT: Groq enforces its token-per-day (TPD) limit per *organization*,
  * not per API key. Multiple keys created inside a single Groq account all draw
  * from the same daily quota, so they do NOT multiply capacity — they only help
  * when a per-minute (RPM/TPM) burst limit is hit. To actually raise the daily
  * ceiling, the keys in GROQ_API_KEYS must come from separate Groq accounts.
+ *
+ * Pollinations AI is appended as a free fallback — no auth needed, ~1 req/15s.
  *
  * Supports:
  * - GROQ_API_KEYS: comma-separated list of API keys (preferred)
@@ -72,19 +74,18 @@ function buildAllProviders(): LLMProvider[] {
         groqStyle: true,
       });
     });
-    return chain;
-  }
-
-  // Fallback: single GROQ_API_KEY
-  const singleKey = process.env.GROQ_API_KEY;
-  if (singleKey) {
-    chain.push({
-      name: "groq",
-      baseUrl,
-      apiKey: singleKey,
-      model,
-      groqStyle: true,
-    });
+  } else {
+    // Fallback: single GROQ_API_KEY
+    const singleKey = process.env.GROQ_API_KEY;
+    if (singleKey) {
+      chain.push({
+        name: "groq",
+        baseUrl,
+        apiKey: singleKey,
+        model,
+        groqStyle: true,
+      });
+    }
   }
 
   return chain;
@@ -217,7 +218,7 @@ export async function chatCompletionWithRetry(
   if (available.length === 0) {
     // Everything is cooling down from earlier 429s.
     throw new LlmError(
-      `All ${chain.length} Groq keys are rate-limited.`,
+      `All ${chain.length} providers are rate-limited.`,
       "rate_limit",
       soonestRetrySeconds ?? undefined
     );
@@ -279,7 +280,7 @@ export async function chatCompletionWithRetry(
   // Only-rate-limits → actionable "try again later"; anything else → generic.
   if (saw429 && !sawOther) {
     throw new LlmError(
-      `All available Groq keys are rate-limited. Last error: ${lastError.slice(0, 200)}`,
+      `All available providers are rate-limited. Last error: ${lastError.slice(0, 200)}`,
       "rate_limit",
       minRetrySeconds ?? undefined
     );

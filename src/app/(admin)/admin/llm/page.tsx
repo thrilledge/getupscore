@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -21,12 +21,12 @@ import {
   Zap,
   Activity,
   AlertTriangle,
-  Key,
   Clock,
   CheckCircle2,
   XCircle,
   Users,
   Hash,
+  RefreshCw,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -45,31 +45,32 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
+interface ProviderInfo {
+  name: string;
+  keys: number;
+  model: string;
+}
+
 interface LlmStats {
   ok: boolean;
+  range: string;
   overview: {
     totalCalls: number;
-    calls24h: number;
-    calls7d: number;
-    tokensAllTime: number;
-    promptTokens: number;
-    completionTokens: number;
-    tokens24h: number;
-    tokens7d: number;
-    successRate24h: number;
-    errors24h: number;
+    rangeCalls: number;
+    rangeTokens: number;
+    rangePromptTokens: number;
+    rangeCompletionTokens: number;
+    successRate: number;
+    errors: number;
   };
   chain: {
-    provider: string;
-    keyCount: number;
-    model: string;
-    keys: string[];
+    providers: ProviderInfo[];
   };
-  byProvider24h: { provider: string; calls: number; tokens: number }[];
-  byEndpoint24h: { endpoint: string; calls: number; tokens: number }[];
-  dailyTokens: { date: string; tokens: number; calls: number }[];
+  byProvider: { provider: string; calls: number; tokens: number }[];
+  byEndpoint: { endpoint: string; calls: number; tokens: number }[];
+  timeSeries: { date: string; tokens: number; calls: number }[];
   topUsers: { user_id: string; email: string; calls: number; tokens: number }[];
-  rateLimits24h: { provider: string; count: number }[];
+  rateLimits: { provider: string; count: number }[];
   recentCalls: {
     id: string;
     email: string;
@@ -85,6 +86,19 @@ interface LlmStats {
     created_at: string;
   }[];
 }
+
+const RANGES = [
+  { label: "15s", value: "15s" },
+  { label: "30s", value: "30s" },
+  { label: "1m", value: "1m" },
+  { label: "5m", value: "5m" },
+  { label: "15m", value: "15m" },
+  { label: "1h", value: "1h" },
+  { label: "6h", value: "6h" },
+  { label: "24h", value: "24h" },
+  { label: "7d", value: "7d" },
+  { label: "30d", value: "30d" },
+] as const;
 
 const tokensChartConfig = {
   tokens: { label: "Tokens", color: "#00C98B" },
@@ -113,19 +127,40 @@ const endpointColors: Record<string, string> = {
   answer: "bg-amber-500/15 text-amber-700 border-amber-500/20",
 };
 
+function rangeLabel(r: string): string {
+  const map: Record<string, string> = {
+    "15s": "last 15 seconds",
+    "30s": "last 30 seconds",
+    "1m": "last minute",
+    "5m": "last 5 minutes",
+    "15m": "last 15 minutes",
+    "1h": "last hour",
+    "6h": "last 6 hours",
+    "24h": "last 24 hours",
+    "7d": "last 7 days",
+    "30d": "last 30 days",
+  };
+  return map[r] ?? r;
+}
+
 export default function AdminLlmPage() {
   const [stats, setStats] = useState<LlmStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [range, setRange] = useState<string>("24h");
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => {
-    fetch("/api/admin/llm")
+  const fetchData = useCallback(() => {
+    setLoading(true);
+    fetch(`/api/admin/llm?range=${range}`)
       .then((r) => r.json())
       .then((d) => { if (d.ok) setStats(d); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [range]);
 
-  if (loading) {
+  useEffect(() => { fetchData(); }, [fetchData, refreshKey]);
+
+  if (loading && !stats) {
     return (
       <div className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -144,40 +179,70 @@ export default function AdminLlmPage() {
 
   if (!stats) return <p className="text-muted-foreground">Failed to load LLM stats.</p>;
 
-  const { overview: o, chain, byProvider24h, byEndpoint24h, dailyTokens, topUsers, rateLimits24h, recentCalls } = stats;
+  const { overview: o, chain, byProvider, byEndpoint, timeSeries, topUsers, rateLimits, recentCalls } = stats;
 
   return (
     <div className="space-y-6">
-      {/* API Chain Status */}
+      {/* Header with range selector */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-lg font-bold flex items-center gap-2">
+            <Brain className="size-5 text-[#00C98B]" />
+            LLM Usage
+          </h1>
+          <p className="text-xs text-muted-foreground mt-1">
+            Tracking {rangeLabel(range)} · {o.rangeCalls.toLocaleString()} calls
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {RANGES.map((r) => (
+            <button
+              key={r.value}
+              onClick={() => setRange(r.value)}
+              className={`px-2.5 py-1 text-xs rounded-md font-medium transition-colors ${
+                range === r.value
+                  ? "bg-[#00C98B] text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="p-1.5 rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
+            title="Refresh"
+          >
+            <RefreshCw className={`size-3.5 text-gray-500 ${loading ? "animate-spin" : ""}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* API Chain Configuration */}
       <Card className="bg-white">
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Brain className="size-4 text-[#00C98B]" />
-            API Chain Configuration
+            API Chain
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {chain.providers.map((p) => (
+              <div key={p.name} className="rounded-lg border p-4">
+                <p className="text-xs text-muted-foreground mb-1">Provider</p>
+                <p className="text-lg font-bold">{p.name}</p>
+                <p className="text-xs text-muted-foreground mt-1 font-mono">{p.model}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {p.keys} {p.keys === 1 ? "key" : "keys"} in rotation
+                </p>
+              </div>
+            ))}
             <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Provider</p>
-              <p className="text-lg font-bold">{chain.provider}</p>
-              <p className="text-xs text-muted-foreground mt-1 font-mono">{chain.model}</p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Connected API Keys</p>
-              <p className="text-lg font-bold text-[#00C98B]">{chain.keyCount}</p>
-              <p className="text-xs text-muted-foreground mt-1">keys in rotation</p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Estimated Daily Quota</p>
-              <p className="text-lg font-bold">~{fmtTokens(chain.keyCount * 144_000 * 2)}</p>
-              <p className="text-xs text-muted-foreground mt-1">tokens (72K/key × 2)</p>
-            </div>
-            <div className="rounded-lg border p-4">
-              <p className="text-xs text-muted-foreground mb-1">Rate Limits (24h)</p>
-              {rateLimits24h.length > 0 ? (
+              <p className="text-xs text-muted-foreground mb-1">Rate Limits ({rangeLabel(range)})</p>
+              {rateLimits.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5 mt-1">
-                  {rateLimits24h.map((rl) => (
+                  {rateLimits.map((rl) => (
                     <Badge key={rl.provider} variant="outline" className="bg-red-500/10 text-red-600 border-red-500/20 text-xs">
                       {rl.provider}: {rl.count}× 429
                     </Badge>
@@ -188,16 +253,6 @@ export default function AdminLlmPage() {
               )}
             </div>
           </div>
-
-          {/* Key names */}
-          <div className="mt-4 flex flex-wrap gap-2">
-            {chain.keys.map((key) => (
-              <div key={key} className="flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs">
-                <Key className="size-3 text-[#00C98B]" />
-                <span className="font-mono text-muted-foreground">{key}</span>
-              </div>
-            ))}
-          </div>
         </CardContent>
       </Card>
 
@@ -206,71 +261,73 @@ export default function AdminLlmPage() {
         <Card className="bg-white">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium text-muted-foreground">Total API Calls</p>
+              <p className="text-xs font-medium text-muted-foreground">API Calls ({range})</p>
               <div className="grid size-8 place-items-center rounded-lg bg-blue-500/10 text-blue-600">
                 <Zap className="size-4" />
               </div>
             </div>
-            <p className="text-2xl font-bold tabular-nums">{fmtTokens(o.totalCalls)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{o.calls24h} in 24h · {o.calls7d} in 7d</p>
+            <p className="text-2xl font-bold tabular-nums">{o.rangeCalls.toLocaleString()}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{o.totalCalls.toLocaleString()} total all-time</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium text-muted-foreground">Total Tokens (30d)</p>
+              <p className="text-xs font-medium text-muted-foreground">Tokens ({range})</p>
               <div className="grid size-8 place-items-center rounded-lg bg-[#00C98B]/10 text-[#00C98B]">
                 <Hash className="size-4" />
               </div>
             </div>
-            <p className="text-2xl font-bold tabular-nums">{fmtTokens(o.tokensAllTime)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{fmtTokens(o.promptTokens)} prompt · {fmtTokens(o.completionTokens)} completion</p>
+            <p className="text-2xl font-bold tabular-nums">{fmtTokens(o.rangeTokens)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{fmtTokens(o.rangePromptTokens)} prompt · {fmtTokens(o.rangeCompletionTokens)} completion</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium text-muted-foreground">Tokens (24h)</p>
+              <p className="text-xs font-medium text-muted-foreground">Avg Tokens/Call</p>
               <div className="grid size-8 place-items-center rounded-lg bg-purple-500/10 text-purple-600">
                 <Activity className="size-4" />
               </div>
             </div>
-            <p className="text-2xl font-bold tabular-nums">{fmtTokens(o.tokens24h)}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{fmtTokens(o.tokens7d)} in 7d</p>
+            <p className="text-2xl font-bold tabular-nums">
+              {o.rangeCalls > 0 ? fmtTokens(Math.round(o.rangeTokens / o.rangeCalls)) : "—"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">per API call</p>
           </CardContent>
         </Card>
 
         <Card className="bg-white">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium text-muted-foreground">Success Rate (24h)</p>
-              <div className={`grid size-8 place-items-center rounded-lg ${o.successRate24h >= 95 ? "bg-[#00C98B]/10 text-[#00C98B]" : "bg-red-500/10 text-red-600"}`}>
-                {o.successRate24h >= 95 ? <CheckCircle2 className="size-4" /> : <AlertTriangle className="size-4" />}
+              <p className="text-xs font-medium text-muted-foreground">Success Rate</p>
+              <div className={`grid size-8 place-items-center rounded-lg ${o.successRate >= 95 ? "bg-[#00C98B]/10 text-[#00C98B]" : "bg-red-500/10 text-red-600"}`}>
+                {o.successRate >= 95 ? <CheckCircle2 className="size-4" /> : <AlertTriangle className="size-4" />}
               </div>
             </div>
-            <p className="text-2xl font-bold tabular-nums">{o.successRate24h}%</p>
-            <p className="mt-1 text-xs text-muted-foreground">{o.errors24h} errors in 24h</p>
+            <p className="text-2xl font-bold tabular-nums">{o.successRate}%</p>
+            <p className="mt-1 text-xs text-muted-foreground">{o.errors} errors</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* Daily Tokens Chart */}
         <Card className="bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Daily Token Usage (7 days)</CardTitle>
+            <CardTitle className="text-sm font-medium">Token Usage ({rangeLabel(range)})</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={tokensChartConfig} className="h-[220px] w-full">
-              <AreaChart data={dailyTokens}>
+              <AreaChart data={timeSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis
                   dataKey="date"
-                  tickFormatter={(v: string) => v.slice(5)}
                   tick={{ fontSize: 10, fill: "#999" }}
+                  interval="preserveStartEnd"
+                  minTickGap={30}
                 />
                 <YAxis
                   tick={{ fontSize: 10, fill: "#999" }}
@@ -291,19 +348,19 @@ export default function AdminLlmPage() {
           </CardContent>
         </Card>
 
-        {/* Daily Calls Chart */}
         <Card className="bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Daily API Calls (7 days)</CardTitle>
+            <CardTitle className="text-sm font-medium">API Calls ({rangeLabel(range)})</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={callsChartConfig} className="h-[220px] w-full">
-              <BarChart data={dailyTokens}>
+              <BarChart data={timeSeries}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis
                   dataKey="date"
-                  tickFormatter={(v: string) => v.slice(5)}
                   tick={{ fontSize: 10, fill: "#999" }}
+                  interval="preserveStartEnd"
+                  minTickGap={30}
                 />
                 <YAxis tick={{ fontSize: 10, fill: "#999" }} />
                 <ChartTooltip content={<ChartTooltipContent />} />
@@ -321,18 +378,18 @@ export default function AdminLlmPage() {
 
       {/* Provider + Endpoint Breakdown */}
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* By Provider (24h) */}
+        {/* By Provider */}
         <Card className="bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Usage by API Key (24h)</CardTitle>
+            <CardTitle className="text-sm font-medium">Usage by Provider ({rangeLabel(range)})</CardTitle>
           </CardHeader>
           <CardContent>
-            {byProvider24h.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-8">No API calls in 24h</p>
+            {byProvider.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">No API calls in range</p>
             ) : (
               <div className="space-y-3">
-                {byProvider24h.map((p) => {
-                  const maxTokens = Math.max(...byProvider24h.map((x) => x.tokens), 1);
+                {byProvider.map((p) => {
+                  const maxTokens = Math.max(...byProvider.map((x) => x.tokens), 1);
                   const pct = Math.round((p.tokens / maxTokens) * 100);
                   return (
                     <div key={p.provider} className="space-y-1.5">
@@ -349,8 +406,11 @@ export default function AdminLlmPage() {
                       </div>
                       <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-[#00C98B] transition-all duration-500"
-                          style={{ width: `${pct}%` }}
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: "#00C98B",
+                          }}
                         />
                       </div>
                     </div>
@@ -361,18 +421,18 @@ export default function AdminLlmPage() {
           </CardContent>
         </Card>
 
-        {/* By Endpoint (24h) */}
+        {/* By Endpoint */}
         <Card className="bg-white">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Usage by Endpoint (24h)</CardTitle>
+            <CardTitle className="text-sm font-medium">Usage by Endpoint ({rangeLabel(range)})</CardTitle>
           </CardHeader>
           <CardContent>
-            {byEndpoint24h.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-8">No API calls in 24h</p>
+            {byEndpoint.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">No API calls in range</p>
             ) : (
               <div className="space-y-3">
-                {byEndpoint24h.map((e) => {
-                  const maxTokens = Math.max(...byEndpoint24h.map((x) => x.tokens), 1);
+                {byEndpoint.map((e) => {
+                  const maxTokens = Math.max(...byEndpoint.map((x) => x.tokens), 1);
                   const pct = Math.round((e.tokens / maxTokens) * 100);
                   return (
                     <div key={e.endpoint} className="space-y-1.5">
@@ -412,21 +472,21 @@ export default function AdminLlmPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Users className="size-4" />
-            Top Users by Token Usage (7 days)
+            Top Users ({rangeLabel(range)})
           </CardTitle>
         </CardHeader>
         <CardContent>
           {topUsers.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-8">No user data in 7d</p>
+            <p className="text-xs text-muted-foreground text-center py-8">No user data in range</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-xs">#</TableHead>
                   <TableHead className="text-xs">User</TableHead>
-                  <TableHead className="text-xs">API Calls</TableHead>
-                  <TableHead className="text-xs">Tokens Used</TableHead>
-                  <TableHead className="text-xs">Avg Tokens/Call</TableHead>
+                  <TableHead className="text-xs">Calls</TableHead>
+                  <TableHead className="text-xs">Tokens</TableHead>
+                  <TableHead className="text-xs">Avg/Call</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -483,7 +543,14 @@ export default function AdminLlmPage() {
                       <TableCell className="text-[11px] max-w-[150px] truncate" title={c.email}>
                         {c.email === "—" ? "—" : c.email.split("@")[0]}
                       </TableCell>
-                      <TableCell className="text-[11px] font-mono">{c.provider}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] bg-[#00C98B]/10 text-[#00C98B] border-[#00C98B]/20"
+                        >
+                          {c.provider}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <Badge
                           variant="outline"
