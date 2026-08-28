@@ -50,6 +50,7 @@ export async function GET(
         client_location_country,
         hours_per_week,
         proposals_count,
+        connects_required,
         total_invited,
         total_hired,
         payment_verified,

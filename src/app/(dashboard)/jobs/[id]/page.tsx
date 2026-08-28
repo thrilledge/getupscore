@@ -91,6 +91,7 @@ type Job = {
   client_active_assignments: number | null;
   client_location_country: string | null;
   proposals_count: number | null;
+  connects_required: number | null;
   total_invited: number | null;
   total_hired: number | null;
   payment_verified: boolean | null;
@@ -470,6 +471,12 @@ export default function JobDetailPage() {
                     <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Jobs Posted</p>
                       <p className="text-base font-bold tabular-nums">{job.client_total_jobs_with_hires}</p>
+                    </div>
+                  )}
+                  {job.connects_required != null && (
+                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Connects</p>
+                      <p className="text-base font-bold tabular-nums">{job.connects_required}</p>
                     </div>
                   )}
                   {job.client_active_assignments != null && (
