@@ -100,6 +100,66 @@ export default function SettingsPage() {
     useState(false);
   const [tokenVisible, setTokenVisible] = useState(false);
 
+  const [upworkConnected, setUpworkConnected] = useState(false);
+  const [upworkDisplayName, setUpworkDisplayName] = useState<string | null>(null);
+  const [upworkConnects, setUpworkConnects] = useState<number | null>(null);
+  const [isUpworkLoading, setIsUpworkLoading] = useState(false);
+
+  useEffect(() => {
+    if (!loading || !userId) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    setIsUpworkLoading(true);
+    (async () => {
+      try {
+        const res = await fetch("/api/upwork/connect/status", {
+          signal: controller.signal,
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data?.connected) {
+          setUpworkConnected(true);
+          setUpworkDisplayName(data.displayName ?? null);
+          setUpworkConnects(data.connectsBalance ?? null);
+        }
+      } catch {
+        // ignore — show disconnected state
+      } finally {
+        clearTimeout(timer);
+        if (!cancelled) setIsUpworkLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [loading, userId]);
+
+  const handleUpworkConnect = useCallback(() => {
+    window.location.href = "/api/upwork/connect/start?returnTo=/settings";
+  }, []);
+
+  const handleUpworkDisconnect = useCallback(async () => {
+    setIsUpworkLoading(true);
+    try {
+      const res = await fetch("/api/upwork/connect/disconnect", { method: "POST" });
+      if (res.ok) {
+        setUpworkConnected(false);
+        setUpworkDisplayName(null);
+        setUpworkConnects(null);
+        toast.success("Upwork disconnected");
+      } else {
+        toast.error("Failed to disconnect Upwork");
+      }
+    } catch {
+      toast.error("Failed to disconnect Upwork");
+    } finally {
+      setIsUpworkLoading(false);
+    }
+  }, []);
+
   // Populate the display-name field once the user loads. Keyed on the id (not the
   // user object) so a background auth refresh doesn't overwrite what's being typed.
   useEffect(() => {
@@ -1039,6 +1099,114 @@ export default function SettingsPage() {
               Sign Out
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Upwork Connect */}
+      <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
+        <div className="h-[3px] bg-[#00C98B]" />
+
+        <CardHeader className="border-b border-[#0A0A0A]/10 px-5 py-5 sm:px-6">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#00C98B]/10 text-[#00A975]">
+              {isUpworkLoading ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : upworkConnected ? (
+                <CheckCircle2 className="size-5" />
+              ) : (
+                <ExternalLink className="size-5" />
+              )}
+            </span>
+
+            <div>
+              <CardTitle className="font-heading text-lg font-bold text-[#0A0A0A]">
+                Upwork Connect
+              </CardTitle>
+
+              <CardDescription className="mt-0.5 text-sm text-[#0A0A0A]/45">
+                Link your Upwork account to view connects and submit proposals
+                directly from UpScore.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4 px-5 py-5 sm:px-6">
+          {upworkConnected ? (
+            <>
+              <div className="flex items-center gap-3 rounded-xl border border-[#00C98B]/20 bg-[#00C98B]/5 px-4 py-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#00C98B]/15 text-[#00A975]">
+                  <CheckCircle2 className="size-4" />
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-[#0A0A0A]">
+                    Connected
+                    {upworkDisplayName ? ` as ${upworkDisplayName}` : ""}
+                  </p>
+
+                  <p className="text-xs text-[#0A0A0A]/45">
+                    {upworkConnects != null
+                      ? `${upworkConnects} Connects available`
+                      : "Connected to your Upwork account"}
+                  </p>
+                </div>
+
+                <span className="grid size-5 place-items-center rounded-full bg-[#00C98B] text-white">
+                  <CheckCircle2 className="size-3" />
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={handleUpworkConnect}
+                  disabled={isUpworkLoading}
+                  className="h-9 rounded-xl bg-[#00A975] px-4 font-semibold text-white hover:bg-[#00C98B]"
+                >
+                  {isUpworkLoading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="size-4" />
+                  )}
+                  Reconnect
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleUpworkDisconnect}
+                  disabled={isUpworkLoading}
+                  className="h-9 rounded-xl border-[#0A0A0A]/10 px-4 font-semibold text-[#0A0A0A]/60 hover:text-red-600"
+                >
+                  <Trash2 className="size-4" />
+                  Disconnect
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm leading-6 text-[#0A0A0A]/55">
+                Connect your Upwork account to check your Connects balance and,
+                in a coming update, submit AI-crafted proposals straight from
+                UpScore — no copy-pasting.
+              </p>
+
+              <Button
+                size="sm"
+                onClick={handleUpworkConnect}
+                disabled={isUpworkLoading}
+                className="h-9 rounded-xl bg-[#00A975] px-4 font-semibold text-white hover:bg-[#00C98B]"
+              >
+                {isUpworkLoading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <ExternalLink className="size-4" />
+                )}
+                Connect Upwork
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -18,6 +18,7 @@ export type Proposal = Database["public"]["Tables"]["proposals"]["Row"];
 export type UpworkSession = Database["public"]["Tables"]["upwork_sessions"]["Row"];
 export type UserPreference = Database["public"]["Tables"]["user_preferences"]["Row"];
 export type UpworkProfile = Database["public"]["Tables"]["upwork_profiles"]["Row"];
+export type UpworkConnection = Database["public"]["Tables"]["upwork_connections"]["Row"];
 export type Contract = Database["public"]["Tables"]["contracts"]["Row"];
 export type WorkDiaryEntry = Database["public"]["Tables"]["work_diary_entries"]["Row"];
 
@@ -33,6 +34,7 @@ export type NotificationInsert = Database["public"]["Tables"]["notifications"]["
 export type ProposalInsert = Database["public"]["Tables"]["proposals"]["Insert"];
 export type UserPreferenceInsert = Database["public"]["Tables"]["user_preferences"]["Insert"];
 export type UpworkProfileInsert = Database["public"]["Tables"]["upwork_profiles"]["Insert"];
+export type UpworkConnectionInsert = Database["public"]["Tables"]["upwork_connections"]["Insert"];
 export type ContractInsert = Database["public"]["Tables"]["contracts"]["Insert"];
 export type WorkDiaryEntryInsert = Database["public"]["Tables"]["work_diary_entries"]["Insert"];
 

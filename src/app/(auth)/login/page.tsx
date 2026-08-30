@@ -303,7 +303,7 @@ export default function LoginPage() {
           }}
         />
 
-        <Card className="login-card login-card-enter relative w-full max-w-[420px] overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white/95 py-0 shadow-[0_22px_65px_rgba(0,0,0,0.1)] backdrop-blur-xl">
+        <Card className="login-card login-card-enter relative w-full max-w-[420px] overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 dark:bg-[#0A0A0A]/10 py-0 shadow-[0_22px_65px_rgba(0,0,0,0.1)] backdrop-blur-xl">
           <div className="absolute inset-x-0 top-0 h-1 bg-[#00C98B]" />
 
           <CardHeader className="space-y-1 px-6 pb-4 pt-5 text-center sm:px-7 sm:pt-6">

@@ -724,6 +724,57 @@ export type Database = {
         }
         Relationships: []
       }
+      upwork_connections: {
+        Row: {
+          client_ref: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          is_active: boolean
+          key_version: number
+          last_synced_at: string | null
+          org_uid: string
+          token_enc: string
+          token_iv: string
+          token_tag: string
+          updated_at: string
+          upwork_user_uid: string
+          user_id: string
+        }
+        Insert: {
+          client_ref?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          key_version?: number
+          last_synced_at?: string | null
+          org_uid: string
+          token_enc: string
+          token_iv: string
+          token_tag: string
+          updated_at?: string
+          upwork_user_uid: string
+          user_id: string
+        }
+        Update: {
+          client_ref?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          key_version?: number
+          last_synced_at?: string | null
+          org_uid?: string
+          token_enc?: string
+          token_iv?: string
+          token_tag?: string
+          updated_at?: string
+          upwork_user_uid?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       upwork_profiles: {
         Row: {
           bio: string | null

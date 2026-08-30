@@ -319,7 +319,7 @@ export default function SignupPage() {
         />
 
         <div className="signup-card-scale w-full max-w-[420px]">
-          <Card className="signup-card-enter relative w-full overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white/95 py-0 shadow-[0_22px_65px_rgba(0,0,0,0.1)] backdrop-blur-xl">
+          <Card className="signup-card-enter relative w-full overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 dark:bg-[#0A0A0A]/10 py-0 shadow-[0_22px_65px_rgba(0,0,0,0.1)] backdrop-blur-xl">
             <div className="absolute inset-x-0 top-0 h-1 bg-[#00C98B]" />
 
             <CardHeader className="space-y-1 px-6 pb-4 pt-5 text-center sm:px-7 sm:pt-6">
@@ -619,8 +619,8 @@ export default function SignupPage() {
           <div className="mt-9">
             <div
               className={`flex min-h-[132px] items-center gap-5 rounded-[24px] border border-[#00C98B]/30 bg-[#00C98B]/10 p-5 shadow-[0_20px_60px_rgba(0,201,139,0.08)] backdrop-blur-md transition-all duration-300 ease-in-out ${featureVisible
-                  ? "translate-y-0 scale-100 opacity-100 blur-0"
-                  : "translate-y-3 scale-[0.98] opacity-0 blur-[3px]"
+                ? "translate-y-0 scale-100 opacity-100 blur-0"
+                : "translate-y-3 scale-[0.98] opacity-0 blur-[3px]"
                 }`}
             >
               <span className="grid size-14 shrink-0 place-items-center rounded-2xl border border-[#00C98B]/20 bg-[#00C98B]/10 text-[#00C98B]">
@@ -650,8 +650,8 @@ export default function SignupPage() {
                   aria-label={`Show ${feature.title}`}
                   onClick={() => showFeature(index)}
                   className={`h-2 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#00C98B] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] ${activeFeatureIndex === index
-                      ? "w-9 bg-[#00C98B]"
-                      : "w-2 bg-white/20 hover:bg-white/40"
+                    ? "w-9 bg-[#00C98B]"
+                    : "w-2 bg-white/20 hover:bg-white/40"
                     }`}
                 />
               ))}
