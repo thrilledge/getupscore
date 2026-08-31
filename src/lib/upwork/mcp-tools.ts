@@ -20,12 +20,19 @@ export interface McpAgentContext {
   toolIncludes?: string[];
   /** Optional: cap tool result chars fed back to the model. */
   maxResultChars?: number;
+  /** Optional: the title of the job being proposed — used as a search query to
+   *  pre-validate that the job is still a live, open Upwork posting before
+   *  spending Connects on a submission. */
+  jobSearchQuery?: string;
 }
 
 export interface McpToolDefinition {
-  name: string;
-  description: string;
-  parameters: Record<string, unknown>;
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
 }
 
 interface ToolResult {
@@ -42,7 +49,10 @@ function tool(
   parameters: Record<string, unknown>,
   executor: Executor
 ): { def: McpToolDefinition; run: Executor } {
-  return { def: { name, description, parameters }, run: executor };
+  return {
+    def: { type: "function", function: { name, description, parameters } },
+    run: executor,
+  };
 }
 
 async function mcpCall(
@@ -59,14 +69,95 @@ async function mcpCall(
         ...args,
       },
     });
+
+    // A JSON-RPC error (e.g. invalid args, permission) is NOT a success — it's
+    // in the `error` field, not `result.content`. Surfacing it as ok:true used
+    // to make the chat believe a real submission happened when Upwork actually
+    // rejected it.
+    const jsonError = extractMcpError(result);
+    if (jsonError) return { ok: false, error: jsonError };
+
     let text = extractMcpText(result);
     if (!text) return { ok: true, text: "(no text content returned)" };
+
+    // Some MCP servers signal failure via `isError` on the result envelope.
+    const isErrorResult =
+      (result as { result?: { isError?: unknown } })?.result?.isError === true;
+    if (isErrorResult) return { ok: false, error: text };
+
     if (text.length > maxResultChars) {
       text = text.slice(0, maxResultChars) + "\n…[result truncated — ask for a narrower query if you need more]";
     }
     return { ok: true, text };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** Detect a JSON-RPC error in an MCP response envelope. */
+function extractMcpError(result: unknown): string | null {
+  if (!result || typeof result !== "object") return null;
+  const r = result as { error?: { message?: string; code?: unknown } };
+  if (!r.error) return null;
+  const msg =
+    (typeof r.error.message === "string" && r.error.message) ||
+    `MCP error (code ${r.error.code ?? "unknown"})`;
+  return msg.replace(/\n/g, " ");
+}
+
+type Liveness = "live" | "stale" | "unknown";
+
+/**
+ * Best-effort check that a job reference is still a live, open Upwork posting
+ * before we spend Connects submitting to it. Vibeworker scrapes jobs that can
+ * expire or get filled — a freshly-indexed but long-dead job id will never be
+ * accepted by Upwork, so catching it up-front saves Connects and prevents a
+ * confusing "submitted but not on Upwork" state.
+ *
+ * We search the marketplace for the job's own title and see if the reference
+ * id appears among the results (up to a couple of pages). `find_jobs get` can't
+ * be used here — it returns "id is required" for freelancer accounts.
+ *
+ * Result: 'live' if the id is found, 'stale' only if we positively confirm it's
+ * absent, 'unknown' if pagination/search couldn't settle it (never blocks).
+ */
+async function checkJobLiveness(
+  ctx: McpAgentContext,
+  jobReference: string,
+  query: string
+): Promise<Liveness> {
+  const needle = String(jobReference);
+  const seen = new Set<string>();
+  // Try up to 2 pages of results.
+  for (let page = 1; page <= 2; page++) {
+    const res = await mcpCall(ctx, "upwork__find_jobs", {
+      action: "search",
+      query: query || needle,
+      limit: 10,
+      page,
+    }, 12000);
+    if (!res.ok || !res.text) return "unknown";
+    const ids = extractJobIds(res.text);
+    if (!ids) return "unknown";
+    for (const id of ids) seen.add(id);
+    if (ids.includes(needle)) return "live";
+    // If this page was clearly the end, stop.
+    if (seen.size < 10) break;
+  }
+  // If we never saw it across the pages we pulled, treat it as stale.
+  return "stale";
+}
+
+/** Pull numeric job ids out of a find_jobs search result payload. */
+function extractJobIds(text: string): string[] | null {
+  try {
+    const parsed = JSON.parse(text);
+    const jobs = Array.isArray(parsed?.jobs) ? parsed.jobs : [];
+    return jobs
+      .map((j: { id?: unknown }) => (typeof j?.id === "string" ? j.id : String(j?.id ?? "")))
+      .filter(Boolean);
+  } catch {
+    return null;
   }
 }
 
@@ -194,14 +285,40 @@ export function buildMcpTools(options?: {
             error: "TESTING MODE: proposal submission is disabled. This tool is read-only right now so no real Upwork action (and no Connects spend) can happen. You may still advise the user on the draft, bid, and angle, but you cannot prepare/submit a proposal via MCP until submission is enabled.",
           };
         }
+
+        // Before spending Connects on a real submission, verify the job is
+        // still a live, open Upwork posting. Jobs indexed by Vibeworker can
+        // expire / get filled, and Upwork simply rejects submissions to them.
+        // Catching that here keeps us honest: we refuse and stay with the local
+        // draft instead of reporting a fake `sent`.
+        const action = String(args?.action ?? "");
+        if (action === "create") {
+          const jobReference = String(args?.job_reference ?? "");
+          if (!jobReference) {
+            return {
+              ok: false,
+              error: "Cannot submit: no job_reference was provided. This job came from Vibeworker and has no valid Upwork job id — please confirm the job is still live on Upwork (or ask the user for the current Job ID/URL) before submitting.",
+            };
+          }
+          const liveness = await checkJobLiveness(ctx, jobReference, ctx.jobSearchQuery || jobReference);
+          if (liveness === "stale") {
+            return {
+              ok: false,
+              error: `This job (Upwork id ${jobReference}) no longer appears as an ACTIVE posting on Upwork. It was likely scraped by Vibeworker earlier and has since expired or been filled, so Upwork will not accept a proposal for it. Refusing to spend Connects. The proposal is saved as a local draft — use a currently-open job to submit.`,
+            };
+          }
+          // 'live' → proceed; 'unknown' → proceed (Upwork's own create result
+          // is authoritative and we'll keep it a draft if it rejects anyway).
+        }
+
         return mcpCall(ctx, "upwork__manage_proposals", args, maxResultChars);
       }
     ),
   ];
 
-  const selected = include ? tools.filter((t) => include.has(t.def.name)) : tools;
+  const selected = include ? tools.filter((t) => include.has(t.def.function.name)) : tools;
   const defs = selected.map((t) => t.def);
-  const byName = new Map(selected.map((t) => [t.def.name, t]));
+  const byName = new Map(selected.map((t) => [t.def.function.name, t]));
 
   return {
     def: defs,

@@ -421,48 +421,28 @@ export default function JobsPage() {
     return () => clearInterval(id);
   }, [fetchJobs]);
 
-  function daysAgo(
+  function formatPostedDate(
     dateString: string | null
   ): string {
     if (!dateString) return "";
 
-    const difference =
-      Date.now() -
-      new Date(dateString).getTime();
+    const d = new Date(dateString);
 
-    const minutes = Math.round(
-      difference / 60000
-    );
+    if (isNaN(d.getTime())) return "";
 
-    if (Math.abs(minutes) < 1) {
-      return "Just now";
-    }
-
-    const sign = minutes < 0 ? "-" : "";
-    const absoluteMinutes =
-      Math.abs(minutes);
-
-    if (absoluteMinutes < 60) {
-      return `${sign}${absoluteMinutes}m ago`;
-    }
-
-    const hours = Math.floor(
-      absoluteMinutes / 60
-    );
-
-    if (hours < 24) {
-      return `${sign}${hours}h ago`;
-    }
-
-    const days = Math.floor(hours / 24);
-
-    if (days === 1) {
-      return minutes > 0
-        ? "Yesterday"
-        : "in 1 day";
-    }
-
-    return `${sign}${days}d ago`;
+    // Show the real posted date as absolute local time, same layout
+    // whether the job was posted minutes ago or days ago.
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year:
+        d.getFullYear() === new Date().getFullYear()
+          ? undefined
+          : "numeric",
+    }) + " · " + d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
   }
 
   function clearFilters() {
@@ -1235,7 +1215,7 @@ export default function JobsPage() {
 
                             <span className="inline-flex items-center gap-1 text-[10px] text-[#0A0A0A]/40">
                               <Clock className="size-3" />
-                              {daysAgo(job.posted_at)}
+                              {formatPostedDate(job.posted_at)}
                             </span>
                           </div>
                         </div>
@@ -1505,7 +1485,7 @@ export default function JobsPage() {
 
                           <td className="px-5 py-4 text-right">
                             <span className="whitespace-nowrap text-xs text-[#0A0A0A]/45">
-                              {daysAgo(
+                              {formatPostedDate(
                                 job.posted_at
                               )}
                             </span>

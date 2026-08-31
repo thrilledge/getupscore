@@ -91,7 +91,19 @@ export async function GET(request: NextRequest) {
       orgUid = first?.org_uid ?? first?.id ?? "";
       displayName = first?.name ?? null;
     } catch (e) {
-      console.warn("upwork list-accounts discovery failed, continuing", e);
+      console.warn("upwork list-accounts discovery failed", e);
+    }
+
+    // Without an org_uid, every org-scoped Upwork MCP call (connects, profile,
+    // proposals) is impossible — and storing a placeholder "unknown" would make
+    // different users' connections indistinguishable at scale. Fail cleanly so
+    // the user can retry instead of persisting a broken/ambiguous connection.
+    if (!orgUid) {
+      console.error("upwork connect: org discovery returned no org_uid; aborting connect");
+      const target = new URL(returnTo, request.url);
+      target.searchParams.set("upwork", "error");
+      target.searchParams.set("reason", "org_discovery_failed");
+      return NextResponse.redirect(target);
     }
 
     // Auth: we need the user for the DB row. The callback is a redirect from
@@ -118,8 +130,8 @@ export async function GET(request: NextRequest) {
     const payload: UpworkConnectionInsert = {
       user_id: user.id,
       // Upwork's MCP doesn't return a user_uid; use org_uid as the identifier.
-      upwork_user_uid: orgUid || "unknown",
-      org_uid: orgUid || "unknown",
+      upwork_user_uid: orgUid,
+      org_uid: orgUid,
       display_name: displayName,
       token_enc: enc.tokenEnc,
       token_iv: enc.tokenIv,

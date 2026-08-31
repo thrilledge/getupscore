@@ -35,6 +35,11 @@ export interface RunMcpChatParams {
   maxToolIterations?: number;
   /** Optional callback to persist a proposal draft produced by the models. */
   onProposalDraft?: SaveProposalCb;
+  /** Optional callback fired every time a tool call succeeds, with the tool
+   *  name and its parsed arguments. Lets the caller react to real side effects
+   *  (e.g. a successful proposal submission) rather than assuming an action
+   *  happened. */
+  onToolSuccess?: (toolName: string, args: Record<string, unknown>) => void;
 }
 
 interface ChatResponseShape {
@@ -141,6 +146,9 @@ export async function runMcpChat(params: RunMcpChatParams): Promise<Response> {
               args = {};
             }
             const result = await runTool(call.function.name, args, params.mcp!);
+            if (result.ok && params.onToolSuccess) {
+              params.onToolSuccess(call.function.name, args);
+            }
             toolResults.push({
               role: "tool",
               tool_call_id: call.id,

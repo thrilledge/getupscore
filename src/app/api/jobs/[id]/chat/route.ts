@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 type ChatJob = {
   title: string | null;
+  upwork_job_id: string | null;
   description: string | null;
   skills: string[] | null;
   budget: number | null;
@@ -83,6 +84,7 @@ export async function POST(
     .from("jobs")
     .select(
       `title,
+       upwork_job_id,
        description,
        skills,
        budget,
@@ -195,23 +197,26 @@ export async function POST(
   );
 
   // When the user asks for a proposal, keep a copy in the `proposals` table
-  // so the Proposals page tracks every AI-written proposal as activity. In
-  // publish/auto_submit modes the proposal has been (or will be) sent to
-  // Upwork, so we mark it as `sent` rather than `draft`.
-  const proposalDraftStatus = proposalSubmitMode === "draft" ? "draft" : "sent";
+  // so the Proposals page tracks every AI-written proposal as activity.
+  // Status is decided by what actually happened: only when the AI truly
+  // submitted the proposal to Upwork (a successful upwork_manage_proposals
+  // call) do we mark it `sent`; otherwise it's a local draft. We never assume
+  // a submission happened just because the mode allows it.
+  let submittedToUpwork = false;
   const saveProposal = isProposalDraftRequest(last.content)
-    ? { supabase: createSupabaseAdminClient(), userId: user.id, jobId: id, status: proposalDraftStatus }
+    ? { supabase: createSupabaseAdminClient(), userId: user.id, jobId: id }
     : undefined;
 
   const proposalDraftCallback = saveProposal
     ? async (fullContent: string) => {
+      const status: "draft" | "sent" = submittedToUpwork ? "sent" : "draft";
       const { error: saveError } = await saveProposal.supabase
         .from("proposals")
         .insert({
           user_id: saveProposal.userId,
           job_id: saveProposal.jobId,
           generated_text: fullContent,
-          status: saveProposal.status as "draft" | "sent",
+          status,
         });
       return !saveError;
     }
@@ -246,9 +251,25 @@ export async function POST(
           "upwork_manage_proposals",
         ],
         maxResultChars: 3000,
+        // Used to pre-validate the job is still a live Upwork posting before
+        // spending Connects on a submission (see checkJobLiveness).
+        jobSearchQuery: job.title || undefined,
       },
       maxToolIterations: 3,
       onProposalDraft: proposalDraftCallback,
+      // Detect a real proposal submission so we don't mark local drafts as
+      // `sent` — status reflects whether Upwork actually received the proposal.
+      // Only `create` (marketplace submit) / `accept_invitation` count as a
+      // send; informational actions like `get`/`list` must not.
+      onToolSuccess: (toolName, args) => {
+        const action = String(args?.action ?? "");
+        if (
+          toolName === "upwork_manage_proposals" &&
+          (action === "create" || action === "accept_invitation")
+        ) {
+          submittedToUpwork = true;
+        }
+      },
     });
   }
 
@@ -376,11 +397,19 @@ The user's proposal_submit_mode is "${proposalSubmitMode}":
 - "draft": Write the proposal and output it as your reply. Do NOT submit to Upwork. (It is auto-saved to the Proposals page.)
 - "publish": Write the proposal, then use upwork_manage_proposals to submit it on Upwork (this spends Connects). After submitting, clearly report what was submitted and the Connects cost. Always confirm the bid and ask the user to review before doing anything irreversible.
 - "auto_submit": Write the proposal and use upwork_manage_proposals to submit it directly on Upwork without pausing (this spends Connects). After submitting, report the result and Connects cost.
-Only ever submit for THIS job (never another). If you lack enough info (bid, job reference), ask before acting.`;
+
+${proposalSubmitMode === "auto_submit"
+  ? `AUTO-SUBMIT INSTRUCTIONS (follow strictly):
+- You MUST actually call upwork_manage_proposals with action="create" for THIS job. Do not just write the proposal and stop.
+- Use the job_reference listed in "THIS JOB" below. Use the job's budget as the bid (charged_amount): if the job lists a fixed budget, use that; if hourly range, use the mid point; if none, use a reasonable market bid for the skills.
+- Do NOT ask the user for the job id, bid, or permission before submitting. This mode is explicitly enabled, so just submit.
+- After a successful submit, say it was submitted and report the Connects cost if shown.`
+  : "- Only ever submit for THIS job (never another). If you lack enough info (bid, job reference), ask before acting."}`;
 
   // DYNAMIC BLOCK — changes every request; placed after static for cache.
   const dynamicBlock = `=== THIS JOB ===
 Title: ${job.title || "Untitled"}
+Upwork job reference (job_reference for submission): ${job.upwork_job_id || "Unknown — ask the user for it before submitting"}
 Description: ${String(job.description || "").slice(0, 2500)}
 Skills: ${skills} | Budget: ${budget} | Type: ${job.job_type || "N/A"} | Level: ${job.contractor_tier || "N/A"} | Duration: ${job.duration_label || "N/A"} | Proposals: ${job.proposals_count ?? "N/A"}
 Client: ${clientCountry} | Score: ${job.client_score ?? "N/A"}/5 | Spend: ${job.client_total_spend != null ? "$" + job.client_total_spend : "N/A"} | Hire rate: ${job.client_hire_rate != null ? job.client_hire_rate + "%" : "N/A"} | Payment: ${paymentVerified}

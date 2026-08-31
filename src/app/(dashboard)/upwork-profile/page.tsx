@@ -24,6 +24,8 @@ import {
   ExternalLink,
   RefreshCw,
   Sparkles,
+  MapPin,
+  Clock,
 } from "lucide-react";
 
 interface PortfolioItem {
@@ -298,7 +300,7 @@ export default function UpworkProfilePage() {
                 </div>
 
                 {/* Profile statistics */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
                   {[
                     {
                       label: "Hourly Rate",
@@ -328,6 +330,20 @@ export default function UpworkProfilePage() {
                         ? `${profile.client_rating}/5`
                         : "—",
                       icon: Star,
+                    },
+                    {
+                      label: "Location",
+                      value:
+                        (profile.location as string) ??
+                        "—",
+                      icon: MapPin,
+                    },
+                    {
+                      label: "Availability",
+                      value:
+                        (profile.availability as string) ??
+                        "—",
+                      icon: Clock,
                     },
                   ].map((stat) => {
                     const Icon = stat.icon;
@@ -375,6 +391,108 @@ export default function UpworkProfilePage() {
                             >
                               {skill}
                             </span>
+                          )
+                        )}
+                      </div>
+                    </section>
+                  )}
+
+                {/* Languages */}
+                {Array.isArray(profile.languages) &&
+                  (profile.languages as Array<Record<string, unknown>>)
+                    .length > 0 && (
+                    <section className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <p className="font-heading text-[10px] font-bold uppercase tracking-[0.15em] text-[#0A0A0A]/50">
+                          Languages
+                        </p>
+
+                        <span className="h-px flex-1 bg-[#0A0A0A]/7" />
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {(profile.languages as Array<Record<string, unknown>>).map(
+                          (lang, index) => (
+                            <span
+                              key={String(lang.name ?? index)}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-[#00C98B]/20 bg-[#00C98B]/8 px-2.5 py-1 text-[11px] font-semibold text-[#008F64]"
+                            >
+                              {String(lang.name)}
+                              {lang.proficiency ? (
+                                <span className="text-[9px] font-medium text-[#008F64]/50">
+                                  {String(lang.proficiency)}
+                                </span>
+                              ) : null}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    </section>
+                  )}
+
+                {/* Education */}
+                {Array.isArray(profile.education) &&
+                  (profile.education as Array<Record<string, unknown>>)
+                    .length > 0 && (
+                    <section className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <p className="font-heading text-[10px] font-bold uppercase tracking-[0.15em] text-[#0A0A0A]/50">
+                          Education
+                        </p>
+
+                        <span className="h-px flex-1 bg-[#0A0A0A]/7" />
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {(profile.education as Array<Record<string, unknown>>).map(
+                          (edu, index) => (
+                            <div
+                              key={index}
+                              className="rounded-2xl border border-[#0A0A0A]/9 bg-white p-3.5"
+                            >
+                              <p className="font-heading text-sm font-bold text-[#0A0A0A]">
+                                {String(edu.degree ?? "Degree")}
+                              </p>
+                              <p className="mt-0.5 text-xs text-[#0A0A0A]/45">
+                                {String(edu.areaOfStudy ?? "")}
+                              </p>
+                              <p className="mt-1 text-xs font-semibold text-[#00A975]">
+                                {String(edu.institutionName ?? "")}
+                              </p>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </section>
+                  )}
+
+                {/* Employment */}
+                {Array.isArray(profile.employment) &&
+                  (profile.employment as Array<Record<string, unknown>>)
+                    .length > 0 && (
+                    <section className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <p className="font-heading text-[10px] font-bold uppercase tracking-[0.15em] text-[#0A0A0A]/50">
+                          Work Experience
+                        </p>
+
+                        <span className="h-px flex-1 bg-[#0A0A0A]/7" />
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {(profile.employment as Array<Record<string, unknown>>).map(
+                          (job, index) => (
+                            <div
+                              key={index}
+                              className="rounded-2xl border border-[#0A0A0A]/9 bg-white p-3.5"
+                            >
+                              <p className="font-heading text-sm font-bold text-[#0A0A0A]">
+                                {String(job.jobTitle ?? "Role")}
+                              </p>
+                              <p className="mt-0.5 text-xs font-semibold text-[#00A975]">
+                                {String(job.companyName ?? "")}
+                              </p>
+                            </div>
                           )
                         )}
                       </div>
