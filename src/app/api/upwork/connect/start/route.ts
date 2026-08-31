@@ -17,6 +17,10 @@ import { env } from "@/lib/env";
 const VERIFIER_COOKIE = "upwork_pkce_verifier";
 const STATE_COOKIE = "upwork_oauth_state";
 
+// Per-user OAuth start: must always run fresh (never cached) so each user gets
+// their own PKCE/state and redirect.
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();

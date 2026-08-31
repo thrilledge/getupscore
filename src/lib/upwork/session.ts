@@ -30,6 +30,11 @@ export async function getUpworkSession(
     .select("*")
     .eq("user_id", userId)
     .eq("is_active", true)
+    // Deterministic: never leave "which active connection" to the DB's
+    // undefined default order. If a user somehow ends up with 2+ active rows
+    // (e.g. a re-connect delete+insert race), we always pick the most recently
+    // refreshed/updated one — never a random/foreign row.
+    .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 

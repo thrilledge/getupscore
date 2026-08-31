@@ -11,6 +11,15 @@ import { getUpworkSession } from "@/lib/upwork/session";
 import { callMcp } from "@/lib/upwork/mcp";
 import { env } from "@/lib/env";
 
+// This route returns per-user data (which Upwork account is connected). It must
+// NEVER be cached/shared: force it dynamic and mark every response `no-store` so
+// no CDN/proxy/Vercel edge can serve one user's connection to another user.
+export const dynamic = "force-dynamic";
+
+// Applied to every response so a shared cache can never hand user A's Upwork
+// connection to user B.
+const NO_STORE = { "Cache-Control": "no-store, no-cache, must-revalidate" } as const;
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createSupabaseServerClient();
@@ -18,12 +27,12 @@ export async function GET(request: NextRequest) {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: NO_STORE });
     }
 
     const session = await getUpworkSession(user.id);
     if (!session) {
-      return NextResponse.json({ connected: false });
+      return NextResponse.json({ connected: false }, { headers: NO_STORE });
     }
 
     let connectsBalance: number | null = null;
@@ -50,10 +59,10 @@ export async function GET(request: NextRequest) {
       displayName: session.displayName,
       lastSyncedAt: session.lastSyncedAt,
       connectsBalance,
-    });
+    }, { headers: NO_STORE });
   } catch (err) {
     console.error("upwork status error", err);
-    return NextResponse.json({ error: "Failed to read Upwork status" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to read Upwork status" }, { status: 500, headers: NO_STORE });
   }
 }
 

@@ -60,6 +60,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  FileText,
 } from "lucide-react";
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
@@ -104,6 +105,27 @@ export default function SettingsPage() {
   const [upworkDisplayName, setUpworkDisplayName] = useState<string | null>(null);
   const [upworkConnects, setUpworkConnects] = useState<number | null>(null);
   const [isUpworkLoading, setIsUpworkLoading] = useState(false);
+
+  const PROPOSAL_MODES: { value: string; label: string; description: string }[] = [
+    {
+      value: "draft",
+      label: "Draft",
+      description: "Write + save to Proposals. No Connects spent.",
+    },
+    {
+      value: "publish",
+      label: "Publish",
+      description: "Write + prepare real submission for your review (spends Connects).",
+    },
+    {
+      value: "auto_submit",
+      label: "Auto-submit",
+      description: "Write + submit directly to Upwork (spends Connects).",
+    },
+  ];
+
+  const [proposalMode, setProposalMode] = useState("draft");
+  const [savingMode, setSavingMode] = useState(false);
 
   useEffect(() => {
     if (!loading || !userId) return;
@@ -159,6 +181,24 @@ export default function SettingsPage() {
       setIsUpworkLoading(false);
     }
   }, []);
+
+  // Sync the proposal submission mode from loaded preferences.
+  useEffect(() => {
+    if (prefs?.proposal_submit_mode) {
+      setProposalMode(prefs.proposal_submit_mode);
+    }
+  }, [prefs?.proposal_submit_mode]);
+
+  const handleSaveMode = useCallback(async () => {
+    setSavingMode(true);
+    const result = await savePreferences({ proposal_submit_mode: proposalMode });
+    setSavingMode(false);
+    if (result.success) {
+      toast.success("Proposal mode saved.");
+    } else {
+      toast.error(result.error ?? "Failed to save proposal mode.");
+    }
+  }, [proposalMode]);
 
   // Populate the display-name field once the user loads. Keyed on the id (not the
   // user object) so a background auth refresh doesn't overwrite what's being typed.
@@ -1207,6 +1247,70 @@ export default function SettingsPage() {
               </Button>
             </div>
           )}
+
+          <Separator className="bg-[#0A0A0A]/10" />
+
+          {/* Proposal submission mode */}
+          <div className="space-y-3">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#0A0A0A]">
+                <FileText className="size-4 text-[#00A975]" />
+                Proposal Submission Mode
+              </div>
+
+              <p className="mt-1 text-xs text-[#0A0A0A]/40">
+                Controls what happens when the AI writes a proposal in the job
+                chat. Modes that reach Upwork spend Connects.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {PROPOSAL_MODES.map((mode) => {
+                const active = proposalMode === mode.value;
+                return (
+                  <label
+                    key={mode.value}
+                    className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors ${
+                      active
+                        ? "border-[#00C98B]/40 bg-[#00C98B]/5"
+                        : "border-[#0A0A0A]/10 bg-[#F8F9F9] hover:border-[#00C98B]/30 hover:bg-[#00C98B]/5"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="proposalMode"
+                      value={mode.value}
+                      checked={active}
+                      onChange={(event) => setProposalMode(event.target.value)}
+                      className="mt-0.5 size-4 accent-[#00C98B]"
+                    />
+                    <span className="min-w-0 space-y-0.5">
+                      <span className="block text-sm font-semibold text-[#0A0A0A]">
+                        {mode.label}
+                      </span>
+                      <span className="block text-xs text-[#0A0A0A]/45">
+                        {mode.description}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+
+            <Button
+              size="sm"
+              onClick={handleSaveMode}
+              disabled={savingMode}
+              className="h-9 rounded-xl bg-[#0A0A0A] px-4 font-semibold text-white hover:bg-[#0A0A0A]/90"
+            >
+              {savingMode ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Save className="size-4" />
+              )}
+              Save Mode
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

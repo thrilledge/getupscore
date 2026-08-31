@@ -687,6 +687,7 @@ export type Database = {
           notify_on_contract_updates: boolean
           notify_on_match: boolean
           notify_on_proposal_status: boolean
+          proposal_submit_mode: string
           proposal_system_prompt: string | null
           quiet_hours_end: string | null
           quiet_hours_start: string | null
@@ -701,6 +702,7 @@ export type Database = {
           notify_on_contract_updates?: boolean
           notify_on_match?: boolean
           notify_on_proposal_status?: boolean
+          proposal_submit_mode?: string
           proposal_system_prompt?: string | null
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
@@ -715,6 +717,7 @@ export type Database = {
           notify_on_contract_updates?: boolean
           notify_on_match?: boolean
           notify_on_proposal_status?: boolean
+          proposal_submit_mode?: string
           proposal_system_prompt?: string | null
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null

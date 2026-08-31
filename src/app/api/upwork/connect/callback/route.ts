@@ -18,6 +18,10 @@ import { env } from "@/lib/env";
 const VERIFIER_COOKIE = "upwork_pkce_verifier";
 const STATE_COOKIE = "upwork_oauth_state";
 
+// OAuth callback resolves the signed-in user and writes their connection row —
+// must always run fresh per request, never cached.
+export const dynamic = "force-dynamic";
+
 interface ListAccountsResult {
   data?: unknown;
   result?: {
@@ -73,9 +77,11 @@ export async function GET(request: NextRequest) {
       clientId,
     });
 
-    // Discover org_uid + upwork user uid via MCP list-accounts.
+    // Discover org_uid + display name via MCP list-accounts.
+    // Note: Upwork's list-accounts returns { name, org_uid, role } — there is
+    // NO user_uid / customer_uid field, so we use `name` as the display name.
     let orgUid = "";
-    let upworkUserUid = "";
+    let displayName: string | null = null;
     try {
       const res = (await listAccounts(token.access_token, env.UPWORK_MCP_URL)) as unknown;
       const text = extractText(res);
@@ -83,7 +89,7 @@ export async function GET(request: NextRequest) {
       const accounts = Array.isArray(parsed) ? parsed : parsed?.accounts ?? [];
       const first = accounts[0] ?? parsed;
       orgUid = first?.org_uid ?? first?.id ?? "";
-      upworkUserUid = first?.user_uid ?? first?.customer_uid ?? "";
+      displayName = first?.name ?? null;
     } catch (e) {
       console.warn("upwork list-accounts discovery failed, continuing", e);
     }
@@ -111,8 +117,10 @@ export async function GET(request: NextRequest) {
 
     const payload: UpworkConnectionInsert = {
       user_id: user.id,
-      upwork_user_uid: upworkUserUid || "unknown",
+      // Upwork's MCP doesn't return a user_uid; use org_uid as the identifier.
+      upwork_user_uid: orgUid || "unknown",
       org_uid: orgUid || "unknown",
+      display_name: displayName,
       token_enc: enc.tokenEnc,
       token_iv: enc.tokenIv,
       token_tag: enc.tokenTag,
@@ -121,16 +129,23 @@ export async function GET(request: NextRequest) {
       is_active: true,
     };
 
-    // Deactivate any prior connection, then insert the fresh one.
-    await admin
+    // Delete any prior active connections for this user, then insert fresh.
+    const { error: delErr } = await admin
       .from("upwork_connections")
-      .update({ is_active: false })
-      .eq("user_id", user.id)
-      .eq("is_active", true);
+      .delete()
+      .eq("user_id", user.id);
+    if (delErr) {
+      console.error("upwork connection delete prior error", delErr);
+    }
 
     const { error } = await admin.from("upwork_connections").insert(payload);
     if (error) {
-      console.error("upwork connection upsert error", error);
+      console.error("upwork connection upsert error", JSON.stringify({
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+      }));
       return fail("Failed to store Upwork connection", 500);
     }
 
