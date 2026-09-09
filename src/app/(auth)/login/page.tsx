@@ -543,7 +543,7 @@ export default function LoginPage() {
                 </div>
               </CardContent>
 
-              <CardFooter className="flex flex-col gap-3 px-6 pb-5 pt-4 sm:px-7">
+              <CardFooter className="flex flex-col gap-3 px-6 pb-5 pt-4 sm:px-7 mt-4">
                 <Button
                   type="submit"
                   disabled={loading}

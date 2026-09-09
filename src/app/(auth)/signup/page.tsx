@@ -421,7 +421,7 @@ export default function SignupPage() {
                   </Button>
                 </CardContent>
 
-                <CardFooter className="flex flex-col px-6 pb-5 pt-4 sm:px-7">
+                <CardFooter className="flex flex-col px-6 pb-5 pt-4 sm:px-7 mt-4">
                   <p className="text-center text-sm text-[#0A0A0A]/55">
                     Already have an account?{" "}
                     <Link
@@ -536,7 +536,7 @@ export default function SignupPage() {
                   </div>
                 </CardContent>
 
-                <CardFooter className="flex flex-col gap-3 px-6 pb-5 pt-4 sm:px-7">
+                <CardFooter className="flex flex-col gap-3 px-6 pb-5 pt-4 sm:px-7 mt-4">
                   <Button
                     type="submit"
                     disabled={loading}
