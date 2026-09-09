@@ -309,7 +309,7 @@ export default function LoginPage() {
           <CardHeader className="space-y-1 px-6 pb-4 pt-5 text-center sm:px-7 sm:pt-6">
             <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-2xl bg-white/10 shadow-sm">
               <img
-                src="/getupscore-logo-icon.png"
+                src="/getgetupscore-logo-icon.png"
                 alt={env.APP_NAME}
                 width={40}
                 height={40}

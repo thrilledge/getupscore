@@ -640,7 +640,7 @@ function showSignInPopup() {
   });
 
   const logo = document.createElement("img");
-  logo.src = chrome.runtime.getURL("icons/getupscore-logo-icon.png");
+  logo.src = chrome.runtime.getURL("icons/getgetupscore-logo-icon.png");
   logo.alt = "Get UpScore";
   Object.assign(logo.style, {
     width: "48px",
