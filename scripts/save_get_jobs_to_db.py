@@ -69,6 +69,13 @@ def norm(v):
     return v
 
 
+def _strip_untrusted(v):
+    """Remove Upwork's <untrusted_participant_content> wrappers from descriptions."""
+    if isinstance(v, str):
+        v = v.replace("<untrusted_participant_content>", "").replace("</untrusted_participant_content>", "")
+    return v
+
+
 def to_int(v):
     if v is None:
         return None
@@ -163,7 +170,7 @@ def map_get_response(resp):
     row = {
         "upwork_job_id": str(jid),
         "title": (title or "(untitled)")[:500],
-        "description": norm(content.get("description")),
+        "description": norm(_strip_untrusted(content.get("description"))),
         "url": norm(mjp.get("url") or resp.get("url")),
         "job_type": (ctype or "")[:50],
         "contractor_tier": norm(terms.get("experienceLevel") or resp.get("experience_level") or resp.get("experienceLevel")),
@@ -260,6 +267,31 @@ def rpc_update(url, key, row, jid):
         raise RuntimeError(f"PostgREST PATCH HTTP {e.code}: {detail}") from e
 
 
+def rpc_upsert_many(url, key, rows):
+    """Upsert jobs by upwork_job_id — INSERT new rows and UPDATE existing ones.
+
+    PostgREST `on_conflict=<col>` + `resolution=merge-duplicates` does a true
+    upsert: rows whose upwork_job_id already exists are updated, missing ones
+    are inserted. Returns the full set of affected rows.
+    """
+    endpoint = f"{url}/rest/v1/jobs?on_conflict=upwork_job_id"
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation,resolution=merge-duplicates",
+    }
+    data = json.dumps(rows).encode("utf-8")
+    req = urllib.request.Request(endpoint, data=data, headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=40) as resp:
+            body = resp.read().decode("utf-8")
+            return json.loads(body) if body else []
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"PostgREST upsert HTTP {e.code}: {detail}") from e
+
+
 def main():
     args = [a for a in sys.argv[1:]]
     update_mode = False
@@ -288,16 +320,16 @@ def main():
     url, key = get_env()
 
     if update_mode:
-        updated_total = 0
-        for row in rows:
-            jid = row["upwork_job_id"]
-            try:
-                rpc_update(url, key, row, jid)
-                updated_total += 1
-                print(f"  [update] {jid} | {row.get('title','')[:60]}")
-            except Exception as e:
-                print(f"  [update FAIL] {jid}: {e}")
-        print(f"[save_get_jobs] UPDATE mode done: {updated_total}/{len(rows)}")
+        # True upsert: new rows get inserted, existing rows get refreshed.
+        try:
+            result = rpc_upsert_many(url, key, rows)
+        except Exception as e:
+            print(f"[save_get_jobs] ERROR upserting: {e}")
+            sys.exit(1)
+        done = result if isinstance(result, list) else []
+        for row in done:
+            print(f"  [upsert] {row.get('upwork_job_id')} | {row.get('title','')[:60]}")
+        print(f"[save_get_jobs] UPSERT done: {len(done)}/{len(rows)}")
         return
 
     try:

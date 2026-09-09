@@ -160,9 +160,15 @@
 /*                                                                           */
 /* Deliberately NOT remapped (they already read correctly on dark):          */
 /*   • brand greens (#00C98B / #00A975 / #008F64 / #007A56 / #00b57d)        */
+/*     surfaces stay green, but ink ON a solid mint surface is locked dark    */
+/*     by the "Bright brand-green surfaces" rules further below               */
 /*   • hero surfaces `bg-[#0A0A0A]` and dark scrims `/60 /90 /95`            */
-/*   • translucent white overlays (`bg-white/NN`, `border-white/NN`)         */
+/*   • faint white overlays (`bg-white/5`, `bg-white/10`) on dark surfaces    */
 /*   • `text-white*`, light grays already meant for dark (`text-gray-300`)   */
+/*                                                                           */
+/* EXCEPTION: `bg-white/60 /70 /75 /80 /90` glass pills ARE remapped (see     */
+/* below) — their text remaps to light `foreground`, so unremapped white      */
+/* glass would be light-on-light and unreadable.                              */
 /* ------------------------------------------------------------------------ */
 
 /* Surfaces --------------------------------------------------------------- */
@@ -171,7 +177,8 @@
 .dark [class~="bg-[#FAFAFA]"],
 .dark [class~="bg-[#F7FFFC]"],
 .dark [class~="bg-gray-50"],
-.dark [class~="bg-gray-100"] { background-color: var(--muted); }
+.dark [class~="bg-gray-100"],
+.dark [class~="bg-gray-200"] { background-color: var(--muted); }
 .dark [class~="bg-[#F7F8F8]"] { background-color: var(--background); }
 
 /* Near-black foreground text — opacity hierarchy preserved via color-mix -- */
@@ -205,7 +212,8 @@
 
 /* Muted gray body text --------------------------------------------------- */
 .dark [class~="text-gray-700"],
-.dark [class~="text-gray-600"] { color: var(--muted-foreground); }
+.dark [class~="text-gray-600"],
+.dark [class~="text-gray-500"] { color: var(--muted-foreground); }
 
 /* Placeholders ----------------------------------------------------------- */
 .dark [class~="placeholder:text-[#0A0A0A]/30"]::placeholder { color: color-mix(in oklab, var(--foreground) 30%, transparent); }
@@ -239,3 +247,102 @@
 .dark [class~="bg-black/20"] { background-color: oklch(1 0 0 / 0.20); }
 .dark [class~="bg-black/25"] { background-color: oklch(1 0 0 / 0.25); }
 .dark [class~="bg-black/30"] { background-color: oklch(1 0 0 / 0.30); }
+
+/* Hero gradient — flip the mint background to the dark surface hierarchy.   */
+/* The stop colors are CSS vars referenced by `--tw-gradient-stops`, so       */
+/* overriding them here keeps the Tailwind-composed gradient intact.          */
+.dark [class~="from-[#F2FFFA]"] { --tw-gradient-from: var(--background); }
+.dark [class~="via-[#F8FFFC]"] { --tw-gradient-via: color-mix(in oklab, var(--card) 97%, #00C98B 3%); }
+.dark [class~="to-white"] { --tw-gradient-to: var(--card); }
+
+/* Translucent WHITE glass pills (badges / outline buttons / info cards) —    */
+/* their text is remapped to the light `foreground` on dark, so keeping the   */
+/* white glass would put light-on-light and render it invisible. Drop these   */
+/* to dark glass instead. Lower-opacity overlays (bg-white/5, /10), which sit  */
+/* on already-dark surfaces, stay untouched.                                   */
+.dark [class~="bg-white/60"] { background-color: oklch(1 0 0 / 0.06); }
+.dark [class~="bg-white/70"] { background-color: oklch(1 0 0 / 0.07); }
+.dark [class~="bg-white/75"] { background-color: oklch(1 0 0 / 0.08); }
+.dark [class~="bg-white/80"] { background-color: oklch(1 0 0 / 0.10); }
+.dark [class~="bg-white/90"] { background-color: oklch(1 0 0 / 0.12); }
+
+/* Divider remaps — `divide-*` colors land on each child via the `> :not(:last-child)` */
+/* combinator, so they need their own scoped rule instead of a bare token match.       */
+.dark [class~="divide-[#0A0A0A]/10"] > :not(:last-child),
+.dark [class~="divide-[#0A0A0A]/7"] > :not(:last-child) { border-color: var(--border); }
+
+/* ------------------------------------------------------------------------ */
+/* State-variant remaps — a bare-token remap like `[class~="bg-gray-100"]`    */
+/* never matches `hover:bg-gray-100` or `group-hover:…`, so without rules     */
+/* below a hover/group-state would flash the raw light-mode color on dark.    */
+/* ------------------------------------------------------------------------ */
+
+.dark [class~="hover:bg-gray-50"]:hover,
+.dark [class~="hover:bg-gray-100"]:hover,
+.dark [class~="hover:bg-gray-200"]:hover { background-color: var(--muted); }
+
+.dark [class~="hover:text-[#0A0A0A]"]:hover,
+.dark [class~="hover:text-black"]:hover { color: var(--foreground); }
+
+/* Spinner arcs — `border-t-[#0A0A0A]` is a directional token the bare        */
+/* `border-[#0A0A0A]` remap misses, so the spinning segment would stay         */
+/* black-on-dark. Lift it to the foreground so it reads on any surface.        */
+.dark [class~="border-t-[#0A0A0A]"] { border-top-color: var(--foreground); }
+
+/* ------------------------------------------------------------------------ */
+/* Bright brand-green surfaces: near-black ink that sits on solid mint must   */
+/* stay dark — white-on-mint is unreadable (~2:1). Chain attribute selectors  */
+/* so these only fire when ink and green share the same element/state.        */
+/* ------------------------------------------------------------------------ */
+.dark [class~="bg-[#00C98B]"][class~="text-[#0A0A0A]"],
+.dark [class~="bg-[#00A975]"][class~="text-[#0A0A0A]"],
+.dark [class~="bg-[#00b57d]"][class~="text-[#0A0A0A]"] { color: #0A0A0A; }
+
+.dark [class~="hover:bg-[#00C98B]"]:hover[class~="hover:text-[#0A0A0A]"],
+.dark [class~="hover:bg-[#00A975]"]:hover[class~="hover:text-[#0A0A0A]"],
+.dark [class~="hover:bg-[#00b57d]"]:hover[class~="hover:text-[#0A0A0A]"] { color: #0A0A0A; }
+
+.dark .group:hover [class~="group-hover:bg-[#00C98B]"][class~="group-hover:text-[#0A0A0A]"],
+.dark .group:hover [class~="group-hover:bg-[#00A975]"][class~="group-hover:text-[#0A0A0A]"],
+.dark .group:hover [class~="group-hover:bg-[#00b57d]"][class~="group-hover:text-[#0A0A0A]"] { color: #0A0A0A; }
+
+.dark .group[open] [class~="group-open:bg-[#00C98B]"][class~="group-open:text-[#0A0A0A]"],
+.dark .group[open] [class~="group-open:bg-[#00A975]"][class~="group-open:text-[#0A0A0A]"],
+.dark .group[open] [class~="group-open:bg-[#00b57d]"][class~="group-open:text-[#0A0A0A]"] { color: #0A0A0A; }
+
+/* ------------------------------------------------------------------------ */
+/* Colored status text — the 600/700 shades are tuned for light mode and go   */
+/* muddy on the dark card; lift them a step to the 400 level in dark.         */
+/* ------------------------------------------------------------------------ */
+.dark [class~="text-red-600"],
+.dark [class~="text-red-700"] { color: #f87171; }
+.dark [class~="text-blue-600"],
+.dark [class~="text-blue-700"] { color: #60a5fa; }
+.dark [class~="text-green-600"],
+.dark [class~="text-green-700"] { color: #4ade80; }
+.dark [class~="text-yellow-600"],
+.dark [class~="text-yellow-700"] { color: #facc15; }
+.dark [class~="text-purple-600"],
+.dark [class~="text-purple-700"] { color: #c084fc; }
+.dark [class~="text-orange-600"],
+.dark [class~="text-orange-700"] { color: #fb923c; }
+.dark [class~="text-amber-600"],
+.dark [class~="text-amber-700"] { color: #fbbf24; }
+.dark [class~="text-emerald-600"],
+.dark [class~="text-emerald-700"] { color: #34d399; }
+
+/* ------------------------------------------------------------------------ */
+/* Landing feature-showcase tab transition                                 */
+/* ------------------------------------------------------------------------ */
+@keyframes feature-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}

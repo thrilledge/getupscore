@@ -248,10 +248,14 @@ const NAME_TO_CODE: Record<string, string> = {
   SYR: "SY",
 };
 
-export function countryFlag(name: string | null | undefined): string {
-  if (!name) return "🌐";
+export function countryCode(name: string | null | undefined): string | null {
+  if (!name) return null;
   const trimmed = name.trim();
-  const code = NAME_TO_CODE[trimmed] ?? NAME_TO_CODE[trimmed.toUpperCase()];
+  return NAME_TO_CODE[trimmed] ?? NAME_TO_CODE[trimmed.toUpperCase()] ?? null;
+}
+
+export function countryFlag(name: string | null | undefined): string {
+  const code = countryCode(name);
   if (!code) return "🌐";
   const base = 127397;
   return String.fromCodePoint(...[...code.toUpperCase()].map((c) => base + c.charCodeAt(0)));

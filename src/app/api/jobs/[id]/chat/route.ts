@@ -2,11 +2,7 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { proposalMethodology } from "@/lib/proposals/system-prompt";
 import { streamChat, type ChatMessage } from "@/lib/chat-stream";
-import { runMcpChat } from "@/lib/upwork/mcp-agent";
 import { requirePaid } from "@/lib/subscription-guard";
-import { getUpworkSession } from "@/lib/upwork/session";
-import { callMcp, getProfile, normalizeMcpProfile } from "@/lib/upwork/mcp";
-import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -125,20 +121,17 @@ export async function POST(
     if ((job as any).job_analyses.length === 0) (job as any).job_analyses = null;
   }
 
-  let profile: ChatProfile = (
+  const profile: ChatProfile = (
     await supabase.from("upwork_profiles").select("title, bio, skills, portfolio").eq("user_id", user.id).single()
   ).data as ChatProfile;
-  let profileSource: "database" | "mcp" | null = profile ? "database" : null;
 
   const { data: preferences } = await supabase
     .from("user_preferences")
-    .select("proposal_system_prompt, proposal_submit_mode")
+    .select("proposal_system_prompt")
     .eq("user_id", user.id)
     .maybeSingle();
 
   const customSystemPrompt = preferences?.proposal_system_prompt as string | null | undefined;
-  const proposalSubmitMode =
-    (preferences?.proposal_submit_mode as string | null | undefined) || "draft";
 
   const { data: filters } = await supabase
     .from("job_filters")
@@ -149,129 +142,21 @@ export async function POST(
   const userKeywords =
     filters?.flatMap((f) => (f.keywords as string[]) || []) || [];
 
-  // Fetch Upwork session for live data
-  let upworkSession: Awaited<ReturnType<typeof getUpworkSession>> = null;
-  let connectsBalance: number | null = null;
-  if (env.isUpworkConfigured) {
-    try {
-      upworkSession = await getUpworkSession(user.id);
-      if (upworkSession) {
-        const [connectsRes, mcpProfileRes] = await Promise.allSettled([
-          callMcp(upworkSession.token.access_token, env.UPWORK_MCP_URL, "tool", {
-            toolName: "upwork__get_freelancer_financials",
-            arguments: { action: "connects_balance", org_uid: upworkSession.orgUid, params: { limit: 1 } },
-          }),
-          getProfile(upworkSession.token.access_token, env.UPWORK_MCP_URL, upworkSession.orgUid),
-        ]);
-        if (connectsRes.status === "fulfilled") {
-          connectsBalance = extractConnects(connectsRes.value);
-        }
-        // Fall back to live MCP profile when the extension hasn't synced one.
-        if (mcpProfileRes.status === "fulfilled") {
-          const mcpProfile = normalizeMcpProfile(mcpProfileRes.value);
-          if (mcpProfile && !profile) {
-            profile = {
-              title: mcpProfile.title as string | null,
-              bio: mcpProfile.bio as string | null,
-              skills: (mcpProfile.skills as string[]) ?? null,
-              portfolio: mcpProfile.portfolio ?? null,
-            } as ChatProfile;
-            profileSource = "mcp";
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("[Job Chat] Upwork live data fetch failed:", e instanceof Error ? e.message : e);
-    }
-  }
-
   const systemPrompt = buildChatSystemPrompt(
     job as ChatJob,
-    (profile as ChatProfile) || null,
+    profile,
     userKeywords,
-    customSystemPrompt ?? undefined,
-    upworkSession,
-    connectsBalance,
-    profileSource,
-    proposalSubmitMode
+    customSystemPrompt ?? undefined
   );
 
   // When the user asks for a proposal, keep a copy in the `proposals` table
   // so the Proposals page tracks every AI-written proposal as activity.
-  // Status is decided by what actually happened: only when the AI truly
-  // submitted the proposal to Upwork (a successful upwork_manage_proposals
-  // call) do we mark it `sent`; otherwise it's a local draft. We never assume
-  // a submission happened just because the mode allows it.
-  let submittedToUpwork = false;
+  // Extension-based flow is always draft-only: the AI writes the proposal and
+  // saving it here; the actual Upwork submission happens on the apply page via
+  // the UpScore extension ("Write with AI"), not in this chat.
   const saveProposal = isProposalDraftRequest(last.content)
     ? { supabase: createSupabaseAdminClient(), userId: user.id, jobId: id }
     : undefined;
-
-  const proposalDraftCallback = saveProposal
-    ? async (fullContent: string) => {
-      const status: "draft" | "sent" = submittedToUpwork ? "sent" : "draft";
-      const { error: saveError } = await saveProposal.supabase
-        .from("proposals")
-        .insert({
-          user_id: saveProposal.userId,
-          job_id: saveProposal.jobId,
-          generated_text: fullContent,
-          status,
-        });
-      return !saveError;
-    }
-    : undefined;
-
-  // Submission is controlled by the user's per-user proposal_submit_mode:
-  //   'draft'       → real Upwork submission is BLOCKED (isTesting=true). The AI
-  //                   writes the proposal and it's saved to the Proposals page.
-  //   'publish'     → real submission ENABLED; the AI prepares the proposal and
-  //                   its real submission on Upwork for the user to review.
-  //   'auto_submit' → real submission ENABLED; the AI submits directly to Upwork.
-  // NOTE: publish/auto_submit reach out to Upwork and spend the user's Connects.
-  const isTesting = proposalSubmitMode === "draft";
-
-  if (upworkSession) {
-    return runMcpChat({
-      systemPrompt,
-      messages,
-      mcp: {
-        accessToken: upworkSession.token.access_token,
-        url: env.UPWORK_MCP_URL,
-        orgUid: upworkSession.orgUid,
-        isTesting,
-        // Only register the tools that are actually useful in the job chat.
-        // NOTE: NO job-finding tools here — the AI works from the current saved
-        // job (passed in "THIS JOB") and focuses on proposing: connects/price
-        // check, own proposals, profile, and proposal submission.
-        toolIncludes: [
-          "upwork_get_freelancer_financials",
-          "upwork_list_freelancer_proposals",
-          "upwork_get_profile",
-          "upwork_manage_proposals",
-        ],
-        maxResultChars: 3000,
-        // Used to pre-validate the job is still a live Upwork posting before
-        // spending Connects on a submission (see checkJobLiveness).
-        jobSearchQuery: job.title || undefined,
-      },
-      maxToolIterations: 3,
-      onProposalDraft: proposalDraftCallback,
-      // Detect a real proposal submission so we don't mark local drafts as
-      // `sent` — status reflects whether Upwork actually received the proposal.
-      // Only `create` (marketplace submit) / `accept_invitation` count as a
-      // send; informational actions like `get`/`list` must not.
-      onToolSuccess: (toolName, args) => {
-        const action = String(args?.action ?? "");
-        if (
-          toolName === "upwork_manage_proposals" &&
-          (action === "create" || action === "accept_invitation")
-        ) {
-          submittedToUpwork = true;
-        }
-      },
-    });
-  }
 
   return streamChat(systemPrompt, messages, saveProposal);
 }
@@ -282,34 +167,11 @@ function isProposalDraftRequest(text: string): boolean {
   );
 }
 
-function extractConnects(result: unknown): number | null {
-  try {
-    const r = result as {
-      result?: { content?: Array<{ type: string; text: string }> };
-    };
-    const item = r?.result?.content?.find((c) => c.type === "text");
-    const text = item?.text ?? JSON.stringify(result);
-    const parsed = JSON.parse(text);
-    const balance =
-      parsed?.connectsBalance ?? parsed?.balance ?? parsed?.total ?? parsed?.data ?? null;
-    if (typeof balance === "object" && balance !== null) {
-      return Number(balance.remaining ?? balance.available ?? balance.value ?? null) || null;
-    }
-    return typeof balance === "number" ? balance : null;
-  } catch {
-    return null;
-  }
-}
-
 function buildChatSystemPrompt(
   job: ChatJob,
   profile: ChatProfile,
   userKeywords: string[],
-  customPrompt?: string,
-  upworkSession?: Awaited<ReturnType<typeof getUpworkSession>> | null,
-  connectsBalance?: number | null,
-  profileSource?: "database" | "mcp" | null,
-  proposalSubmitMode: string = "draft"
+  customPrompt?: string
 ): string {
   const analysis = job.job_analyses?.[0];
   const skills = Array.isArray(job.skills) ? job.skills.join(", ") : "None listed";
@@ -340,25 +202,6 @@ function buildChatSystemPrompt(
   else if (userKeywords.length) profileFields.push(`Skills (from filters): ${userKeywords.join(", ")}`);
   if (profile?.bio) profileFields.push(`Background:\n${String(profile.bio).slice(0, 1200)}`);
   if (portfolioPreview) profileFields.push(`Portfolio:\n${portfolioPreview}`);
-  if (profileSource === "mcp") {
-    profileFields.push("(Profile pulled LIVE from Upwork via the Upwork API — no extension sync needed.)");
-  }
-
-  // Upwork live data section
-  const upworkLiveData: string[] = [];
-  if (upworkSession) {
-    if (upworkSession.upworkUserUid && upworkSession.upworkUserUid !== "unknown") {
-      upworkLiveData.push(`Upwork User UID: ${upworkSession.upworkUserUid}`);
-    }
-    if (upworkSession.orgUid && upworkSession.orgUid !== "unknown") {
-      upworkLiveData.push(`Org UID: ${upworkSession.orgUid}`);
-    }
-    upworkLiveData.push(`Display Name: ${upworkSession.displayName || "Not set"}`);
-    upworkLiveData.push(`Last Synced: ${upworkSession.lastSyncedAt || "Never"}`);
-  }
-  if (connectsBalance != null) {
-    upworkLiveData.push(`Connects Balance: ${connectsBalance}`);
-  }
 
   // STATIC BLOCK FIRST — same for every request per custom prompt,
   // so Groq's automatic prefix cache serves the cached tokens.
@@ -371,7 +214,7 @@ function buildChatSystemPrompt(
 === BEHAVIOR ===
 - Answer questions about the job, client, whether to apply, and how to position the application.
 - When asked to write/draft/improve a proposal, use the PROPOSAL METHODOLOGY and the freelancer's real profile. Never invent past results, tools, or case studies not present in the profile — if the profile is empty, say so and offer a generic draft the user can personalize.
-- Use LIVE UPWORK DATA for real-time connects balance and account status. If unavailable, guide user to connect in Settings.
+- Proposals are ALWAYS drafts: write the proposal and output it as your reply — it is auto-saved to the Proposals page. You do NOT submit to Upwork from here. To submit, the user applies on Upwork with the UpScore extension.
 - Keep conversational answers concise (under ~350 words) unless the user asks for a full proposal.
 - Format: plain text, short paragraphs, occasional light markdown bullets. No headers inside proposals.
 
@@ -379,37 +222,12 @@ function buildChatSystemPrompt(
 ${staticMethodology}
 
 === FREELANCER PROFILE (the logged-in user) ===
-${profileFields.length ? profileFields.join("\n") : "No profile data. Do not invent past work — keep proof generic or ask user for specifics."}
-
-${upworkLiveData.length ? `=== LIVE UPWORK DATA ===
-${upworkLiveData.join("\n")}` : "=== LIVE UPWORK DATA ===\nNot connected or unavailable. Connect Upwork in Settings to see live connects balance."}
-
-=== MCP TOOLS (when Upwork is connected) ===
-You work from the CURRENT JOB already given in "THIS JOB" below — you do NOT search for new jobs. To advise/act on it you may call live Upwork tools:
-- upwork_get_freelancer_financials (connects_balance) — check real-time connects to decide bid affordability
-- upwork_list_freelancer_proposals — the user's own proposals/invitations
-- upwork_get_profile — the user's live profile (skills, rate) to align the proposal
-- upwork_manage_proposals — submit/prepare a proposal for this job (with bid/price adjustment and portfolio/attachment notes)
-RULES: Make at most 1-2 tool calls per reply, then answer from the results. Never claim data you didn't retrieve. Never search for or pull other jobs — work only with the current job.
-
-=== PROPOSAL SUBMISSION MODE ===
-The user's proposal_submit_mode is "${proposalSubmitMode}":
-- "draft": Write the proposal and output it as your reply. Do NOT submit to Upwork. (It is auto-saved to the Proposals page.)
-- "publish": Write the proposal, then use upwork_manage_proposals to submit it on Upwork (this spends Connects). After submitting, clearly report what was submitted and the Connects cost. Always confirm the bid and ask the user to review before doing anything irreversible.
-- "auto_submit": Write the proposal and use upwork_manage_proposals to submit it directly on Upwork without pausing (this spends Connects). After submitting, report the result and Connects cost.
-
-${proposalSubmitMode === "auto_submit"
-  ? `AUTO-SUBMIT INSTRUCTIONS (follow strictly):
-- You MUST actually call upwork_manage_proposals with action="create" for THIS job. Do not just write the proposal and stop.
-- Use the job_reference listed in "THIS JOB" below. Use the job's budget as the bid (charged_amount): if the job lists a fixed budget, use that; if hourly range, use the mid point; if none, use a reasonable market bid for the skills.
-- Do NOT ask the user for the job id, bid, or permission before submitting. This mode is explicitly enabled, so just submit.
-- After a successful submit, say it was submitted and report the Connects cost if shown.`
-  : "- Only ever submit for THIS job (never another). If you lack enough info (bid, job reference), ask before acting."}`;
+${profileFields.length ? profileFields.join("\n") : "No profile data. Do not invent past work — keep proof generic or ask user for specifics."}`;
 
   // DYNAMIC BLOCK — changes every request; placed after static for cache.
   const dynamicBlock = `=== THIS JOB ===
 Title: ${job.title || "Untitled"}
-Upwork job reference (job_reference for submission): ${job.upwork_job_id || "Unknown — ask the user for it before submitting"}
+Upwork job reference: ${job.upwork_job_id || "Unknown"}
 Description: ${String(job.description || "").slice(0, 2500)}
 Skills: ${skills} | Budget: ${budget} | Type: ${job.job_type || "N/A"} | Level: ${job.contractor_tier || "N/A"} | Duration: ${job.duration_label || "N/A"} | Proposals: ${job.proposals_count ?? "N/A"}
 Client: ${clientCountry} | Score: ${job.client_score ?? "N/A"}/5 | Spend: ${job.client_total_spend != null ? "$" + job.client_total_spend : "N/A"} | Hire rate: ${job.client_hire_rate != null ? job.client_hire_rate + "%" : "N/A"} | Payment: ${paymentVerified}

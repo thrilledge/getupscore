@@ -60,7 +60,6 @@ import {
   Sun,
   Moon,
   Monitor,
-  FileText,
 } from "lucide-react";
 
 const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
@@ -101,55 +100,29 @@ export default function SettingsPage() {
     useState(false);
   const [tokenVisible, setTokenVisible] = useState(false);
 
-  const [upworkConnected, setUpworkConnected] = useState(false);
-  const [upworkDisplayName, setUpworkDisplayName] = useState<string | null>(null);
-  const [upworkConnects, setUpworkConnects] = useState<number | null>(null);
-  const [isUpworkLoading, setIsUpworkLoading] = useState(false);
-
-  const PROPOSAL_MODES: { value: string; label: string; description: string }[] = [
-    {
-      value: "draft",
-      label: "Draft",
-      description: "Write + save to Proposals. No Connects spent.",
-    },
-    {
-      value: "publish",
-      label: "Publish",
-      description: "Write + prepare real submission for your review (spends Connects).",
-    },
-    {
-      value: "auto_submit",
-      label: "Auto-submit",
-      description: "Write + submit directly to Upwork (spends Connects).",
-    },
-  ];
-
-  const [proposalMode, setProposalMode] = useState("draft");
-  const [savingMode, setSavingMode] = useState(false);
+  const [profileSynced, setProfileSynced] = useState(false);
+  const [profileSyncLoading, setProfileSyncLoading] = useState(true);
 
   useEffect(() => {
     if (!loading || !userId) return;
     let cancelled = false;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
-    setIsUpworkLoading(true);
     (async () => {
       try {
-        const res = await fetch("/api/upwork/connect/status", {
+        const res = await fetch("/api/upwork-profile", {
           signal: controller.signal,
         });
         if (!res.ok) return;
         const data = await res.json();
-        if (!cancelled && data?.connected) {
-          setUpworkConnected(true);
-          setUpworkDisplayName(data.displayName ?? null);
-          setUpworkConnects(data.connectsBalance ?? null);
+        if (!cancelled) {
+          setProfileSynced(!!data?.profile);
         }
       } catch {
-        // ignore — show disconnected state
+        // ignore — sync state unknown
       } finally {
         clearTimeout(timer);
-        if (!cancelled) setIsUpworkLoading(false);
+        if (!cancelled) setProfileSyncLoading(false);
       }
     })();
     return () => {
@@ -158,47 +131,6 @@ export default function SettingsPage() {
       controller.abort();
     };
   }, [loading, userId]);
-
-  const handleUpworkConnect = useCallback(() => {
-    window.location.href = "/api/upwork/connect/start?returnTo=/settings";
-  }, []);
-
-  const handleUpworkDisconnect = useCallback(async () => {
-    setIsUpworkLoading(true);
-    try {
-      const res = await fetch("/api/upwork/connect/disconnect", { method: "POST" });
-      if (res.ok) {
-        setUpworkConnected(false);
-        setUpworkDisplayName(null);
-        setUpworkConnects(null);
-        toast.success("Upwork disconnected");
-      } else {
-        toast.error("Failed to disconnect Upwork");
-      }
-    } catch {
-      toast.error("Failed to disconnect Upwork");
-    } finally {
-      setIsUpworkLoading(false);
-    }
-  }, []);
-
-  // Sync the proposal submission mode from loaded preferences.
-  useEffect(() => {
-    if (prefs?.proposal_submit_mode) {
-      setProposalMode(prefs.proposal_submit_mode);
-    }
-  }, [prefs?.proposal_submit_mode]);
-
-  const handleSaveMode = useCallback(async () => {
-    setSavingMode(true);
-    const result = await savePreferences({ proposal_submit_mode: proposalMode });
-    setSavingMode(false);
-    if (result.success) {
-      toast.success("Proposal mode saved.");
-    } else {
-      toast.error(result.error ?? "Failed to save proposal mode.");
-    }
-  }, [proposalMode]);
 
   // Populate the display-name field once the user loads. Keyed on the id (not the
   // user object) so a background auth refresh doesn't overwrite what's being typed.
@@ -1142,16 +1074,16 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Upwork Connect */}
+      {/* Upwork Profile Sync (Extension) */}
       <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
         <div className="h-[3px] bg-[#00C98B]" />
 
         <CardHeader className="border-b border-[#0A0A0A]/10 px-5 py-5 sm:px-6">
           <div className="flex items-center gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#00C98B]/10 text-[#00A975]">
-              {isUpworkLoading ? (
+              {profileSyncLoading ? (
                 <Loader2 className="size-5 animate-spin" />
-              ) : upworkConnected ? (
+              ) : profileSynced ? (
                 <CheckCircle2 className="size-5" />
               ) : (
                 <ExternalLink className="size-5" />
@@ -1160,156 +1092,72 @@ export default function SettingsPage() {
 
             <div>
               <CardTitle className="font-heading text-lg font-bold text-[#0A0A0A]">
-                Upwork Connect
+                Upwork Profile Sync
               </CardTitle>
 
               <CardDescription className="mt-0.5 text-sm text-[#0A0A0A]/45">
-                Link your Upwork account to view connects and submit proposals
-                directly from UpScore.
+                Your Upwork profile syncs automatically through the UpScore
+                browser extension.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-4 px-5 py-5 sm:px-6">
-          {upworkConnected ? (
-            <>
-              <div className="flex items-center gap-3 rounded-xl border border-[#00C98B]/20 bg-[#00C98B]/5 px-4 py-3">
-                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#00C98B]/15 text-[#00A975]">
-                  <CheckCircle2 className="size-4" />
-                </span>
+          {profileSynced ? (
+            <div className="flex items-center gap-3 rounded-xl border border-[#00C98B]/20 bg-[#00C98B]/5 px-4 py-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#00C98B]/15 text-[#00A975]">
+                <CheckCircle2 className="size-4" />
+              </span>
 
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[#0A0A0A]">
-                    Connected
-                    {upworkDisplayName ? ` as ${upworkDisplayName}` : ""}
-                  </p>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-[#0A0A0A]">
+                  Profile synced
+                </p>
 
-                  <p className="text-xs text-[#0A0A0A]/45">
-                    {upworkConnects != null
-                      ? `${upworkConnects} Connects available`
-                      : "Connected to your Upwork account"}
-                  </p>
-                </div>
-
-                <span className="grid size-5 place-items-center rounded-full bg-[#00C98B] text-white">
-                  <CheckCircle2 className="size-3" />
-                </span>
+                <p className="text-xs text-[#0A0A0A]/45">
+                  UpScore uses your synced profile for personalized job analysis
+                  and chat.
+                </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  onClick={handleUpworkConnect}
-                  disabled={isUpworkLoading}
-                  className="h-9 rounded-xl bg-[#00A975] px-4 font-semibold text-white hover:bg-[#00C98B]"
-                >
-                  {isUpworkLoading ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <RotateCcw className="size-4" />
-                  )}
-                  Reconnect
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleUpworkDisconnect}
-                  disabled={isUpworkLoading}
-                  className="h-9 rounded-xl border-[#0A0A0A]/10 px-4 font-semibold text-[#0A0A0A]/60 hover:text-red-600"
-                >
-                  <Trash2 className="size-4" />
-                  Disconnect
-                </Button>
-              </div>
-            </>
+              <span className="grid size-5 place-items-center rounded-full bg-[#00C98B] text-white">
+                <CheckCircle2 className="size-3" />
+              </span>
+            </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm leading-6 text-[#0A0A0A]/55">
-                Connect your Upwork account to check your Connects balance and,
-                in a coming update, submit AI-crafted proposals straight from
-                UpScore — no copy-pasting.
-              </p>
+              <div className="rounded-xl border border-[#0A0A0A]/10 bg-[#F8F9F9] px-4 py-3">
+                <p className="text-sm font-semibold text-[#0A0A0A]">
+                  No profile synced yet
+                </p>
 
-              <Button
-                size="sm"
-                onClick={handleUpworkConnect}
-                disabled={isUpworkLoading}
-                className="h-9 rounded-xl bg-[#00A975] px-4 font-semibold text-white hover:bg-[#00C98B]"
-              >
-                {isUpworkLoading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <ExternalLink className="size-4" />
-                )}
-                Connect Upwork
-              </Button>
+                <p className="mt-1 text-xs leading-5 text-[#0A0A0A]/45">
+                  Install the UpScore browser extension and sign in to sync your
+                  Upwork profile. Without it, UpScore shows generic analysis —
+                  syncing unlocks profile-aware scores and chat.
+                </p>
+              </div>
             </div>
           )}
 
           <Separator className="bg-[#0A0A0A]/10" />
 
-          {/* Proposal submission mode */}
+          {/* Proposal submission note */}
           <div className="space-y-3">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-[#0A0A0A]">
-                <FileText className="size-4 text-[#00A975]" />
-                Proposal Submission Mode
+                <Sparkles className="size-4 text-[#00A975]" />
+                AI Proposals — Always Drafts
               </div>
 
-              <p className="mt-1 text-xs text-[#0A0A0A]/40">
-                Controls what happens when the AI writes a proposal in the job
-                chat. Modes that reach Upwork spend Connects.
+              <p className="mt-1 text-xs leading-5 text-[#0A0A0A]/45">
+                When the AI writes a proposal in job chat, it&apos;s saved as a
+                draft in your Proposals page — never submitted to Upwork
+                automatically. Review and send it from the UpScore extension
+                when you apply.
               </p>
             </div>
-
-            <div className="space-y-2">
-              {PROPOSAL_MODES.map((mode) => {
-                const active = proposalMode === mode.value;
-                return (
-                  <label
-                    key={mode.value}
-                    className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors ${
-                      active
-                        ? "border-[#00C98B]/40 bg-[#00C98B]/5"
-                        : "border-[#0A0A0A]/10 bg-[#F8F9F9] hover:border-[#00C98B]/30 hover:bg-[#00C98B]/5"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="proposalMode"
-                      value={mode.value}
-                      checked={active}
-                      onChange={(event) => setProposalMode(event.target.value)}
-                      className="mt-0.5 size-4 accent-[#00C98B]"
-                    />
-                    <span className="min-w-0 space-y-0.5">
-                      <span className="block text-sm font-semibold text-[#0A0A0A]">
-                        {mode.label}
-                      </span>
-                      <span className="block text-xs text-[#0A0A0A]/45">
-                        {mode.description}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-
-            <Button
-              size="sm"
-              onClick={handleSaveMode}
-              disabled={savingMode}
-              className="h-9 rounded-xl bg-[#0A0A0A] px-4 font-semibold text-white hover:bg-[#0A0A0A]/90"
-            >
-              {savingMode ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Save className="size-4" />
-              )}
-              Save Mode
-            </Button>
           </div>
         </CardContent>
       </Card>

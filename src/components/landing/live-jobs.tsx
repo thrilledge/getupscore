@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 import { Badge } from "@/components/ui/badge";
-import { countryFlag } from "@/lib/country-flag";
+import { countryCode } from "@/lib/country-flag";
 import { timeAgo } from "@/lib/time-ago";
 import {
   CircleCheck,
-  Globe2,
   Clock3,
   DollarSign,
   Sparkles,
@@ -46,6 +45,24 @@ function jobTypeLabel(job: LiveJob): string {
   if (type.includes("fixed")) return "Fixed";
 
   return "—";
+}
+
+function flagBadge(countryName: string | null): ReactElement {
+  const code = countryCode(countryName);
+
+  if (!code) {
+    return <span aria-hidden="true">🌍</span>;
+  }
+
+  return (
+    <img
+      src={`/flags/${code.toLowerCase()}.png`}
+      alt={`${countryName} flag`}
+      loading="lazy"
+      draggable={false}
+      className="size-6 rounded-sm object-cover shadow-sm"
+    />
+  );
 }
 
 export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
@@ -168,10 +185,16 @@ export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
             }`}
         >
           <div className="hidden grid-cols-12 items-center gap-5 border-b border-white/10 bg-[#0A0A0A] px-6 py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-white/60 sm:grid">
-            <div className="col-span-5">Job Details</div>
-            <div className="col-span-3">Location</div>
-            <div className="col-span-2">Budget</div>
-            <div className="col-span-2">All Specialties</div>
+            <div className="col-span-6">Job Details</div>
+            <div className="col-span-2 border-l border-white/15 pl-5">
+              Location
+            </div>
+            <div className="col-span-2 border-l border-white/15 pl-5">
+              Budget
+            </div>
+            <div className="col-span-2 border-l border-white/15 pl-5">
+              All Specialties
+            </div>
           </div>
 
           {jobs.length === 0 ? (
@@ -199,7 +222,7 @@ export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
                       : "translate-y-8 opacity-0 blur-[3px]"
                     }`}
                 >
-                  <div className="col-span-12 sm:col-span-5">
+                  <div className="col-span-12 sm:col-span-6">
                     <p className="line-clamp-2 font-semibold leading-6 text-[#0A0A0A] transition-colors duration-300 group-hover:text-[#00A975]">
                       {job.title}
                     </p>
@@ -210,28 +233,22 @@ export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
                     </p>
                   </div>
 
-                  <div className="col-span-6 sm:col-span-3">
+                  <div className="col-span-6 sm:col-span-2 sm:border-l sm:border-[#0A0A0A]/10 sm:pl-5">
                     <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#0A0A0A]/40 sm:hidden">
                       Location
                     </p>
 
-                    <p className="flex items-center gap-2 text-sm font-medium text-[#0A0A0A]">
-                      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#0A0A0A]/5 text-base">
-                        {countryFlag(country(job)) || "🌍"}
+                    <p className="flex items-center">
+                      <span
+                        title={country(job) || "Worldwide"}
+                        className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#0A0A0A]/5 transition-transform duration-300 group-hover:scale-105"
+                      >
+                        {flagBadge(country(job))}
                       </span>
-
-                      <span className="line-clamp-1">
-                        {country(job) || "Worldwide"}
-                      </span>
-                    </p>
-
-                    <p className="mt-2 hidden items-center gap-1.5 text-xs text-[#0A0A0A]/45 sm:flex">
-                      <Globe2 className="size-3.5 shrink-0 text-[#00C98B]" />
-                      Client location
                     </p>
                   </div>
 
-                  <div className="col-span-6 sm:col-span-2">
+                  <div className="col-span-6 sm:col-span-2 sm:border-l sm:border-[#0A0A0A]/10 sm:pl-5">
                     <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#0A0A0A]/40 sm:hidden">
                       Budget
                     </p>
@@ -258,7 +275,7 @@ export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
                     </div>
                   </div>
 
-                  <div className="col-span-12 sm:col-span-2">
+                  <div className="col-span-12 sm:col-span-2 sm:border-l sm:border-[#0A0A0A]/10 sm:pl-5">
                     <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#0A0A0A]/40 sm:hidden">
                       Specialty
                     </p>

@@ -1,9 +1,0 @@
-[Unit]
-Description=Vibeworker Job Ingester — fetch Upwork jobs via Vibeworker session and POST to UpScore API
-After=docker.service
-
-[Service]
-Type=oneshot
-EnvironmentFile=/home/ubuntu/upwork-api/.env
-ExecStart=/usr/bin/python3 /home/ubuntu/upwork-api/vw_ingest.py
-User=ubuntu

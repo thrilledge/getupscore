@@ -73,32 +73,6 @@ export const env = {
   // Cron
   CRON_SECRET: getEnv("CRON_SECRET"),
 
-  // Upwork OAuth (app-side dynamic client for per-user connect).
-  // Upwork's MCP uses OAuth 2.1 with dynamic client registration (RFC 7591),
-  // so NO pre-registered client_id / client_secret is required — the app
-  // registers a public client at runtime. Only the redirect URI + encryption
-  // key are mandatory.
-  UPWORK_DISCOVERY_URL: getEnv(
-    "UPWORK_DISCOVERY_URL",
-    "https://mcp.upwork.com/.well-known/oauth-authorization-server"
-  ),
-  UPWORK_CLIENT_ID: getEnv("UPWORK_CLIENT_ID"),
-  UPWORK_CLIENT_SECRET: getEnv("UPWORK_CLIENT_SECRET"),
-  UPWORK_REDIRECT_URI: getEnv("UPWORK_REDIRECT_URI"),
-  // 32-byte AES key (base64) used to encrypt per-user tokens at rest
-  UPWORK_TOKEN_ENCRYPTION_KEY: getEnv("UPWORK_TOKEN_ENCRYPTION_KEY"),
-  UPWORK_MCP_URL: getEnv("UPWORK_MCP_URL", "https://mcp.upwork.com/mcp"),
-  UPWORK_AUTH_URL: getEnv("UPWORK_AUTH_URL", "https://www.upwork.com/ab/account-security/oauth2/authorize"),
-  UPWORK_TOKEN_URL: getEnv("UPWORK_TOKEN_URL", "https://www.upwork.com/api/v3/oauth2/token"),
-
-  // Dynamic client registration is automatic via discovery. Configured only
-  // when we have an encryption key + redirect URI (the token store essential).
-  isUpworkConfigured:
-    process.env.UPWORK_REDIRECT_URI !== "" &&
-    process.env.UPWORK_REDIRECT_URI !== undefined &&
-    process.env.UPWORK_TOKEN_ENCRYPTION_KEY !== "" &&
-    process.env.UPWORK_TOKEN_ENCRYPTION_KEY !== undefined,
-
   // Is AI available?
   isAiConfigured:
     process.env.OPENAI_API_KEY !== "" &&

@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
-import { getUpworkSession } from "@/lib/upwork/session";
-import { getProfile, normalizeMcpProfile } from "@/lib/upwork/mcp";
-import { env } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -24,25 +21,7 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // If the extension hasn't synced a profile for this user but they have an
-  // active Upwork connection, pull the live profile via the Upwork MCP so the
-  // profile page still shows complete data.
-  let profile: Record<string, unknown> | null = data ?? null;
-  if (!profile && env.isUpworkConfigured) {
-    try {
-      const session = await getUpworkSession(user.id);
-      if (session) {
-        const mcpProfile = normalizeMcpProfile(
-          await getProfile(session.token.access_token, env.UPWORK_MCP_URL, session.orgUid)
-        );
-        if (mcpProfile) profile = mcpProfile;
-      }
-    } catch (e) {
-      console.warn("upwork-profile GET live profile fallback failed", e);
-    }
-  }
-
-  return NextResponse.json({ profile });
+  return NextResponse.json({ profile: data ?? null });
 }
 
 export async function PUT(req: Request) {

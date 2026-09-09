@@ -226,7 +226,7 @@ export default function UpworkProfilePage() {
               />
 
               <CardHeader className="relative z-10 items-center px-5 pb-0 pt-10 text-center">
-                <span className="relative grid size-16 place-items-center rounded-[20px] border border-[#00C98B]/30 bg-[#00C98B]/10 text-[#00C98B] shadow-[0_15px_35px_rgba(0,201,139,0.1)]">
+                <span className="relative grid size-16 place-items-center rounded-[20px] border border-[#00C98B]/30 bg-[#00C98B]/10 text-[#00C98B] shadow-[0_15px_35px_rgba(0,201,139,0.1)] m-auto">
                   <UserCircle className="size-8" />
 
                   <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-[#0A0A0A] bg-[#00C98B]" />
@@ -235,11 +235,6 @@ export default function UpworkProfilePage() {
                 <CardTitle className="mt-4 font-heading text-xl font-bold text-white">
                   No profile synced
                 </CardTitle>
-
-                <CardDescription className="mt-1 max-w-md text-sm leading-6 text-white/50">
-                  Install the extension and visit your Upwork
-                  freelancer profile to sync your data.
-                </CardDescription>
               </CardHeader>
 
               <CardContent className="relative z-10 px-5 pb-11 pt-4 text-center">

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
   BrainCircuit,
-  CreditCard,
+  CalendarClock,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -156,9 +156,10 @@ export function Hero() {
           </div>
         </div>
 
-        <h1 className="hero-reveal hero-delay-2 mx-auto max-w-5xl font-heading text-[46px] font-bold leading-[0.98] tracking-[-0.045em] text-[#0A0A0A] sm:text-6xl lg:text-[78px] xl:text-[88px]">
+        <h1 className="hero-reveal hero-delay-2 mx-auto max-w-5xl font-heading text-[46px] font-bold leading-[1.1] tracking-[-0.03em] text-[#0A0A0A] sm:text-6xl lg:text-[78px] xl:text-[88px]">
           Never miss the{" "}
-          <span className="relative inline-block text-[#00C98B]">
+          <span className="relative inline-block whitespace-nowrap text-[#00C98B]">
+
             right
 
             <svg
@@ -226,10 +227,10 @@ export function Hero() {
 
           <span className="group inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:text-[#0A0A0A]">
             <span className="grid size-8 place-items-center rounded-full bg-[#00C98B]/10 transition-colors group-hover:bg-[#00C98B]/20">
-              <CreditCard className="size-4 text-[#00C98B]" />
+              <CalendarClock className="size-4 text-[#00C98B]" />
             </span>
 
-            No credit card required
+            Cancel anytime
           </span>
         </div>
       </div>

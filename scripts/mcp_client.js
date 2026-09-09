@@ -309,7 +309,8 @@ async function sync(orgUid, outFile, saveScript) {
   console.log("wrote", outFile, "(", gets.length, "jobs )");
   if (saveScript && fs.existsSync(saveScript)) {
     const { spawnSync } = require("child_process");
-    const py = spawnSync("python", [saveScript, "--update", outFile], { encoding: "utf8" });
+    const pyBin = process.platform === "win32" ? "python" : "python3";
+    const py = spawnSync(pyBin, [saveScript, "--update", outFile], { encoding: "utf8" });
     console.log(py.stdout || "");
     console.error(py.stderr || "");
     console.log("save exit:", py.status);

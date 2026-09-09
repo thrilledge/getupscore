@@ -51,6 +51,9 @@ export function JobDescription({ text }: { text: string }) {
 
   const cleaned =
     text
+      .replace(/<untrusted_participant_content>x?<\/untrusted_participant_content>/g, "")
+      .replace(/<untrusted_participant_content>/g, "")
+      .replace(/<\/untrusted_participant_content>/g, "")
       .replace(/\r\n/g, "\n")
       .replace(/\n{4,}/g, "\n\n\n");
 
@@ -60,3 +63,4 @@ export function JobDescription({ text }: { text: string }) {
     </ReactMarkdown>
   );
 }
+// 

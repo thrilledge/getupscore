@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { env } from "@/lib/env";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, } from "lucide-react";
+import Image from 'next/image'
+
 
 export function CtaFooter() {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -147,7 +149,7 @@ export function CtaFooter() {
 
               <span className="inline-flex items-center gap-1.5">
                 <CheckCircle2 className="size-4 text-[#00C98B]" />
-                No credit card
+                Cancel anytime
               </span>
 
               <span className="inline-flex items-center gap-1.5">
@@ -163,36 +165,208 @@ export function CtaFooter() {
       <footer className="relative overflow-hidden border-t border-white/10 bg-[#0A0A0A]">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-0 left-1/2 h-40 w-[500px] -translate-x-1/2 rounded-full bg-[#00C98B]/10 blur-[90px]"
+          className="pointer-events-none absolute bottom-0 left-1/2 h-48 w-[560px] -translate-x-1/2 rounded-full bg-[#00C98B]/10 blur-[100px]"
         />
 
         <div
           style={{
-            transitionDelay: isVisible ? "350ms" : "0ms",
+            transitionDelay: isVisible ? "250ms" : "0ms",
           }}
-          className={`relative mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-5 py-9 transition-all duration-700 ease-out sm:flex-row sm:px-8 lg:px-12 motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none ${isVisible
+          className={`relative mx-auto max-w-7xl px-5 py-14 transition-all duration-700 ease-out sm:px-8 lg:px-12 motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:transition-none ${isVisible
             ? "translate-y-0 opacity-100"
             : "translate-y-8 opacity-0"
             }`}
         >
-          <Link
-            href="/"
-            aria-label={`${env.APP_NAME} home`}
-            className="rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-[#00C98B]"
-          >
-            <img
-              src="/upscore-logo.png"
-              alt="UpScore"
-              width={50}
-              height={40}
-              className="h-[70px] w-auto object-contain"
-            />
-          </Link>
+          <div className="grid gap-10 lg:grid-cols-[1.5fr_repeat(4,1fr)] lg:gap-8">
+            {/* Brand */}
+            <div className="pr-4">
+              <Link
+                href="/"
+                aria-label={`${env.APP_NAME} home`}
+                className="inline-block rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-[#00C98B]"
+              >
+                <img
+                  src="/upscore-logo.png"
+                  alt="UpScore"
+                  width={60}
+                  height={48}
+                  className="h-[70px] w-auto object-contain"
+                />
+              </Link>
 
-          <p className="text-center text-xs leading-5 text-white/45 sm:text-right">
-            © {new Date().getFullYear()} {env.APP_NAME}. AI-powered Upwork
-            opportunity finder.
-          </p>
+              <p className="mt-4 max-w-xs text-sm leading-6 text-white/45">
+                AI-powered Upwork opportunity finder — job alerts, opportunity
+                scoring, and AI proposal drafts.
+              </p>
+            </div>
+
+            {/* Product */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
+                Product
+              </h3>
+
+              <ul className="mt-4 space-y-3">
+                {[
+                  { label: "Features", href: "#features" },
+                  { label: "How it Works", href: "#how-it-works" },
+                  { label: "Pricing", href: "#pricing" },
+                  { label: "Integrations", href: "#integrations" },
+                  { label: "Live Jobs Feed", href: "#jobs" },
+                ].map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className="text-sm text-white/55 transition-colors hover:text-white"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Free tools */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
+                Free Tools
+              </h3>
+
+              <ul className="mt-4 space-y-3">
+                {[
+                  { label: "AI Proposals", href: "/proposals" },
+                  { label: "Market Trends", href: "/market-trends" },
+                  { label: "Smart Filters", href: "/filters" },
+                  { label: "Alert Channels", href: "/channels" },
+                ].map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className="text-sm text-white/55 transition-colors hover:text-white"
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Resources */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
+                Resources
+              </h3>
+
+              <ul className="mt-4 space-y-3">
+                <li>
+                  <Link
+                    href="#faq"
+                    className="text-sm text-white/55 transition-colors hover:text-white"
+                  >
+                    FAQ
+                  </Link>
+                </li>
+
+                <li>
+                  <a
+                    href="mailto:hello@getupscore.com"
+                    className="text-sm text-white/55 transition-colors hover:text-white"
+                  >
+                    Help &amp; Support
+                  </a>
+                </li>
+
+                <li>
+                  <a
+                    href="mailto:hello@getupscore.com"
+                    className="text-sm text-white/55 transition-colors hover:text-white"
+                  >
+                    Contact Us
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
+                Legal
+              </h3>
+
+              <ul className="mt-4 space-y-3">
+                <li className="text-sm text-white/40">Terms &amp; Conditions</li>
+                <li className="text-sm text-white/40">Privacy Policy</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="relative">
+          <div className="mx-auto max-w-7xl sm:px-8 lg:px-12 pb-8">
+            <div className="grid grid-cols-3 gap-4 ">
+              <div className="flex items-center gap-4 justify-center">
+                <Image
+                  src="/playstore.png"
+                  width={30}
+                  height={30}
+                  alt="Picture of the Playstoree"
+                />
+                <div className="block">
+                  <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-white/40">
+                    Get it on
+                  </p>
+                  <p className="text-[16px] font-bold tracking-[0.16em] text-white">
+                    Google Play
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 justify-center">
+                <Image
+                  src="/game.png"
+                  width={30}
+                  height={30}
+                  alt="Picture of the Playstoree"
+                />
+                <div className="block">
+                  <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-white/40">
+                    Get it on
+                  </p>
+                  <p className="text-[16px] font-bold tracking-[0.16em] text-white">
+                    Google Play
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 justify-center">
+                <Image
+                  src="/chrome.png"
+                  width={30}
+                  height={30}
+                  alt="Picture of the Playstoree"
+                />
+                <div className="block">
+                  <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-white/40">
+                    Get it on
+                  </p>
+                  <p className="text-[16px] font-bold tracking-[0.16em] text-white">
+                    Google Play
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="relative border-t border-white/10">
+          <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 py-6 text-xs leading-5 text-white/45 sm:flex-row sm:px-8 lg:px-12">
+            <p>
+              © {new Date().getFullYear()} {env.APP_NAME}. AI-powered Upwork
+              opportunity finder.
+            </p>
+
+            <p>Made for freelancers, by ThrillEdge Technologies.</p>
+          </div>
         </div>
       </footer>
     </section>

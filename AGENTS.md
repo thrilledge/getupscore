@@ -54,52 +54,55 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ---
 
-# EC2 Deployment
+# VPS Deployment (Contabo)
 
-- **Host:** 13.48.204.110
-- **User:** ubuntu
-- **PEM key:** `C:\Users\Usama\Downloads\mylogikeypair.pem`
-- **SSH command:** `ssh -i C:\Users\Usama\Downloads\mylogikeypair.pem ubuntu@13.48.204.110`
-- **SCP copy:** `scp -i C:\Users\Usama\Downloads\mylogikeypair.pem <local_file> ubuntu@13.48.204.110:<remote_path>`
-- **Docker container:** `upwork-api` on port 8000 → nginx on port 80
-- **Scripts path on EC2:** `/home/ubuntu/upwork-api/`
+- **Host:** 144.91.85.40
+- **User:** root (password auth; key `C:\Users\Usama\.ssh\contabo_vps` also generated)
+- **OS:** Ubuntu 24.04.4 LTS, Node v22, Python 3.12
+- **Scripts path:** `/root/mcp-client/`
+- **Env file:** `/etc/upwork-mcp.env` (SUPABASE_URL + SUPABASE_SERVICE_KEY)
+- **Log:** `/var/log/upwork-mcp-sync.log`
 
-### Active services (ONLY this runs)
-- **`vw-ingest.service`** + **`vw-ingest.timer`** — TryVibeWorker fetcher (every 5 min)
-- **Restart:** `sudo systemctl restart upwork-ingest.timer && sudo systemctl start upwork-ingest.service`
+### Active services
+- **`upwork-mcp-sync.service`** + **`upwork-mcp-sync.timer`** — MCP job sync (every 5 min)
+- **Run now:** `systemctl start upwork-mcp-sync.service`
+- **Check:** `systemctl list-timers | grep upwork`, `tail -30 /var/log/upwork-mcp-sync.log`
 
-### Disabled services (DO NOT re-enable)
-- ~~`upwork-ingest.service`~~ — DISABLED. Custom Upwork scraper that bypasses Vercel and inserts jobs WITHOUT client details. Was causing confusion.
+### EC2 (OLD, DOWN)
+
+- **Host:** 13.48.204.110 — was `upwork-api` on port 8000 → nginx; VW ingest. Instance stopped/expired.
+- `oauth.getupscore.com` (nginx + certbot SSL → `localhost:8123`) also on EC2 — now unreachable.
+- ~~`vw-ingest.service`~~ / ~~`upwork-ingest.service`~~ — dead with EC2; DO NOT re-enable / recreate.
 
 ---
 
 # Architecture — How Jobs Flow
 
-> **IMPORTANT:** Jobs are fetched from **TryVibeWorker** (tryvibeworker.com) via the EC2 `vw_ingest.py` script.
-> The old custom Upwork scraper (`ingest_uphunt.py`, `upwork-ingest.service`) is **DISABLED** and should NOT be used.
+> **IMPORTANT:** Jobs now sync via the **Upwork MCP API** (`mcp_client.js`) on the Contabo VPS — NOT TryVibeWorker.
+> The old EC2/VW pipeline (`vw_ingest.py`) and custom Upwork scraper (`ingest_uphunt.py`) are DEAD — do NOT use.
 
-## Job Fetching Pipeline
+## Job Fetching Pipeline (VPS)
 
 ```
-TryVibeWorker API (tryvibeworker.com/api/jobs)
+Contabo VPS (every 5 min via upwork-mcp-sync.timer)
     ↓
-EC2: vw_ingest.py (fetches, static-scores against filters)
+/root/mcp-client/run_sync.sh (sources /etc/upwork-mcp.env)
     ↓
-POST /api/jobs/vibeworker (Vercel) — receives raw VW jobs + pre-computed scores
+node mcp_client.js sync → tools/call upwork__find_jobs action=search (limit 10, recency)
     ↓
-Vercel: mapVibeworkerJobsToInserts() → DB insert (jobs + job_scores)
+per-job tools/call action=get → full details (proposals, client spend, verified payment, duration)
     ↓
-Fire-and-forget: analyzeJob() for each scored job (AI analysis via DeepSeek proxy)
+mcp_get_jobs.json → python3 save_get_jobs_to_db.py --update
     ↓
-Dashboard: Jobs list shows client country, spend, hire rate, payment verified
+jobs table upsert (dedupe by upwork_job_id) — Vercel reads same Supabase DB
 ```
 
 ## Key Design Decisions
-1. **EC2 does ALL heavy lifting** — fetching, filter matching, static scoring. Vercel just writes to DB.
+1. **Contabo VPS does ALL heavy lifting** — MCP fetch, per-job details, static scoring is on app side. Vercel just reads the same Supabase DB.
 2. **Static pre-filter** (`static-score.ts`) — rule-based 0-100 scoring, threshold ≥30. Saves 60-80% AI calls.
 3. **AI analysis is fire-and-forget** — response returns immediately, analysis runs in background.
-4. **Vibeworker provides limited client data** — country, totalSpent, hireRate, jobsPosted, paymentVerified. Does NOT provide: proposals_count, client_name, client_industry, client_city, client_company_size.
-5. **Inngest** handles `process-cron-jobs` and `process-extension-sync` — NOT used for VW ingest analysis (event key was missing, switched to direct `analyzeJob` calls).
+4. **Upwork MCP provides rich client data** — proposals count, client spend, hire rate, verified payment, duration, preferred qualifications.
+5. **Inngest** handles `process-cron-jobs` and `process-extension-sync` — NOT used for MCP ingest (sync runs entirely on VPS).
 
 ---
 
@@ -111,7 +114,7 @@ Dashboard: Jobs list shows client country, spend, hire rate, payment verified
 | `analyze-job` | `app/jobs.analyze` | AI-analyzes a single job for a single user |
 | `process-extension-sync` | `app/extension.sync` | Handles extension-synced jobs |
 
-**Note:** VW ingest does NOT use Inngest. It calls `analyzeJob()` directly (fire-and-forget).
+**Note:** MCP ingest does NOT use Inngest. It calls `analyzeJob()` directly (fire-and-forget) from the Vercel app.
 
 ---
 

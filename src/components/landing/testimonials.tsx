@@ -190,8 +190,8 @@ export function Testimonials() {
             Loved by freelancers
           </div>
 
-          <h2 className="font-heading text-4xl font-bold tracking-[-0.035em] text-[#0A0A0A] sm:text-5xl">
-            Freelancers win more with{" "}
+          <h2 className="font-heading text-4xl font-bold tracking-[-0.035em] text-[#0A0A0A] sm:text-5xl leading-[1.1]">
+            Freelancers win more <br /> with{" "}
             <span className="text-[#00C98B]">{env.APP_NAME}</span>
           </h2>
 

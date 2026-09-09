@@ -90,8 +90,8 @@ export function HowItWorks() {
             transitionDelay: isVisible ? "100ms" : "0ms",
           }}
           className={`mx-auto max-w-3xl text-center transition-all duration-700 ease-out motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:blur-0 motion-reduce:transition-none ${isVisible
-              ? "translate-y-0 opacity-100 blur-0"
-              : "translate-y-10 opacity-0 blur-[4px]"
+            ? "translate-y-0 opacity-100 blur-0"
+            : "translate-y-10 opacity-0 blur-[4px]"
             }`}
         >
           <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#00C98B]/25 bg-[#00C98B]/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-[#0A0A0A]/70">
@@ -106,8 +106,8 @@ export function HowItWorks() {
             How it works
           </div>
 
-          <h2 className="font-heading text-4xl font-bold tracking-[-0.035em] text-[#0A0A0A] sm:text-5xl">
-            From job post to contract in{" "}
+          <h2 className="font-heading text-4xl font-bold tracking-[-0.035em] text-[#0A0A0A] sm:text-5xl leading-[1.2]">
+            From job post to contract <br /> in{" "}
             <span className="text-[#00C98B]">three steps</span>
           </h2>
 
@@ -138,8 +138,8 @@ export function HowItWorks() {
                     : "0ms",
                 }}
                 className={`relative z-10 transition-all duration-700 ease-out motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:blur-0 motion-reduce:transition-none ${isVisible
-                    ? "translate-y-0 opacity-100 blur-0"
-                    : "translate-y-12 opacity-0 blur-[4px]"
+                  ? "translate-y-0 opacity-100 blur-0"
+                  : "translate-y-12 opacity-0 blur-[4px]"
                   }`}
               >
                 <div className="group relative h-full overflow-hidden rounded-[24px] border border-[#0A0A0A]/10 bg-white p-6 text-center shadow-[0_14px_45px_rgba(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-2 hover:border-[#00C98B]/45 hover:shadow-[0_24px_60px_rgba(0,201,139,0.13)] sm:p-8 motion-reduce:transform-none motion-reduce:transition-none">

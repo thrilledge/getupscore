@@ -13,43 +13,21 @@ import {
 } from "@/components/ui/card";
 import { Check, Sparkles } from "lucide-react";
 
-const plans = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    desc: "For freelancers just getting started with smarter discovery.",
-    cta: "Start free",
-    href: "/signup",
-    highlight: false,
-    features: [
-      "Up to 10 filtered jobs per refresh",
-      "AI scoring on recent jobs",
-      "Real-time dashboard",
-      "Chrome extension",
-    ],
-  },
-  {
-    name: "Pro",
-    price: "Coming soon",
-    period: "",
-    desc: "For serious freelancers who treat Upwork like a business.",
-    cta: "Join the waitlist",
-    href: "/signup",
-    highlight: true,
-    features: [
-      "Unlimited jobs & filters",
-      "Instant alerts on every channel",
-      "AI proposal drafts",
-      "Advanced market intelligence",
-      "Priority AI analysis",
-    ],
-  },
+type BillingPeriod = "monthly" | "yearly";
+
+const PRO_FEATURES = [
+  "Full jobs dashboard",
+  "AI job analysis",
+  "Unlimited proposals",
+  "Market trends",
+  "Extension API access",
+  "Unlimited filters",
 ];
 
 export function Pricing() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [period, setPeriod] = useState<BillingPeriod>("monthly");
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -73,6 +51,39 @@ export function Pricing() {
 
     return () => observer.disconnect();
   }, []);
+
+  const plans = [
+    {
+      name: "Free",
+      price: "$0",
+      periodLabel: "forever",
+      subLabel: "",
+      desc: "For freelancers just getting started with smarter discovery.",
+      cta: "Start free",
+      href: "/signup",
+      highlight: false,
+      features: [
+        "Up to 10 filtered jobs per refresh",
+        "AI scoring on recent jobs",
+        "Real-time dashboard",
+        "Chrome extension",
+      ],
+    },
+    {
+      name: "Pro",
+      price: period === "monthly" ? "$12" : "$130",
+      periodLabel: period === "monthly" ? "/ month" : "/ year",
+      subLabel:
+        period === "monthly"
+          ? "Billed monthly"
+          : "Billed yearly — save $14",
+      desc: "For serious freelancers who treat Upwork like a business.",
+      cta: "Upgrade to Pro",
+      href: "/signup",
+      highlight: true,
+      features: PRO_FEATURES,
+    },
+  ];
 
   return (
     <section
@@ -105,26 +116,66 @@ export function Pricing() {
             Pricing
           </div>
 
-          <h2 className="font-heading text-4xl font-bold tracking-[-0.035em] text-[#0A0A0A] sm:text-5xl">
-            Start free. Upgrade when{" "}
+          <h2 className="font-heading text-4xl font-bold tracking-[-0.035em] text-[#0A0A0A] sm:text-5xl leading-[1.2]">
+            Start free. Upgrade <br /> when{" "}
             <span className="inline-block tracking-normal text-[#00C98B]">
               you&apos;re winning.
             </span>
           </h2>
 
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#0A0A0A]/60 sm:text-base">
-            No credit card, no lock-in. {env.APP_NAME} pays for itself the first
-            time you land a job faster.
+            Start free in minutes. Upgrade only when it pays for itself — and
+            cancel anytime.
           </p>
         </div>
 
-        <div className="mx-auto mt-12 grid max-w-4xl items-stretch gap-6 md:grid-cols-2">
+        {/* Billing Period Toggle */}
+        <div
+          style={{
+            transitionDelay: isVisible ? "200ms" : "0ms",
+          }}
+          className={`mt-8 flex justify-center transition-all duration-700 ease-out motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:blur-0 motion-reduce:transition-none ${isVisible
+            ? "translate-y-0 opacity-100 blur-0"
+            : "translate-y-8 opacity-0 blur-[3px]"
+            }`}
+        >
+          <div className="inline-flex items-center rounded-full border border-[#0A0A0A]/10 bg-white p-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+            <button
+              type="button"
+              onClick={() => setPeriod("monthly")}
+              aria-pressed={period === "monthly"}
+              className={`rounded-full px-5 py-2 text-sm font-bold transition-all sm:px-6 ${period === "monthly"
+                ? "bg-[#0A0A0A] text-white shadow-sm"
+                : "text-[#0A0A0A]/55 hover:text-[#0A0A0A]"
+                }`}
+            >
+              Monthly
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPeriod("yearly")}
+              aria-pressed={period === "yearly"}
+              className={`inline-flex items-center gap-1.5 rounded-full px-5 py-2 text-sm font-bold transition-all sm:px-6 ${period === "yearly"
+                ? "bg-[#0A0A0A] text-white shadow-sm"
+                : "text-[#0A0A0A]/55 hover:text-[#0A0A0A]"
+                }`}
+            >
+              Yearly
+              <span className="rounded-full bg-[#00C98B]/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#00A975]">
+                Save 10%
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <div className="mx-auto mt-10 grid max-w-4xl items-stretch gap-6 md:grid-cols-2">
           {plans.map((plan, index) => (
             <div
               key={plan.name}
               style={{
                 transitionDelay: isVisible
-                  ? `${260 + index * 160}ms`
+                  ? `${280 + index * 160}ms`
                   : "0ms",
               }}
               className={`transition-all duration-700 ease-out motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:blur-0 motion-reduce:transition-none ${isVisible
@@ -166,12 +217,18 @@ export function Pricing() {
                       {plan.price}
                     </span>
 
-                    {plan.period && (
+                    {plan.periodLabel && (
                       <span className="text-sm text-[#0A0A0A]/45">
-                        / {plan.period}
+                        {plan.periodLabel}
                       </span>
                     )}
                   </div>
+
+                  {plan.subLabel && (
+                    <p className="mt-1.5 text-xs font-semibold text-[#00A975]">
+                      {plan.subLabel}
+                    </p>
+                  )}
 
                   <p className="mt-2 max-w-sm text-sm leading-5 text-[#0A0A0A]/55">
                     {plan.desc}
@@ -213,6 +270,11 @@ export function Pricing() {
             </div>
           ))}
         </div>
+
+        <p className="mt-6 text-center text-xs font-medium text-[#0A0A0A]/45">
+          Prices in USD. {env.APP_NAME} Pro is billed via secure checkout —
+          yearly billing saves $14 compared to paying monthly.
+        </p>
       </div>
     </section>
   );

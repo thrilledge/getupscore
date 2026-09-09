@@ -273,7 +273,7 @@ export default function JobDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="max-w-[1400] mx-auto space-y-6">
         <Skeleton className="h-5 w-32" />
         <Skeleton className="h-10 w-3/4" />
         <Skeleton className="h-5 w-1/2" />
@@ -290,7 +290,7 @@ export default function JobDetailPage() {
 
   if (error) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-[1400] mx-auto">
         <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-8 text-center">
           <AlertTriangle className="size-10 mx-auto mb-3 text-red-500" />
           <p className="text-red-500 font-medium">{error}</p>
@@ -304,7 +304,7 @@ export default function JobDetailPage() {
 
   if (!job) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-[1400] mx-auto">
         <div className="rounded-xl border border-border/60 p-12 text-center">
           <Briefcase className="size-10 mx-auto mb-3 text-muted-foreground" />
           <p className="font-medium">Job not found</p>
@@ -314,7 +314,7 @@ export default function JobDetailPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="max-w-[1400] mx-auto space-y-6">
       {/* Back link */}
       <Link
         href="/jobs"
@@ -324,7 +324,7 @@ export default function JobDetailPage() {
         Back to Jobs
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_500px] gap-6 items-start">
         <div className="space-y-6 min-w-0">
           {/* ── Header ── */}
           <div className="space-y-3">
@@ -454,7 +454,7 @@ export default function JobDetailPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 {/* Left: Client Profile */}
                 <div className="space-y-4">
                   <div className="flex items-start gap-3">
@@ -513,7 +513,7 @@ export default function JobDetailPage() {
                 </div>
 
                 {/* Right: Client Stats Grid */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   {job.client_total_spend != null && (
                     <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total Spent</p>

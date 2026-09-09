@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, Monitor, Moon, Sun, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useTheme, type Theme } from "@/components/theme-provider";
+
+const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Monitor },
+];
 
 const navigationItems = [
   { label: "Live Jobs", href: "#jobs" },
@@ -15,6 +22,7 @@ const navigationItems = [
 
 export function SiteHeader() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { theme, setTheme, resolvedTheme } = useTheme();
 
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "";
@@ -75,6 +83,25 @@ export function SiteHeader() {
 
         {/* Desktop Buttons */}
         <div className="hidden min-w-0 items-center justify-end gap-2 lg:flex">
+          <button
+            type="button"
+            onClick={() =>
+              setTheme(resolvedTheme === "dark" ? "light" : "dark")
+            }
+            aria-label={
+              resolvedTheme === "dark"
+                ? "Switch to light mode"
+                : "Switch to dark mode"
+            }
+            className="grid size-10 shrink-0 place-items-center rounded-full border border-white/15 text-white outline-none transition-colors hover:border-[#00C98B]/60 hover:bg-white/10 hover:text-[#00C98B] focus-visible:ring-2 focus-visible:ring-[#00C98B]"
+          >
+            {resolvedTheme === "dark" ? (
+              <Sun size={18} />
+            ) : (
+              <Moon size={18} />
+            )}
+          </button>
+
           <Button
             render={<Link href="/login" />}
             variant="ghost"
@@ -143,7 +170,30 @@ export function SiteHeader() {
                 </Link>
               ))}
 
-              <div className="mt-5 grid grid-cols-2 gap-2 min-[420px]:gap-3">
+              <div className="mb-4 grid grid-cols-3 gap-1 rounded-full border border-white/15 bg-white/5 p-1">
+                {themeOptions.map((option) => {
+                  const active = theme === option.value;
+                  const Icon = option.icon;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setTheme(option.value)}
+                      aria-pressed={active}
+                      className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full text-xs font-semibold transition-colors ${active
+                        ? "bg-white text-[#0A0A0A] shadow-sm"
+                        : "text-white/60 hover:text-white"
+                        }`}
+                    >
+                      <Icon className="size-3.5" />
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 min-[420px]:gap-3">
                 <Link
                   href="/login"
                   onClick={closeMenu}
