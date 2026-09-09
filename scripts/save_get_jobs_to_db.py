@@ -29,6 +29,7 @@ import os
 import sys
 import urllib.request
 import urllib.error
+from datetime import datetime, timezone
 
 DEFAULT_INPUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mcp_get_jobs.json")
 
@@ -153,7 +154,16 @@ def map_get_response(resp):
     # hourly budget from `get`, else from fixed budget
     hourly_min = hourly.get("hourlyBudgetMin")
     hourly_max = hourly.get("hourlyBudgetMax")
-    budget = fixed.get("budget") or fixed.get("maxBudget") or resp.get("budget")
+    # MCP fixed-price budget lives under fixedPriceContractTerms.amount as
+    # {currency, rawValue, displayValue}; older shapes used .budget/.maxBudget.
+    fixed_amount = fixed.get("amount") or {}
+    budget = (
+        fixed_amount.get("rawValue")
+        or fixed_amount.get("displayValue")
+        or fixed.get("budget")
+        or fixed.get("maxBudget")
+        or resp.get("budget")
+    )
 
     # client spend from search-style fields, else from MCP client_record
     client_spend = resp.get("client_spend") or resp.get("clientSpent") or resp.get("client_total_spend")
@@ -219,7 +229,8 @@ def map_get_response(resp):
         # Keep the ENTIRE raw `get` response so nothing is ever lost.
         "client_recent_history": json.dumps(resp) if isinstance(resp, dict) else None,
         "source": "upwork_mcp",
-        "posted_at": norm(resp.get("published_date") or resp.get("posted_at")),
+        "posted_at": norm(resp.get("published_date") or resp.get("posted_at"))
+        or datetime.now(timezone.utc).isoformat(),
     }
 
     row["skills"] = row["skills"] or None

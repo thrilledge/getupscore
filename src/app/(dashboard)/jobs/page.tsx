@@ -31,6 +31,16 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   AlertTriangle,
   Briefcase,
   ChevronLeft,
@@ -43,6 +53,7 @@ import {
   RefreshCw,
   Search,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   TrendingUp,
   X,
@@ -105,6 +116,9 @@ export default function JobsPage() {
   const [searchQuery, setSearchQuery] =
     useState("");
 
+  const [filterOpen, setFilterOpen] =
+    useState(false);
+
   const [jobTypeFilter, setJobTypeFilter] =
     useState("");
 
@@ -137,6 +151,9 @@ export default function JobsPage() {
   const [durationFilter, setDurationFilter] =
     useState("");
 
+  const [countryFilter, setCountryFilter] =
+    useState("");
+
   const [facets, setFacets] = useState<{
     categories: string[];
     subcategories: {
@@ -144,10 +161,12 @@ export default function JobsPage() {
       subcategory: string;
     }[];
     durations: string[];
+    countries: string[];
   }>({
     categories: [],
     subcategories: [],
     durations: [],
+    countries: [],
   });
 
   const [
@@ -166,6 +185,7 @@ export default function JobsPage() {
           categories: Array.isArray(d.categories) ? d.categories : [],
           subcategories: Array.isArray(d.subcategories) ? d.subcategories : [],
           durations: Array.isArray(d.durations) ? d.durations : [],
+          countries: Array.isArray(d.countries) ? d.countries : [],
         });
       })
       .catch(() => {});
@@ -248,6 +268,12 @@ export default function JobsPage() {
           );
         }
 
+        if (filter.client_countries?.length) {
+          setCountryFilter(
+            filter.client_countries[0]
+          );
+        }
+
         setInitialFiltersLoaded(true);
       });
   }, []);
@@ -322,6 +348,13 @@ export default function JobsPage() {
       );
     }
 
+    if (countryFilter) {
+      params.set(
+        "country",
+        countryFilter
+      );
+    }
+
     return params.toString();
   }
 
@@ -388,6 +421,7 @@ export default function JobsPage() {
     categoryFilter,
     subcategoryFilter,
     durationFilter,
+    countryFilter,
   ]);
 
   useEffect(() => {
@@ -404,6 +438,7 @@ export default function JobsPage() {
     categoryFilter,
     subcategoryFilter,
     durationFilter,
+    countryFilter,
   ]);
 
   useEffect(() => {
@@ -457,6 +492,7 @@ export default function JobsPage() {
     setCategoryFilter("");
     setSubcategoryFilter("");
     setDurationFilter("");
+    setCountryFilter("");
   }
 
   function downloadCSV() {
@@ -548,7 +584,23 @@ export default function JobsPage() {
     skillFilter ||
     categoryFilter ||
     subcategoryFilter ||
-    durationFilter;
+    durationFilter ||
+    countryFilter;
+
+  const activeFilterCount = [
+    searchQuery,
+    jobTypeFilter,
+    tierFilter,
+    budgetMin,
+    budgetMax,
+    hourlyMin,
+    hourlyMax,
+    skillFilter,
+    categoryFilter,
+    subcategoryFilter,
+    durationFilter,
+    countryFilter,
+  ].filter(Boolean).length;
 
   // Subcategories that belong to the selected category (or all, if none).
   const availableSubcategories = Array.from(
@@ -653,368 +705,467 @@ export default function JobsPage() {
       </section>
 
       {/* Filter Bar */}
-      <section className="min-w-0 rounded-2xl border border-[#0A0A0A]/10 bg-white p-4 shadow-[0_7px_24px_rgba(0,0,0,0.035)] sm:rounded-[20px] sm:p-5">
-        <div className="mb-4 flex min-w-0 items-center gap-2">
-          <Search className="size-3.5 shrink-0 text-[#00A975] sm:size-4" />
+      <Sheet
+        open={filterOpen}
+        onOpenChange={setFilterOpen}
+      >
+      <section className="flex min-w-0 flex-col gap-3 rounded-2xl border border-[#0A0A0A]/10 bg-white p-4 shadow-[0_7px_24px_rgba(0,0,0,0.035)] sm:flex-row sm:items-center sm:justify-between sm:rounded-[20px] sm:p-5">
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <SlidersHorizontal className="size-3.5 shrink-0 text-[#00A975] sm:size-4" />
 
-          <h2 className="shrink-0 font-heading text-[10px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A]/55 sm:text-xs sm:tracking-[0.14em]">
-            Search and filter
-          </h2>
+            <h2 className="shrink-0 font-heading text-[10px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A]/55 sm:text-xs sm:tracking-[0.14em]">
+              Search and filter
+            </h2>
+
+            {hasActiveFilters && (
+              <span className="shrink-0 rounded-full border border-[#00C98B]/20 bg-[#00C98B]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#00A975]">
+                Filters active
+              </span>
+            )}
+
+            <span className="h-px min-w-0 flex-1 bg-[#0A0A0A]/10" />
+          </div>
 
           {hasActiveFilters && (
-            <span className="hidden shrink-0 rounded-full border border-[#00C98B]/20 bg-[#00C98B]/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#00A975] min-[480px]:inline-flex">
-              Filters active
-            </span>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-[#0A0A0A]/45 transition-colors hover:text-[#00A975] sm:text-[11px]"
+            >
+              <X className="size-3" />
+              Clear all filters
+            </button>
           )}
-
-          <span className="h-px min-w-0 flex-1 bg-[#0A0A0A]/10" />
         </div>
 
-        <div className="grid min-w-0 grid-cols-1 gap-3 min-[560px]:grid-cols-2 md:grid-cols-4 xl:grid-cols-12">
-          {/* Search */}
-          <div className="min-w-0 min-[560px]:col-span-2 md:col-span-2 xl:col-span-4">
-            <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-              Search
-            </label>
-
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[#0A0A0A]/35 sm:size-4" />
-
-              <Input
-                placeholder="Title or keyword..."
-                value={searchQuery}
-                onChange={(event) =>
-                  setSearchQuery(
-                    event.target.value
-                  )
-                }
-                className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] pl-9 pr-9 text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
-              />
-
-              {searchQuery && (
-                <button
-                  type="button"
-                  aria-label="Clear search"
-                  onClick={() =>
-                    setSearchQuery("")
-                  }
-                  className="absolute right-2.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-lg text-[#0A0A0A]/35 transition-colors hover:bg-[#00C98B]/10 hover:text-[#00A975]"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Job Type */}
-          <div className="min-w-0 md:col-span-1 xl:col-span-2">
-            <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-              Job type
-            </label>
-
-            <Select
-              value={jobTypeFilter || null}
-              onValueChange={(value) =>
-                setJobTypeFilter(value ?? "")
-              }
-            >
-              <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-
-              <SelectContent className="rounded-xl border-[#0A0A0A]/10 bg-white">
-                <SelectItem
-                  value=""
-                  className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                >
-                  All types
-                </SelectItem>
-
-                <SelectItem
-                  value="HOURLY"
-                  className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                >
-                  Hourly
-                </SelectItem>
-
-                <SelectItem
-                  value="FIXED_PRICE"
-                  className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                >
-                  Fixed Price
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Minimum Budget */}
-          <div className="min-w-0 md:col-span-1 xl:col-span-1">
-            <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-              Budget min
-            </label>
-
-            <Input
-              type="number"
-              placeholder="$0"
-              value={budgetMin}
-              onChange={(event) =>
-                setBudgetMin(
-                  event.target.value
-                )
-              }
-              className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
-            />
-          </div>
-
-          {/* Maximum Budget */}
-          <div className="min-w-0 md:col-span-1 xl:col-span-1">
-            <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-              Budget max
-            </label>
-
-            <Input
-              type="number"
-              placeholder="$9999"
-              value={budgetMax}
-              onChange={(event) =>
-                setBudgetMax(
-                  event.target.value
-                )
-              }
-              className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
-            />
-          </div>
-
-          {/* Experience level */}
-          <div className="min-w-0 md:col-span-1 xl:col-span-2">
-            <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-              Experience
-            </label>
-
-            <Select
-              value={tierFilter || null}
-              onValueChange={(value) =>
-                setTierFilter(value ?? "")
-              }
-            >
-              <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
-                <SelectValue placeholder="Any level" />
-              </SelectTrigger>
-
-              <SelectContent className="rounded-xl border-[#0A0A0A]/10 bg-white">
-                <SelectItem
-                  value=""
-                  className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                >
-                  Any level
-                </SelectItem>
-
-                {EXPERIENCE_LEVELS.map((lvl) => (
-                  <SelectItem
-                    key={lvl.value}
-                    value={lvl.value}
-                    className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                  >
-                    {lvl.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Hourly rate min */}
-          <div className="min-w-0 md:col-span-1 xl:col-span-1">
-            <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-              Rate min/hr
-            </label>
-
-            <Input
-              type="number"
-              placeholder="$0"
-              value={hourlyMin}
-              onChange={(event) =>
-                setHourlyMin(event.target.value)
-              }
-              className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
-            />
-          </div>
-
-          {/* Hourly rate max */}
-          <div className="min-w-0 md:col-span-1 xl:col-span-1">
-            <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-              Rate max/hr
-            </label>
-
-            <Input
-              type="number"
-              placeholder="$99"
-              value={hourlyMax}
-              onChange={(event) =>
-                setHourlyMax(event.target.value)
-              }
-              className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
-            />
-          </div>
-
-          {/* Category */}
-          {facets.categories.length > 0 && (
-            <div className="min-w-0 min-[560px]:col-span-2 md:col-span-2 xl:col-span-3">
-              <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-                Category
-              </label>
-
-              <Select
-                value={categoryFilter || null}
-                onValueChange={(value) => {
-                  setCategoryFilter(value ?? "");
-                  setSubcategoryFilter("");
-                }}
-              >
-                <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
-                  <SelectValue placeholder="All categories" />
-                </SelectTrigger>
-
-                <SelectContent className="max-h-72 rounded-xl border-[#0A0A0A]/10 bg-white">
-                  <SelectItem
-                    value=""
-                    className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                  >
-                    All categories
-                  </SelectItem>
-
-                  {facets.categories.map((c) => (
-                    <SelectItem
-                      key={c}
-                      value={c}
-                      className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                    >
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Subcategory */}
-          {availableSubcategories.length > 0 && (
-            <div className="min-w-0 min-[560px]:col-span-2 md:col-span-2 xl:col-span-3">
-              <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-                Subcategory
-              </label>
-
-              <Select
-                value={subcategoryFilter || null}
-                onValueChange={(value) =>
-                  setSubcategoryFilter(value ?? "")
-                }
-              >
-                <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
-                  <SelectValue placeholder="All subcategories" />
-                </SelectTrigger>
-
-                <SelectContent className="max-h-72 rounded-xl border-[#0A0A0A]/10 bg-white">
-                  <SelectItem
-                    value=""
-                    className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                  >
-                    All subcategories
-                  </SelectItem>
-
-                  {availableSubcategories.map((s) => (
-                    <SelectItem
-                      key={s}
-                      value={s}
-                      className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                    >
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Project length */}
-          {facets.durations.length > 0 && (
-            <div className="min-w-0 md:col-span-1 xl:col-span-2">
-              <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-                Project length
-              </label>
-
-              <Select
-                value={durationFilter || null}
-                onValueChange={(value) =>
-                  setDurationFilter(value ?? "")
-                }
-              >
-                <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
-                  <SelectValue placeholder="Any length" />
-                </SelectTrigger>
-
-                <SelectContent className="max-h-72 rounded-xl border-[#0A0A0A]/10 bg-white">
-                  <SelectItem
-                    value=""
-                    className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                  >
-                    Any length
-                  </SelectItem>
-
-                  {facets.durations.map((d) => (
-                    <SelectItem
-                      key={d}
-                      value={d}
-                      className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                    >
-                      {d}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Skill */}
-          <div className="min-w-0 min-[560px]:col-span-2 md:col-span-2 xl:col-span-3">
-            <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-              Skill
-            </label>
-
-            <Autocomplete
-              placeholder="e.g. React"
-              value={skillFilter}
-              onChange={setSkillFilter}
-              type="skills"
-            />
-          </div>
-
-          {/* Clear Filters */}
-          {hasActiveFilters && (
-            <div className="min-w-0 min-[560px]:col-span-2 md:col-span-1 xl:col-span-1">
-              <label
-                aria-hidden="true"
-                className="mb-1.5 hidden text-[11px] sm:block"
-              >
-                &nbsp;
-              </label>
-
+        <div className="flex shrink-0 items-center gap-2">
+          <SheetTrigger
+            render={
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                onClick={clearFilters}
-                className="h-10 w-full rounded-xl px-3 text-[10px] font-semibold text-[#0A0A0A]/45 transition-all hover:bg-[#00C98B]/10 hover:text-[#00A975] sm:text-xs"
+                className="h-10 shrink-0 rounded-xl border-[#00C98B]/35 bg-[#00C98B]/10 px-4 text-xs font-semibold text-[#00C98B] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B] hover:bg-[#00C98B] hover:text-[#0A0A0A] sm:text-sm"
               >
-                <X className="size-3.5 shrink-0" />
-
-                <span className="truncate">
-                  Clear
-                </span>
+                <SlidersHorizontal className="size-4" />
+                Filter
+                {hasActiveFilters && (
+                  <span className="grid size-5 place-items-center rounded-full bg-[#00C98B] text-[10px] font-bold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
               </Button>
-            </div>
-          )}
+            }
+          />
         </div>
       </section>
+
+      {/* Filter Sheet (off-canvas, right side) */}
+      <SheetContent
+        side="right"
+        className="w-full border-l border-[#0A0A0A]/10 bg-white p-0 sm:max-w-md"
+      >
+          <SheetHeader className="border-b border-[#0A0A0A]/10 px-5 py-4">
+            <SheetTitle className="font-heading text-base font-bold text-[#0A0A0A]">
+              Filter Jobs
+            </SheetTitle>
+
+            <SheetDescription className="text-xs leading-relaxed text-[#0A0A0A]/50">
+              Narrow down the jobs you see.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="min-w-0 flex-1 overflow-y-auto px-5 py-4">
+            <div className="flex min-w-0 flex-col gap-5">
+              {/* Search */}
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                  Search
+                </label>
+
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-[#0A0A0A]/35 sm:size-4" />
+
+                  <Input
+                    placeholder="Title or keyword..."
+                    value={searchQuery}
+                    onChange={(event) =>
+                      setSearchQuery(
+                        event.target.value
+                      )
+                    }
+                    className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] pl-9 pr-9 text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
+                  />
+
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      aria-label="Clear search"
+                      onClick={() =>
+                        setSearchQuery("")
+                      }
+                      className="absolute right-2.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-lg text-[#0A0A0A]/35 transition-colors hover:bg-[#00C98B]/10 hover:text-[#00A975]"
+                    >
+                      <X className="size-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Job Type */}
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                  Job type
+                </label>
+
+                <Select
+                  value={jobTypeFilter || null}
+                  onValueChange={(value) =>
+                    setJobTypeFilter(value ?? "")
+                  }
+                >
+                  <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+
+                  <SelectContent className="rounded-xl border-[#0A0A0A]/10 bg-white">
+                    <SelectItem
+                      value=""
+                      className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                    >
+                      All types
+                    </SelectItem>
+
+                    <SelectItem
+                      value="HOURLY"
+                      className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                    >
+                      Hourly
+                    </SelectItem>
+
+                    <SelectItem
+                      value="FIXED_PRICE"
+                      className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                    >
+                      Fixed Price
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Experience level */}
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                  Experience
+                </label>
+
+                <Select
+                  value={tierFilter || null}
+                  onValueChange={(value) =>
+                    setTierFilter(value ?? "")
+                  }
+                >
+                  <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
+                    <SelectValue placeholder="Any level" />
+                  </SelectTrigger>
+
+                  <SelectContent className="rounded-xl border-[#0A0A0A]/10 bg-white">
+                    <SelectItem
+                      value=""
+                      className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                    >
+                      Any level
+                    </SelectItem>
+
+                    {EXPERIENCE_LEVELS.map(
+                      (lvl) => (
+                        <SelectItem
+                          key={lvl.value}
+                          value={lvl.value}
+                          className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                        >
+                          {lvl.label}
+                        </SelectItem>
+                      )
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Budget */}
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                  Budget
+                </label>
+
+                <div className="grid min-w-0 grid-cols-2 gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Min $"
+                    value={budgetMin}
+                    onChange={(event) =>
+                      setBudgetMin(
+                        event.target.value
+                      )
+                    }
+                    className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
+                  />
+
+                  <Input
+                    type="number"
+                    placeholder="Max $"
+                    value={budgetMax}
+                    onChange={(event) =>
+                      setBudgetMax(
+                        event.target.value
+                      )
+                    }
+                    className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Hourly rate */}
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                  Hourly rate
+                </label>
+
+                <div className="grid min-w-0 grid-cols-2 gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Min $/hr"
+                    value={hourlyMin}
+                    onChange={(event) =>
+                      setHourlyMin(
+                        event.target.value
+                      )
+                    }
+                    className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
+                  />
+
+                  <Input
+                    type="number"
+                    placeholder="Max $/hr"
+                    value={hourlyMax}
+                    onChange={(event) =>
+                      setHourlyMax(
+                        event.target.value
+                      )
+                    }
+                    className="h-10 min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm"
+                  />
+                </div>
+              </div>
+
+              {/* Category */}
+              {facets.categories.length > 0 && (
+                <div className="min-w-0">
+                  <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                    Category
+                  </label>
+
+                  <Select
+                    value={categoryFilter || null}
+                    onValueChange={(value) => {
+                      setCategoryFilter(value ?? "");
+                      setSubcategoryFilter("");
+                    }}
+                  >
+                    <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
+                      <SelectValue placeholder="All categories" />
+                    </SelectTrigger>
+
+                    <SelectContent className="max-h-72 rounded-xl border-[#0A0A0A]/10 bg-white">
+                      <SelectItem
+                        value=""
+                        className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                      >
+                        All categories
+                      </SelectItem>
+
+                      {facets.categories.map(
+                        (c) => (
+                          <SelectItem
+                            key={c}
+                            value={c}
+                            className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                          >
+                            {c}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Subcategory */}
+              {availableSubcategories.length > 0 && (
+                <div className="min-w-0">
+                  <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                    Subcategory
+                  </label>
+
+                  <Select
+                    value={subcategoryFilter || null}
+                    onValueChange={(value) =>
+                      setSubcategoryFilter(value ?? "")
+                    }
+                  >
+                    <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
+                      <SelectValue placeholder="All subcategories" />
+                    </SelectTrigger>
+
+                    <SelectContent className="max-h-72 rounded-xl border-[#0A0A0A]/10 bg-white">
+                      <SelectItem
+                        value=""
+                        className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                      >
+                        All subcategories
+                      </SelectItem>
+
+                      {availableSubcategories.map(
+                        (s) => (
+                          <SelectItem
+                            key={s}
+                            value={s}
+                            className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                          >
+                            {s}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Project length */}
+              {facets.durations.length > 0 && (
+                <div className="min-w-0">
+                  <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                    Project length
+                  </label>
+
+                  <Select
+                    value={durationFilter || null}
+                    onValueChange={(value) =>
+                      setDurationFilter(value ?? "")
+                    }
+                  >
+                    <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
+                      <SelectValue placeholder="Any length" />
+                    </SelectTrigger>
+
+                    <SelectContent className="max-h-72 rounded-xl border-[#0A0A0A]/10 bg-white">
+                      <SelectItem
+                        value=""
+                        className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                      >
+                        Any length
+                      </SelectItem>
+
+                      {facets.durations.map(
+                        (d) => (
+                          <SelectItem
+                            key={d}
+                            value={d}
+                            className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                          >
+                            {d}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Client country */}
+              {facets.countries.length > 0 && (
+                <div className="min-w-0">
+                  <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                    Client country
+                  </label>
+
+                  <Select
+                    value={countryFilter || null}
+                    onValueChange={(value) =>
+                      setCountryFilter(value ?? "")
+                    }
+                  >
+                    <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
+                      <SelectValue placeholder="All countries" />
+                    </SelectTrigger>
+
+                    <SelectContent className="max-h-72 rounded-xl border-[#0A0A0A]/10 bg-white">
+                      <SelectItem
+                        value=""
+                        className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                      >
+                        All countries
+                      </SelectItem>
+
+                      {facets.countries.map(
+                        (c) => (
+                          <SelectItem
+                            key={c}
+                            value={c}
+                            className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
+                          >
+                            {c}
+                          </SelectItem>
+                        )
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Skill */}
+              <div className="min-w-0">
+                <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
+                  Skill
+                </label>
+
+                <Autocomplete
+                  placeholder="e.g. React"
+                  value={skillFilter}
+                  onChange={setSkillFilter}
+                  type="skills"
+                />
+              </div>
+            </div>
+          </div>
+
+          <SheetFooter className="border-t border-[#0A0A0A]/10 px-5 py-4">
+            <div className="grid w-full grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={clearFilters}
+                className="h-10 rounded-xl border-[#0A0A0A]/10 bg-white text-xs font-semibold text-[#0A0A0A] transition-all hover:border-[#00C98B]/40 hover:bg-[#00C98B]/5 hover:text-[#00A975]"
+              >
+                <X className="size-3.5" />
+                Clear
+              </Button>
+
+              <SheetClose
+                render={
+                  <Button
+                    type="button"
+                    className="h-10 rounded-xl bg-[#00C98B] text-xs font-bold text-[#0A0A0A] transition-all hover:-translate-y-0.5 hover:bg-[#00C98B]/90"
+                  >
+                    Show results
+                  </Button>
+                }
+              />
+            </div>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {/* Error State */}
       {error && (

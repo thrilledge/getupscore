@@ -304,13 +304,14 @@ export function CtaFooter() {
         {/* Bottom bar */}
         <div className="relative">
           <div className="mx-auto max-w-7xl sm:px-8 lg:px-12 pb-8">
-            <div className="grid grid-cols-3 gap-4 ">
-              <div className="flex items-center gap-4 justify-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Google Play Box */}
+              <div className="flex items-center gap-4 justify-start p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
                 <Image
                   src="/playstore.png"
                   width={30}
                   height={30}
-                  alt="Picture of the Playstoree"
+                  alt="Google Play logo"
                 />
                 <div className="block">
                   <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-white/40">
@@ -321,35 +322,39 @@ export function CtaFooter() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-4 justify-center">
+
+              {/* App Store Box */}
+              <div className="flex items-center gap-4 justify-start p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
                 <Image
                   src="/game.png"
                   width={30}
                   height={30}
-                  alt="Picture of the Playstoree"
+                  alt="App Store logo"
                 />
                 <div className="block">
                   <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-white/40">
                     Get it on
                   </p>
                   <p className="text-[16px] font-bold tracking-[0.16em] text-white">
-                    Google Play
+                    App Store
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-4 justify-center">
+
+              {/* Chrome Extension Box */}
+              <div className="flex items-center gap-4 justify-start p-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
                 <Image
                   src="/chrome.png"
                   width={30}
                   height={30}
-                  alt="Picture of the Playstoree"
+                  alt="Chrome Extension logo"
                 />
                 <div className="block">
                   <p className="text-[12px] font-bold uppercase tracking-[0.16em] text-white/40">
                     Get it on
                   </p>
                   <p className="text-[16px] font-bold tracking-[0.16em] text-white">
-                    Google Play
+                    Chrome Extension
                   </p>
                 </div>
               </div>

@@ -5,9 +5,9 @@ import { cached, TTL } from "@/lib/cache";
 export const dynamic = "force-dynamic";
 
 /**
- * Distinct filter facets (categories, subcategories, project lengths) pulled
- * from the jobs actually present in the DB, so the Jobs page dropdowns only
- * offer values that will return results.
+ * Distinct filter facets (categories, subcategories, project lengths, client
+ * countries) pulled from the jobs actually present in the DB, so the Jobs page
+ * dropdowns only offer values that will return results.
  */
 export async function GET() {
   const supabase = await createSupabaseServerClient();
@@ -28,10 +28,11 @@ export async function GET() {
       categories: Array.isArray(facets?.categories) ? facets.categories : [],
       subcategories: Array.isArray(facets?.subcategories) ? facets.subcategories : [],
       durations: Array.isArray(facets?.durations) ? facets.durations : [],
+      countries: Array.isArray(facets?.countries) ? facets.countries : [],
     });
   } catch (err: any) {
     console.error("[Jobs Facets] Query error:", err.message);
     // Non-fatal: the page still works with just the static filters.
-    return NextResponse.json({ categories: [], subcategories: [], durations: [] });
+    return NextResponse.json({ categories: [], subcategories: [], durations: [], countries: [] });
   }
 }

@@ -14,94 +14,15 @@ import {
   ArrowRight,
   BarChart3,
   Bell,
-  Brain,
   Briefcase,
   Circle,
   FileText,
   Filter,
-  Heart,
   Sparkles,
   Target,
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-
-interface StatusData {
-  ok: boolean;
-  stats: {
-    total_jobs: number;
-    recent_jobs_24h: number;
-    total_analyses: number;
-    recent_analyses_24h: number;
-    active_filters: number;
-    active_rules: number;
-  };
-}
-
-interface MyStats {
-  savedJobs: number;
-  totalAnalyses: number;
-  activeFilters: number;
-  activeRules: number;
-  totalProposals: number;
-  totalNotifications: number;
-}
-
-const defaultStats = [
-  {
-    title: "Active Filters",
-    icon: Filter,
-    color: "accent-blue",
-
-    getValue: (status: StatusData | null) =>
-      status?.stats.active_filters ?? "—",
-
-    getDesc: (status: StatusData | null) =>
-      status && status.stats.active_filters > 0
-        ? `${status.stats.active_filters} filter(s) active`
-        : "No filters yet",
-  },
-  {
-    title: "Jobs Found",
-    icon: Briefcase,
-    color: "accent-green",
-
-    getValue: (status: StatusData | null) =>
-      status?.stats.total_jobs ?? "—",
-
-    getDesc: (status: StatusData | null) =>
-      status && status.stats.recent_jobs_24h > 0
-        ? `${status.stats.recent_jobs_24h} new today`
-        : "Today's matches",
-  },
-  {
-    title: "Notifications",
-    icon: Bell,
-    color: "accent-amber",
-
-    getValue: (status: StatusData | null) =>
-      status?.stats.active_rules ?? "—",
-
-    getDesc: (status: StatusData | null) =>
-      status && status.stats.active_rules > 0
-        ? `${status.stats.active_rules} rule(s) active`
-        : "Alerts sent today",
-  },
-  {
-    title: "Analyses",
-    icon: BarChart3,
-    color: "accent-purple",
-
-    getValue: (status: StatusData | null) =>
-      status?.stats.total_analyses ?? "—",
-
-    getDesc: (status: StatusData | null) =>
-      status &&
-      status.stats.recent_analyses_24h > 0
-        ? `${status.stats.recent_analyses_24h} today`
-        : "AI analyses run",
-  },
-];
 
 const gettingStartedSteps = [
   {
@@ -142,76 +63,19 @@ const gettingStartedSteps = [
   },
 ];
 
-const iconBgMap: Record<string, string> = {
-  "accent-blue":
-    "bg-[#00C98B]/10 text-[#00A975] group-hover:bg-[#00C98B]/15",
-
-  "accent-green":
-    "bg-[#00C98B]/10 text-[#00A975] group-hover:bg-[#00C98B]/15",
-
-  "accent-amber":
-    "bg-[#00C98B]/10 text-[#00A975] group-hover:bg-[#00C98B]/15",
-
-  "accent-purple":
-    "bg-[#00C98B]/10 text-[#00A975] group-hover:bg-[#00C98B]/15",
-};
-
 export default function DashboardPage() {
   const { user } = useUser();
 
   const displayName =
     user?.email?.split("@")[0] ?? "freelancer";
 
-  const [statusData, setStatusData] =
-    useState<StatusData | null>(null);
-
-  const [statusLoading, setStatusLoading] =
-    useState(true);
-
-  const [myStats, setMyStats] =
-    useState<MyStats | null>(null);
-
-  const [myStatsLoading, setMyStatsLoading] =
-    useState(true);
-
   const [completedSteps, setCompletedSteps] =
     useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const response = await fetch(
-          "/api/jobs/status"
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          setStatusData(data);
-        }
-      } catch {
-        // Silently fail — stats show fallback values
-      } finally {
-        setStatusLoading(false);
-      }
-    };
-
-    fetchStatus();
-
-    const interval = setInterval(
-      fetchStatus,
-      60000
-    );
-
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     fetch("/api/analytics")
       .then((response) => response.json())
       .then((data) => {
-        setMyStats(data);
-        setMyStatsLoading(false);
-
         const completed = new Set<string>();
 
         if (data && data.activeFilters > 0) {
@@ -235,7 +99,7 @@ export default function DashboardPage() {
 
         setCompletedSteps(completed);
       })
-      .catch(() => setMyStatsLoading(false));
+      .catch(() => {});
   }, []);
 
   const completedPercentage =
@@ -313,126 +177,6 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Global Stats */}
-      <section className="grid min-w-0 grid-cols-1 gap-3 min-[430px]:grid-cols-2 sm:gap-4 lg:grid-cols-4">
-        {defaultStats.map((stat) => {
-          const Icon = stat.icon;
-
-          const iconStyle =
-            iconBgMap[stat.color] ||
-            iconBgMap["accent-green"];
-
-          return (
-            <Card
-              key={stat.title}
-              className="group relative min-w-0 gap-0 overflow-hidden rounded-xl border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_6px_20px_rgba(0,0,0,0.035)] transition-all duration-300 hover:-translate-y-1 hover:border-[#00C98B]/35 hover:shadow-[0_14px_30px_rgba(0,201,139,0.08)] sm:rounded-2xl"
-            >
-              <div className="absolute inset-x-0 top-0 h-[2px] origin-left scale-x-0 bg-[#00C98B] transition-transform duration-300 group-hover:scale-x-100" />
-
-              <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 px-4 pb-0 pt-4">
-                <CardTitle className="min-w-0 truncate text-[11px] font-semibold text-[#0A0A0A]/55 sm:text-[13px]">
-                  {stat.title}
-                </CardTitle>
-
-                <div
-                  className={`grid size-8 shrink-0 place-items-center rounded-lg transition-all duration-300 group-hover:scale-105 sm:size-9 sm:rounded-xl ${iconStyle}`}
-                >
-                  <Icon className="size-4 sm:size-[18px]" />
-                </div>
-              </CardHeader>
-
-              <CardContent className="px-4 pb-4 pt-2">
-                <p className="break-all font-heading text-xl font-bold leading-none tracking-tight text-[#0A0A0A] tabular-nums sm:text-2xl">
-                  {statusLoading
-                    ? "..."
-                    : stat.getValue(statusData)}
-                </p>
-
-                <p className="mt-2 truncate text-[10px] text-[#0A0A0A]/45 sm:text-[11px]">
-                  {stat.getDesc(statusData)}
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </section>
-
-      {/* My Activity */}
-      <section className="min-w-0 space-y-3">
-        <div className="flex items-center gap-2">
-          <Activity className="size-3.5 shrink-0 text-[#00A975] sm:size-4" />
-
-          <h2 className="shrink-0 font-heading text-[10px] font-bold uppercase tracking-[0.14em] text-[#0A0A0A]/55 sm:text-xs sm:tracking-[0.15em]">
-            My Activity
-          </h2>
-
-          <span className="h-px min-w-0 flex-1 bg-[#0A0A0A]/10" />
-        </div>
-
-        <div className="grid min-w-0 grid-cols-2 gap-2.5 min-[540px]:grid-cols-3 sm:gap-3 xl:grid-cols-6">
-          {[
-            {
-              label: "Saved Jobs",
-              value: myStats?.savedJobs ?? 0,
-              icon: Heart,
-            },
-            {
-              label: "Analyses",
-              value: myStats?.totalAnalyses ?? 0,
-              icon: Brain,
-            },
-            {
-              label: "Filters",
-              value: myStats?.activeFilters ?? 0,
-              icon: Filter,
-            },
-            {
-              label: "Rules",
-              value: myStats?.activeRules ?? 0,
-              icon: Bell,
-            },
-            {
-              label: "Proposals",
-              value: myStats?.totalProposals ?? 0,
-              icon: FileText,
-            },
-            {
-              label: "Notifications",
-              value:
-                myStats?.totalNotifications ?? 0,
-              icon: Activity,
-            },
-          ].map((stat) => {
-            const Icon = stat.icon;
-
-            return (
-              <Card
-                key={stat.label}
-                className="group min-w-0 gap-0 rounded-xl border border-[#0A0A0A]/10 bg-white py-0 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/35 hover:shadow-[0_10px_24px_rgba(0,201,139,0.07)] sm:rounded-2xl"
-              >
-                <CardContent className="flex min-w-0 items-center gap-2.5 px-3 py-3 sm:gap-3 sm:px-3.5">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#00C98B]/10 text-[#00A975] transition-all duration-300 group-hover:bg-[#00C98B] group-hover:text-[#0A0A0A] sm:size-9 sm:rounded-xl">
-                    <Icon className="size-4 sm:size-[18px]" />
-                  </span>
-
-                  <div className="min-w-0">
-                    <p className="truncate font-heading text-sm font-bold leading-none text-[#0A0A0A] tabular-nums sm:text-base">
-                      {myStatsLoading
-                        ? "..."
-                        : String(stat.value)}
-                    </p>
-
-                    <p className="mt-1 truncate text-[8px] font-medium uppercase tracking-wide text-[#0A0A0A]/45 sm:text-[9px] sm:tracking-wider">
-                      {stat.label}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
         </div>
       </section>
 

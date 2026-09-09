@@ -175,7 +175,7 @@ export function AppSidebar() {
               >
                 <span className="relative grid size-9 shrink-0 place-items-center rounded-xl  shadow-[0_8px_22px_rgba(0,0,0,0.22)] transition-all duration-300 group-hover/brand:-translate-y-0.5 group-hover/brand:shadow-[0_10px_25px_rgba(0,201,139,0.16)]">
                   <img
-                    src="/getupscore-logo-icon.png"
+                    src="/upscore-logo-icon.png"
                     alt={env.APP_NAME}
                     width={36}
                     height={36}
