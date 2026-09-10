@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "@/components/providers";
 import { PaddleProvider } from "@/components/paddle-provider";
 import { ReferralTracker } from "@/components/referral-tracker";
@@ -55,6 +56,7 @@ export default function RootLayout({
             <Providers>{children}</Providers>
           </PaddleProvider>
         </TooltipProvider>
+        <Analytics />
       </body>
     </html>
   );
