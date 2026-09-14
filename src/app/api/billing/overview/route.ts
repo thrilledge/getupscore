@@ -8,7 +8,18 @@ import {
   createPaddlePortalUrls,
   centsToDollars,
   formatMoney,
+  type PaddlePaymentMethod,
+  type PaddleInvoice,
 } from "@/lib/paddle-api";
+
+async function safeRead<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    console.warn("[billing/overview] Paddle call skipped:", err);
+    return fallback;
+  }
+}
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization") || "";
@@ -32,7 +43,14 @@ export async function GET(request: Request) {
   const billing = await getBillingDetails(userId);
 
   if (!billing?.paddle_subscription_id) {
-    return Response.json({ data: { subscription: null } });
+    return Response.json({
+      data: {
+        subscription: null,
+        payment_methods: [],
+        invoices: [],
+        portal: null,
+      },
+    });
   }
 
   const subId = billing.paddle_subscription_id;
@@ -41,10 +59,16 @@ export async function GET(request: Request) {
   const [subscription, paymentMethods, invoices, portalUrls] =
     await Promise.all([
       getPaddleSubscription(subId),
-      customerId ? listPaddlePaymentMethods(customerId) : Promise.resolve([]),
-      listPaddleTransactions(subId),
+      safeRead<PaddlePaymentMethod[]>(
+        () =>
+          customerId
+            ? listPaddlePaymentMethods(customerId)
+            : Promise.resolve([]),
+        []
+      ),
+      safeRead<PaddleInvoice[]>(() => listPaddleTransactions(subId), []),
       customerId && subId
-        ? createPaddlePortalUrls(customerId, subId).catch(() => null)
+        ? safeRead(() => createPaddlePortalUrls(customerId, subId), null)
         : Promise.resolve(null),
     ]);
 

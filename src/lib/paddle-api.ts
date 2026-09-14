@@ -167,6 +167,25 @@ export async function listPaddlePaymentMethods(
   return res.data;
 }
 
+/**
+ * Fetch a temporary PDF link for a transaction's invoice.
+ * GET /transactions/{id}/invoice — the URL expires after one hour.
+ */
+export async function getPaddleInvoicePdfUrl(
+  transactionId: string | null
+): Promise<string | null> {
+  if (!transactionId) return null;
+  try {
+    const res = await paddleFetch<{ data: { url?: string | null } }>(
+      `/transactions/${transactionId}/invoice?disposition=attachment`
+    );
+    return res.data?.url ?? null;
+  } catch (err) {
+    console.warn("[paddle-api] getInvoice failed:", err);
+    return null;
+  }
+}
+
 export async function listPaddleTransactions(
   subscriptionId: string
 ): Promise<PaddleInvoice[]> {
@@ -174,26 +193,33 @@ export async function listPaddleTransactions(
     `/transactions?subscription_id=${subscriptionId}`
   );
 
-  return res.data
+  const sorted = res.data
     .filter((tx) => tx.status === "completed" || tx.status === "billed")
     .sort(
       (a, b) =>
         new Date(b.billed_at ?? b.created_at ?? 0).getTime() -
         new Date(a.billed_at ?? a.created_at ?? 0).getTime()
     )
-    .slice(0, 20)
-    .map((tx) => ({
-      id: tx.id,
-      number:
-        tx.invoice_number ??
-        tx.invoice_id ??
-        tx.id.slice(-8).toUpperCase(),
-      status: tx.status,
-      amount: centsToDollars(tx.details?.totals?.grand_total ?? tx.details?.totals?.total),
-      currency_code: tx.currency_code,
-      billed_at: tx.billed_at ?? tx.created_at,
-      pdf_url: tx.invoices?.[0]?.url ?? null,
-    }));
+    .slice(0, 20);
+
+  const pdfUrls = await Promise.all(
+    sorted.map((tx) =>
+      getPaddleInvoicePdfUrl(tx.id)
+    )
+  );
+
+  return sorted.map((tx, i) => ({
+    id: tx.id,
+    number:
+      tx.invoice_number ??
+      tx.invoice_id ??
+      tx.id.slice(-8).toUpperCase(),
+    status: tx.status,
+    amount: centsToDollars(tx.details?.totals?.grand_total ?? tx.details?.totals?.total),
+    currency_code: tx.currency_code,
+    billed_at: tx.billed_at ?? tx.created_at,
+    pdf_url: tx.invoices?.[0]?.url ?? pdfUrls[i],
+  }));
 }
 
 export type PaddlePortalUrls = {

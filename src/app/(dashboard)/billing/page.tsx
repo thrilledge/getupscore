@@ -329,6 +329,8 @@ export default function BillingPage() {
   }
 
   const sub = overview?.subscription;
+  const overviewPaymentMethods = overview?.payment_methods ?? [];
+  const overviewInvoices = overview?.invoices ?? [];
   const hasScheduledCancel = sub?.scheduled_change?.action === "cancel";
   const subStatus = sub?.status ?? subscription?.status ?? "active";
   const portalUpdateUrl = overview?.portal?.update_payment_method;
@@ -461,7 +463,7 @@ export default function BillingPage() {
       </Card>
 
       {/* Paid management */}
-      {isPaid && overview && (
+      {isPaid && sub && (
         <>
           {/* Payment wallet */}
           <Card className="border-[#0A0A0A]/10">
@@ -487,13 +489,13 @@ export default function BillingPage() {
               )}
             </CardHeader>
             <CardContent className="space-y-2">
-              {overview.payment_methods.length === 0 ? (
+              {overviewPaymentMethods.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No payment method on file yet.
                   {portalUpdateUrl ? " Add one to keep your subscription safe." : ""}
                 </p>
               ) : (
-                overview.payment_methods.map((pm) => (
+                overviewPaymentMethods.map((pm) => (
                   <div
                     key={pm.id}
                     className="flex items-center justify-between rounded-xl border border-[#0A0A0A]/10 bg-white p-4"
@@ -546,7 +548,7 @@ export default function BillingPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {overview.invoices.length === 0 ? (
+              {overviewInvoices.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No invoices yet. Receipts will appear here after your first payment.
                 </p>
@@ -562,7 +564,7 @@ export default function BillingPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {overview.invoices.map((inv) => (
+                    {overviewInvoices.map((inv) => (
                       <TableRow key={inv.id}>
                         <TableCell className="font-mono text-xs font-semibold">
                           {inv.number}
