@@ -90,7 +90,7 @@ export function FAQ() {
           {faqs.map((faq, index) => (
             <details
               key={faq.q}
-              className="group overflow-hidden rounded-xl bg-white p-5 shadow-md transition-all duration-300 open:shadow-lg sm:p-6"
+              className="group overflow-hidden rounded-xl bg-white p-5 shadow-md transition-all duration-300 open:shadow-lg sm:p-6 border"
             >
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-[#0A0A0A] outline-none sm:text-base [&::-webkit-details-marker]:hidden">
                 <span>{faq.q}</span>

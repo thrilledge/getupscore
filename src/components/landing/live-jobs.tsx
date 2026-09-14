@@ -228,103 +228,7 @@ export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
           </div>
         </div>
 
-        {/* Filter Controls Bar */}
-        <div
-          ref={filterBarRef}
-          style={{ transitionDelay: isVisible ? "220ms" : "0ms" }}
-          className={`relative mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-[#0A0A0A]/10 bg-white/70 p-2 shadow-sm backdrop-blur-sm transition-all duration-700 ease-out motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:blur-0 motion-reduce:transition-none ${isVisible
-            ? "translate-y-0 opacity-100 blur-0"
-            : "translate-y-8 opacity-0 blur-[3px]"
-            }`}
-        >
-          {/* Category chip + dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setOpenFilter(openFilter === "category" ? null : "category")}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${openFilter === "category" ? "bg-[#0A0A0A]/10 text-[#0A0A0A]" : "bg-[#0A0A0A]/5 text-[#0A0A0A]/70 hover:bg-[#0A0A0A]/10"}`}
-            >
-              Category: {selectedCategory}
-              <ChevronDown className={`size-3.5 text-[#0A0A0A]/40 transition-transform ${openFilter === "category" ? "rotate-180" : ""}`} />
-            </button>
-            {openFilter === "category" && (
-              <div className="absolute left-0 top-full z-20 mt-1 w-64 rounded-xl border border-[#0A0A0A]/10 bg-white p-1 shadow-xl">
-                {categoryOptions.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => { setSelectedCategory(opt); setOpenFilter(null); }}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors ${opt === selectedCategory ? "bg-[#00C98B]/10 text-[#00A975]" : "text-[#0A0A0A]/70 hover:bg-[#0A0A0A]/5"}`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
-          {/* Location chip + dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setOpenFilter(openFilter === "location" ? null : "location")}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${openFilter === "location" ? "bg-[#0A0A0A]/10 text-[#0A0A0A]" : "bg-[#0A0A0A]/5 text-[#0A0A0A]/70 hover:bg-[#0A0A0A]/10"}`}
-            >
-              Location: {selectedLocation}
-              <ChevronDown className={`size-3.5 text-[#0A0A0A]/40 transition-transform ${openFilter === "location" ? "rotate-180" : ""}`} />
-            </button>
-            {openFilter === "location" && (
-              <div className="absolute left-0 top-full z-20 mt-1 w-56 rounded-xl border border-[#0A0A0A]/10 bg-white p-1 shadow-xl">
-                {locationOptions.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => { setSelectedLocation(opt); setOpenFilter(null); }}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors ${opt === selectedLocation ? "bg-[#00C98B]/10 text-[#00A975]" : "text-[#0A0A0A]/70 hover:bg-[#0A0A0A]/5"}`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Budget chip + dropdown */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setOpenFilter(openFilter === "budget" ? null : "budget")}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${openFilter === "budget" ? "bg-[#0A0A0A]/10 text-[#0A0A0A]" : "bg-[#0A0A0A]/5 text-[#0A0A0A]/70 hover:bg-[#0A0A0A]/10"}`}
-            >
-              Budget: {selectedBudget}
-              <ChevronDown className={`size-3.5 text-[#0A0A0A]/40 transition-transform ${openFilter === "budget" ? "rotate-180" : ""}`} />
-            </button>
-            {openFilter === "budget" && (
-              <div className="absolute left-0 top-full z-20 mt-1 w-64 rounded-xl border border-[#0A0A0A]/10 bg-white p-1 shadow-xl">
-                {budgetOptions.map((opt) => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => { setSelectedBudget(opt); setOpenFilter(null); }}
-                    className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors ${opt === selectedBudget ? "bg-[#00C98B]/10 text-[#00A975]" : "text-[#0A0A0A]/70 hover:bg-[#0A0A0A]/5"}`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Verified toggle */}
-          <button
-            type="button"
-            onClick={() => setVerifiedOnly(!verifiedOnly)}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${verifiedOnly ? "bg-[#00C98B]/15 text-[#00A975]" : "bg-[#0A0A0A]/5 text-[#0A0A0A]/70 hover:bg-[#0A0A0A]/10"}`}
-          >
-            <CircleCheck className="size-3.5 text-[#00C98B]" />
-            Verified Clients Only
-          </button>
-        </div>
 
         <div
           style={{ transitionDelay: isVisible ? "260ms" : "0ms" }}
@@ -341,9 +245,7 @@ export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
             <div className="col-span-2 border-l border-white/15 pl-5">
               Compensation
             </div>
-            <div className="col-span-2 border-l border-white/15 pl-5">
-              Domain Match
-            </div>
+
             <div className="col-span-1 border-l border-white/15 pl-3 text-right">
               UpScore
             </div>
@@ -380,8 +282,8 @@ export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
                         : "0ms",
                     }}
                     className={`group relative grid grid-cols-12 gap-x-4 gap-y-5 px-5 py-5 transition-all duration-700 ease-out before:absolute before:inset-y-0 before:left-0 before:w-1 before:scale-y-0 before:bg-[#00C98B] before:transition-transform before:duration-300 hover:bg-[#00C98B]/5 hover:before:scale-y-100 sm:gap-x-5 sm:px-6 motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:blur-0 motion-reduce:transition-none ${isVisible
-                        ? "translate-y-0 opacity-100 blur-0"
-                        : "translate-y-8 opacity-0 blur-[3px]"
+                      ? "translate-y-0 opacity-100 blur-0"
+                      : "translate-y-8 opacity-0 blur-[3px]"
                       }`}
                   >
                     {/* Lead / Project */}
@@ -439,21 +341,10 @@ export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
                       </div>
                     </div>
 
-                    {/* Domain Match */}
-                    <div className="col-span-6 sm:col-span-2 sm:border-l sm:border-[#0A0A0A]/10 sm:pl-5">
-                      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#0A0A0A]/40 sm:hidden">
-                        Domain Match
-                      </p>
 
-                      <span className="inline-flex max-w-full rounded-full border border-[#00C98B]/20 bg-[#00C98B]/10 px-3 py-1.5 text-xs font-semibold text-[#0A0A0A]/70">
-                        <span className="line-clamp-1">
-                          {job.subcategory || job.category || "General"}
-                        </span>
-                      </span>
-                    </div>
 
                     {/* UpScore */}
-                    <div className="col-span-6 sm:col-span-1 sm:flex sm:items-center sm:justify-end sm:border-l sm:border-[#0A0A0A]/10 sm:pl-3">
+                    <div className="col-span-6 sm:col-span-2 sm:border-l sm:border-[#0A0A0A]/10 sm:pl-5 ">
                       <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[#0A0A0A]/40 sm:hidden">
                         UpScore
                       </p>

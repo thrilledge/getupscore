@@ -957,8 +957,15 @@ export type Database = {
           p_paddle_plan_id: string
           p_status: string
           p_current_period_end: string | null
+          p_paddle_customer_id?: string | null
         }
         Returns: void
+      }
+      get_billing_details: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: Json
       }
       cancel_subscription: {
         Args: {

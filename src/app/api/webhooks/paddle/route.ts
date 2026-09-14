@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
           null;
 
         console.log("[Paddle WH] Activating subscription:", { userId, subscriptionId, priceId });
-        await upsertSubscription(userId, subscriptionId, priceId, "active", periodEnd);
+        await upsertSubscription(userId, subscriptionId, priceId, "active", periodEnd, data.customer_id);
         console.log("[Paddle WH] Subscription activated for:", userId);
 
         // Record affiliate commission if user was referred
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
         const planId = data.items?.[0]?.price?.id ?? "";
 
         console.log("[Paddle WH] Upserting subscription:", { userId, planId, status });
-        await upsertSubscription(userId, data.id, planId, status, periodEnd);
+        await upsertSubscription(userId, data.id, planId, status, periodEnd, data.customer_id);
         break;
       }
 
@@ -143,7 +143,8 @@ export async function POST(request: NextRequest) {
           data.id,
           data.items?.[0]?.price?.id ?? "",
           "past_due",
-          data.current_billing_period?.ends_at ?? null
+          data.current_billing_period?.ends_at ?? null,
+          data.customer_id
         );
         break;
       }

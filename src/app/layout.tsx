@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import Script from "next/script";
+
 import { Providers } from "@/components/providers";
 import { PaddleProvider } from "@/components/paddle-provider";
 import { ReferralTracker } from "@/components/referral-tracker";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { env } from "@/lib/env";
+
 import "./globals.css";
 
 const poppins = localFont({
@@ -28,10 +31,10 @@ export const metadata: Metadata = {
     default: env.APP_NAME,
     template: `%s | ${env.APP_NAME}`,
   },
-  description: "AI-powered Upwork opportunity finder — discover relevant jobs faster, score opportunities, and generate winning proposals.",
+  description:
+    "AI-powered Upwork opportunity finder — discover relevant jobs faster, score opportunities, and generate winning proposals.",
 };
 
-// Runs before first paint to apply the stored theme (avoids a light→dark flash).
 const themeScript = `(function(){try{var t=localStorage.getItem('upscore-theme');var m=window.matchMedia('(prefers-color-scheme: dark)').matches;var d=t==='dark'||((!t||t==='system')&&m);var e=document.documentElement;e.classList.toggle('dark',d);e.style.colorScheme=d?'dark':'light';}catch(e){}})();`;
 
 export default function RootLayout({
@@ -45,9 +48,10 @@ export default function RootLayout({
       className={`${poppins.variable} ${montserrat.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
+      <head><script
+        dangerouslySetInnerHTML={{ __html: themeScript }}
+      /></head>
+
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <TooltipProvider>
           <PaddleProvider>

@@ -53,9 +53,9 @@ export async function POST(request: NextRequest) {
       tx.billing_period?.ends_at ??
       null;
 
-    console.log("[Billing] Activating:", { subscriptionId, priceId, status, periodEnd });
+    console.log("[Billing] Activating:", { subscriptionId, priceId, status, periodEnd, customerId: tx.customer_id });
 
-    await upsertSubscription(user.id, subscriptionId, priceId, status, periodEnd);
+    await upsertSubscription(user.id, subscriptionId, priceId, status, periodEnd, tx.customer_id);
 
     return Response.json({ success: true });
   } catch (err) {

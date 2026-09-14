@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 
 export function CtaFooter() {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -84,10 +84,21 @@ export function CtaFooter() {
               </Link>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 pt-4 text-xs font-bold uppercase tracking-wide text-[#0A0A0A]/55">
-              <span>✓ No credit card needed</span>
-              <span>✓ Setup in 60 seconds</span>
-              <span>✓ Cancel anytime</span>
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-4 pt-10 border-t border-[#fff]/20 text-xs font-bold uppercase tracking-wide text-[#0A0A0A]/55">
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="h-3.5 w-3.5 stroke-[3] text-[#62CA8C]" />
+                AI scoring included
+              </span>
+
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="h-3.5 w-3.5 stroke-[3] text-[#62CA8C]" />
+                Setup in 60 seconds
+              </span>
+
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="h-3.5 w-3.5 stroke-[3] text-[#62CA8C]" />
+                Cancel anytime
+              </span>
             </div>
           </div>
         </div>

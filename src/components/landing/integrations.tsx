@@ -98,7 +98,7 @@ export function Integrations() {
                 style={{ transitionDelay: isVisible ? `${200 + i * 60}ms` : "0ms" }}
                 className={`group flex flex-col items-center gap-3 rounded-xl border border-[#0A0A0A]/10 bg-white p-4 text-center shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-[#F7FFFC] ${isVisible ? "translate-y-0 opacity-100 blur-0" : "translate-y-8 opacity-0 blur-[4px]"}`}
               >
-                <span className={`grid size-12 place-items-center rounded-full bg-[#0A0A0A]/10 transition-transform duration-300 group-hover:scale-110 ${tileAccents[i]}`}>
+                <span className={`grid size-12 place-items-center rounded-full transition-transform duration-300 group-hover:scale-110 ${tileAccents[i]}`}>
                   <Icon className="size-6" />
                 </span>
                 <span className="font-heading text-sm font-bold tracking-[-0.01em] text-[#0A0A0A]">
