@@ -311,7 +311,10 @@ export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
                           {countryName || "Global Client"}
                         </span>
 
-                        <span className="text-xs text-[#0A0A0A]/45">
+                        <span
+                          suppressHydrationWarning
+                          className="text-xs text-[#0A0A0A]/45"
+                        >
                           {timeAgo(job.posted_at)}
                           {job.proposals_count != null && (
                             <> · {job.proposals_count} proposals</>

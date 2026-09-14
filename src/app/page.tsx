@@ -103,7 +103,7 @@ export default async function Home() {
     <div className="min-h-screen">
       <SiteHeader />
       <main>
-        <Hero />
+        <Hero jobs={jobs.slice(0, 5)} />
         <LiveJobs jobs={jobs} />
         {/* <StatsBand totalJobs={totalJobs} jobs24h={jobs24h} /> */}
         <Features />

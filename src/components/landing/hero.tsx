@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { env } from "@/lib/env";
 import { Button } from "@/components/ui/button";
+import type { LiveJob } from "@/components/landing/live-jobs";
+import { HeroJobStack } from "@/components/landing/hero-job-stack";
 import {
   ArrowRight,
   BadgeCheck,
   BrainCircuit,
   CircleCheck,
+  DollarSign,
+  Globe,
   LockOpen,
   Radar,
   Send,
@@ -13,7 +17,20 @@ import {
   Zap,
 } from "lucide-react";
 
-export function Hero() {
+export function Hero({ jobs = [] }: { jobs?: LiveJob[] }) {
+  const hasJobs = jobs.length > 0;
+
+  const score = hasJobs ? null : 94;
+  const country = "United States";
+  const rating = "5.0";
+  const showRating = !hasJobs;
+  const verified = !hasJobs;
+  const range = "$95–$130";
+  const rangeLabel = "Est. Hourly";
+  const spend = "$140k+ Spent";
+  const proposalsLine = "Client hires in <3 proposals";
+  const ingested = "Ingested 12s ago";
+  const title = "Senior Full Stack Next.js & AI Agent Engineer";
   return (
     <section className="relative flex min-h-[calc(100svh-4rem)] items-center overflow-hidden bg-gradient-to-b from-[#F2FFFA] via-[#F8FFFC] to-white lg:min-h-[calc(100svh-72px)]">
       <style>
@@ -226,134 +243,159 @@ export function Hero() {
               className="absolute -inset-1 -z-10 rounded-[24px] bg-gradient-to-r from-[#00C98B]/30 to-[#00A975]/20 blur-xl opacity-60"
             />
 
-            <div className="relative flex flex-col gap-4 rounded-[24px] border border-[#0A0A0A]/10 bg-white/70 p-6 shadow-2xl backdrop-blur-2xl">
-              {/* Glass Top Header Bar */}
-              <div className="flex items-center justify-between">
-                <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#00C98B]">
-                  <span className="relative flex size-2.5">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#00C98B] opacity-60 motion-reduce:animate-none" />
-                    <span className="relative inline-flex size-2.5 rounded-full bg-[#00C98B]" />
+            {hasJobs ? (
+              <HeroJobStack jobs={jobs.slice(0, 5)} />
+            ) : (
+              <div className="relative flex flex-col gap-4 rounded-[24px] border border-[#0A0A0A]/10 bg-white p-6 shadow-2xl ">
+                {/* Glass Top Header Bar */}
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#00C98B]">
+                    <span className="relative flex size-2.5">
+                      <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#00C98B] opacity-60 motion-reduce:animate-none" />
+                      <span className="relative inline-flex size-2.5 rounded-full bg-[#00C98B]" />
+                    </span>
+                    Live Match Event
                   </span>
-                  Live Match Event
-                </span>
 
-                <span className="rounded bg-[#0A0A0A]/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0A0A0A]/50">
-                  Ingested 12s ago
-                </span>
-              </div>
+                  <span className="rounded bg-[#0A0A0A]/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0A0A0A]/50">
+                    {ingested}
+                  </span>
+                </div>
 
-              {/* Radar Match Gauge */}
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-[#0A0A0A]/5 bg-[#F7FFFC] p-4">
-                <div className="flex items-center gap-4">
-                  <div className="relative grid size-16 place-items-center">
-                    <svg
-                      aria-hidden="true"
-                      viewBox="0 0 36 36"
-                      className="size-16 -rotate-90"
-                    >
-                      <path
-                        className="text-[#0A0A0A]/10"
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="3.5"
-                      />
-                      <path
-                        className="text-[#00C98B]"
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeDasharray="94, 100"
-                        strokeLinecap="round"
-                        strokeWidth="3.5"
-                      />
-                    </svg>
+                {/* Radar Match Gauge */}
+                <div className="flex items-center justify-between gap-4 rounded-xl border border-[#0A0A0A]/5 bg-[#F7FFFC] p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="relative grid size-16 place-items-center">
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 36 36"
+                        className="size-16 -rotate-90"
+                      >
+                        <path
+                          className="text-[#0A0A0A]/10"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3.5"
+                        />
+                        <path
+                          className="text-[#00C98B]"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeDasharray="94, 100"
+                          strokeLinecap="round"
+                          strokeWidth="3.5"
+                        />
+                      </svg>
 
-                    <div className="absolute flex flex-col items-center justify-center">
-                      <span className="text-lg font-bold leading-none text-[#0A0A0A]">
-                        94
+                      <div className="absolute flex flex-col items-center justify-center">
+                        <span className="text-lg font-bold leading-none text-[#0A0A0A]">
+                          {score}
+                        </span>
+                        <span className="text-[9px] uppercase text-[#0A0A0A]/50">
+                          score
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="inline-flex items-center gap-1 rounded bg-[#00C98B]/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-[#00C98B]">
+                        <BadgeCheck className="size-3" />
+                        TOP 1% FIT SCORE
                       </span>
-                      <span className="text-[9px] uppercase text-[#0A0A0A]/50">
-                        score
-                      </span>
+
+                      <p className="mt-1 text-sm font-bold text-[#0A0A0A]">
+                        High Conversion Probability
+                      </p>
+
+                      <p className="text-xs text-[#0A0A0A]/55">
+                        {proposalsLine}
+                      </p>
                     </div>
                   </div>
 
-                  <div>
-                    <span className="inline-flex items-center gap-1 rounded bg-[#00C98B]/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-[#00C98B]">
-                      <BadgeCheck className="size-3" />
-                      TOP 1% FIT SCORE
+                  <div className="hidden flex-col items-end text-right sm:flex">
+                    <span className="text-xs text-[#0A0A0A]/50">
+                      {rangeLabel}
                     </span>
-
-                    <p className="mt-1 text-sm font-bold text-[#0A0A0A]">
-                      High Conversion Probability
-                    </p>
-
-                    <p className="text-xs text-[#0A0A0A]/55">
-                      Client hires in &lt;3 proposals
-                    </p>
+                    <span className="text-lg font-bold text-[#00C98B]">
+                      {range}
+                    </span>
                   </div>
                 </div>
 
-                <div className="hidden flex-col items-end text-right sm:flex">
-                  <span className="text-xs text-[#0A0A0A]/50">
-                    Est. Hourly
+                {/* Job Details Snippet */}
+                <div className="flex flex-col gap-1.5">
+                  <h3 className="font-heading cursor-pointer text-base font-bold leading-snug text-[#0A0A0A] transition-colors hover:text-[#00A975]">
+                    {title}
+                  </h3>
+
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-[#0A0A0A]/55">
+                    {verified && (
+                      <>
+                        <span className="inline-flex items-center gap-1 text-[#0A0A0A]">
+                          <CircleCheck className="size-3.5 shrink-0 text-[#00C98B]" />
+                          Payment Verified
+                        </span>
+                        <span aria-hidden="true">•</span>
+                      </>
+                    )}
+
+                    {showRating && (
+                      <>
+                        <span className="inline-flex items-center gap-1 text-[#00A975]">
+                          <Star className="size-3.5 shrink-0 fill-[#00C98B] text-[#00C98B]" />
+                          {rating}
+                        </span>
+                        <span aria-hidden="true">•</span>
+                      </>
+                    )}
+
+                    {spend && (
+                      <>
+                        <span className="inline-flex items-center gap-1 text-[#0A0A0A]">
+                          <DollarSign className="size-3.5 shrink-0 text-[#00C98B]" />
+                          {spend}
+                        </span>
+                        <span aria-hidden="true">•</span>
+                      </>
+                    )}
+
+                    <span className="inline-flex items-center gap-1">
+                      <Globe className="size-3.5 shrink-0 text-[#0A0A0A]/45" />
+                      {country}
+                    </span>
+                  </div>
+                </div>
+
+                {/* AI Assessment Block */}
+                <div className="flex items-start gap-2.5 rounded-lg border border-[#0A0A0A]/5 bg-[#0A0A0A]/5 p-3 text-sm leading-6 text-[#0A0A0A]/60">
+                  <BrainCircuit className="mt-0.5 size-5 shrink-0 text-[#00A975]" />
+
+                  <p>
+                    <span className="font-semibold text-[#0A0A0A]">
+                      AI Rationale:
+                    </span>{" "}
+                    Client has an active LangGraph workflow. Strong match for
+                    your previous Next.js v15 + OpenAI SDK showcases. Very low
+                    client price resistance.
+                  </p>
+                </div>
+
+                {/* Dispatch Alert Pill */}
+                <div className="flex items-center justify-between rounded-lg border border-[#0A0A0A]/5 bg-[#F7FFFC] p-3">
+                  <span className="inline-flex items-center gap-2 text-sm font-bold text-[#0A0A0A]">
+                    <Send className="size-4 text-[#00C98B]" />
+                    Pushed to Telegram &amp; Slack
                   </span>
-                  <span className="text-lg font-bold text-[#00C98B]">
-                    $95–$130
+
+                  <span className="animate-pulse text-xs font-bold text-[#00C98B] motion-reduce:animate-none">
+                    0.8s latency
                   </span>
                 </div>
               </div>
-
-              {/* Job Details Snippet */}
-              <div className="flex flex-col gap-1.5">
-                <h3 className="font-heading cursor-pointer text-base font-bold leading-snug text-[#0A0A0A] transition-colors hover:text-[#00A975]">
-                  Senior Full Stack Next.js &amp; AI Agent Engineer
-                </h3>
-
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#0A0A0A]/55">
-                  <span className="inline-flex items-center gap-1 text-[#0A0A0A]">
-                    <CircleCheck className="size-3.5 text-[#00C98B]" />
-                    Payment Verified
-                  </span>
-                  <span>•</span>
-                  <span className="inline-flex items-center gap-0.5 text-[#00A975]">
-                    5.0
-                    <Star className="size-3.5 fill-[#00C98B] text-[#00C98B]" />
-                  </span>
-                  <span>•</span>
-                  <span>$140k+ Spent</span>
-                  <span>•</span>
-                  <span>United States</span>
-                </div>
-              </div>
-
-              {/* AI Assessment Block */}
-              <div className="flex items-start gap-2.5 rounded-lg border border-[#0A0A0A]/5 bg-[#0A0A0A]/5 p-3 text-sm leading-6 text-[#0A0A0A]/60">
-                <BrainCircuit className="mt-0.5 size-5 shrink-0 text-[#00A975]" />
-
-                <p>
-                  <span className="font-semibold text-[#0A0A0A]">
-                    AI Rationale:
-                  </span>{" "}
-                  Client has an active LangGraph workflow. Strong match for
-                  your previous Next.js v15 + OpenAI SDK showcases. Very low
-                  client price resistance.
-                </p>
-              </div>
-
-              {/* Dispatch Alert Pill */}
-              <div className="flex items-center justify-between rounded-lg border border-[#0A0A0A]/5 bg-[#F7FFFC] p-3">
-                <span className="inline-flex items-center gap-2 text-sm font-bold text-[#0A0A0A]">
-                  <Send className="size-4 text-[#00C98B]" />
-                  Pushed to Telegram &amp; Slack
-                </span>
-
-                <span className="animate-pulse text-xs font-bold text-[#00C98B] motion-reduce:animate-none">
-                  0.8s latency
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

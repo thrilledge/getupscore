@@ -48,11 +48,12 @@ export default function RootLayout({
       className={`${poppins.variable} ${montserrat.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head><script
-        dangerouslySetInnerHTML={{ __html: themeScript }}
-      /></head>
-
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeScript }}
+        />
         <TooltipProvider>
           <PaddleProvider>
             <ReferralTracker />
