@@ -1,986 +1,1293 @@
 <!DOCTYPE html>
 
-<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><title>UpScore - Algorithmic Edge for Freelance &amp; Agency Leads</title><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base { html, body { margin: 0; padding: 0; } body { overscroll-behavior: none; } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { 'colors': { 'surface-variant': '#32353b', 'tertiary': '#4cd7f6', 'surface-container': '#1d2025', 'primary': '#4edea3', 'outline-variant': '#3c4a42', 'surface-container-high': '#272a30', 'background': '#101319', 'surface-container-lowest': '#0b0e13', 'on-tertiary-fixed-variant': '#004e5c', 'on-background': '#e1e2ea', 'on-secondary': '#3c0091', 'on-error': '#690005', 'on-secondary-fixed-variant': '#5516be', 'surface-container-highest': '#32353b', 'on-tertiary-container': '#003f4b', 'surface': '#101319', 'primary-fixed-dim': '#4edea3', 'secondary-fixed': '#e9ddff', 'on-secondary-container': '#c4abff', 'outline': '#86948a', 'tertiary-fixed-dim': '#4cd7f6', 'inverse-primary': '#006c49', 'error': '#ffb4ab', 'tertiary-container': '#00b2d0', 'on-error-container': '#ffdad6', 'secondary-fixed-dim': '#d0bcff', 'on-tertiary': '#003640', 'primary-fixed': '#6ffbbe', 'surface-container-low': '#191c21', 'primary-container': '#10b981', 'on-surface-variant': '#bbcabf', 'inverse-on-surface': '#2d3036', 'surface-bright': '#36393f', 'on-surface': '#e1e2ea', 'on-primary-container': '#00422b', 'inverse-surface': '#e1e2ea', 'on-primary-fixed-variant': '#005236', 'surface-tint': '#4edea3', 'on-primary-fixed': '#002113', 'secondary': '#d0bcff', 'on-secondary-fixed': '#23005c', 'on-primary': '#003824', 'secondary-container': '#571bc1', 'tertiary-fixed': '#acedff', 'on-tertiary-fixed': '#001f26', 'error-container': '#93000a', 'surface-dim': '#101319' }, 'borderRadius': { 'DEFAULT': '0.25rem', 'lg': '0.5rem', 'xl': '0.75rem', 'full': '9999px' }, 'spacing': { 'space-xl': '2.5rem', 'space-xs': '0.25rem', 'gutter': '1.5rem', 'space-md': '1rem', 'margin-mobile': '1.25rem', 'space-lg': '1.5rem', 'margin': '2.5rem', 'gutter-mobile': '1rem', 'space-sm': '0.5rem' }, 'fontFamily': { 'headline-lg': ['Geist'], 'body-sm': ['Geist'], 'display-hero-mobile': ['Geist'], 'label-badge': ['Geist'], 'label-code': ['JetBrains Mono'], 'headline-sm': ['Geist'], 'headline-lg-mobile': ['Geist'], 'display-hero': ['Geist'], 'headline-md': ['Geist'], 'body-lg': ['Geist'], 'body-md': ['Geist'], 'headline-md-mobile': ['Geist'] }, 'fontSize': { 'headline-lg': ['44px', { 'lineHeight': '52px', 'letterSpacing': '-0.025em', 'fontWeight': '600' }], 'body-sm': ['13px', { 'lineHeight': '20px', 'letterSpacing': '0em', 'fontWeight': '400' }], 'display-hero-mobile': ['36px', { 'lineHeight': '44px', 'letterSpacing': '-0.02em', 'fontWeight': '600' }], 'label-badge': ['11px', { 'lineHeight': '14px', 'letterSpacing': '0.06em', 'fontWeight': '600' }], 'label-code': ['12px', { 'lineHeight': '16px', 'letterSpacing': '0.04em', 'fontWeight': '500' }], 'headline-sm': ['20px', { 'lineHeight': '28px', 'letterSpacing': '-0.01em', 'fontWeight': '500' }], 'headline-lg-mobile': ['28px', { 'lineHeight': '36px', 'letterSpacing': '-0.02em', 'fontWeight': '600' }], 'display-hero': ['64px', { 'lineHeight': '72px', 'letterSpacing': '-0.03em', 'fontWeight': '600' }], 'headline-md': ['32px', { 'lineHeight': '40px', 'letterSpacing': '-0.02em', 'fontWeight': '500' }], 'body-lg': ['18px', { 'lineHeight': '28px', 'letterSpacing': '-0.01em', 'fontWeight': '400' }], 'body-md': ['15px', { 'lineHeight': '24px', 'letterSpacing': '-0.005em', 'fontWeight': '400' }], 'headline-md-mobile': ['24px', { 'lineHeight': '32px', 'letterSpacing': '-0.015em', 'fontWeight': '500' }] } } } };</script></head><body class="bg-background font-body-md text-on-surface antialiased min-h-screen selection:bg-primary-container selection:text-on-primary-container"><div class="fixed inset-0 pointer-events-none z-0 overflow-hidden"><div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.12)_0%,rgba(0,178,208,0.04)_40%,transparent_70%)] blur-3xl"></div></div><header class="fixed top-0 left-0 right-0 w-full z-50 bg-surface-container-lowest/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="h-16 max-w-7xl mx-auto px-margin-mobile lg:px-margin flex items-center justify-between gap-space-md"><div class="flex items-center gap-space-sm"><img alt="UpScore Brand Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WqGLpmvXq1OT3i7tubI-Y7p45DHqWgZhuv2ILwjmS-4-Pdk3V4CX8geuaTZdnSS9yhKnBPiv4-0pGEjZwdxS_LtXI8BA_vH_mNWKvclpALXtHMZ00gHQR39WUBKyAd0r1KFOx0exAKXao96LWPc12rhDfndhSGKwMzNGqhTOfMXPoHo0twayhYHXrL76oCcYxfCu85mLgGBo0RmqNX4Fwy7pbUyHNQkk5wzZvmsSWgCTGdApayJzp22g8"/><a class="flex items-center gap-space-xs" data-path="landing-page" href="#"><span class="font-headline-sm text-headline-sm text-on-surface font-semibold tracking-tight">UpScore</span><span class="relative flex h-2 w-2 ml-space-xs"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span></span></a></div><nav class="hidden lg:flex items-center gap-space-lg" data-active-classes="text-on-surface bg-surface-container-high rounded-lg"><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm" data-path="live-jobs" href="#live-jobs">Live Jobs</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm" data-path="features" href="#features">Features</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm" data-path="integrations" href="#integrations">Integrations</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm" data-path="how-it-works" href="#how-it-works">How It Works</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm" data-path="pricing" href="#pricing">Pricing</a><a class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm" data-path="faq" href="#faq">FAQ</a></nav><div class="flex items-center gap-space-md"><a class="hidden sm:inline-flex items-center justify-center font-body-sm text-body-sm font-medium text-on-surface px-space-md py-space-xs rounded-lg bg-surface-container-high/60 hover:bg-surface-container-highest hover:text-on-surface transition-all" data-path="sign-in" href="#">Sign In</a><a class="inline-flex items-center justify-center font-body-sm text-body-sm font-semibold text-on-primary-container bg-primary-container hover:bg-primary shadow-[0_0_24px_rgba(16,185,129,0.35)] px-space-md py-space-xs rounded-lg transition-all" data-path="get-started" href="#">Get Started</a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="relative z-10 w-full pt-16 bg-transparent"><div class="max-w-7xl mx-auto px-margin-mobile lg:px-margin"><div class="flex flex-col w-full text-on-surface overflow-hidden">
-<!-- SECTION 1 & 2: HERO COMPONENT -->
-<section class="relative pt-12 pb-20 lg:pt-16 lg:pb-32 overflow-hidden">
-<!-- Atmospheric Underglow -->
-<div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[360px] bg-gradient-to-tr from-primary/15 via-tertiary/10 to-transparent blur-[140px] pointer-events-none -z-10"></div>
-<div class="absolute -top-12 right-0 w-[420px] h-[420px] bg-secondary-container/10 blur-[120px] pointer-events-none -z-10"></div>
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-center">
-<!-- Left Hero Pitch -->
-<div class="lg:col-span-7 flex flex-col items-start gap-space-md">
-<!-- Live Pill Badge -->
-<div class="inline-flex items-center gap-space-xs px-3 py-1.5 rounded-full bg-surface-container-high/80 backdrop-blur-md shadow-sm">
-<span class="relative flex h-2 w-2">
-<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-</span>
-<span class="font-label-code text-label-code text-primary tracking-wide">AI-SCORED REAL-TIME UPWORK ALERTS</span>
-</div>
-<!-- Hero Headline -->
-<h1 class="font-display-hero text-headline-lg lg:text-display-hero tracking-tight text-on-surface">
-          Never miss the right <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary via-tertiary to-primary-fixed">Upwork</span> job again
-        </h1>
-<!-- Subtitle -->
-<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
-          UpScore scans Upwork continuously, scores every lead with our algorithmic engine, and alerts you the second a job matches your exact stack—so you submit high-conviction proposals before competition saturates the post.
-        </p>
-<!-- CTAs -->
-<div class="flex flex-wrap items-center gap-space-md pt-space-xs">
-<a class="inline-flex items-center justify-center gap-space-xs px-space-lg py-3 rounded-xl bg-primary-container text-on-primary-container font-headline-sm text-body-md font-semibold shadow-[0_0_32px_rgba(16,185,129,0.35)] hover:bg-primary transition-all duration-200" href="#pricing">
-<span>Start finding jobs free</span>
-<span class="material-symbols-outlined text-body-lg">arrow_forward</span>
-</a>
-<a class="inline-flex items-center justify-center gap-space-xs px-space-lg py-3 rounded-xl bg-surface-container-high/70 hover:bg-surface-container-highest text-on-surface font-headline-sm text-body-md transition-all duration-200 shadow-sm" href="#live-jobs">
-<span class="material-symbols-outlined text-primary text-body-lg">radar</span>
-<span>See live stream</span>
-</a>
-</div>
-<!-- Trust signals -->
-<div class="flex flex-wrap items-center gap-y-2 gap-x-6 text-on-surface-variant font-label-code text-label-code pt-space-xs">
-<div class="flex items-center gap-1.5">
-<span class="material-symbols-outlined text-primary text-[18px]">verified</span>
-<span>Free forever tier</span>
-</div>
-<div class="flex items-center gap-1.5">
-<span class="material-symbols-outlined text-primary text-[18px]">bolt</span>
-<span>AI scoring included</span>
-</div>
-<div class="flex items-center gap-1.5">
-<span class="material-symbols-outlined text-primary text-[18px]">lock_open</span>
-<span>Zero lock-in contract</span>
-</div>
-</div>
-</div>
-<!-- Right Visual Telemetry Glass Card -->
-<div class="lg:col-span-5 relative mt-8 lg:mt-0">
-<!-- Ambient halo -->
-<div class="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/30 to-tertiary/20 blur-xl opacity-60"></div>
-<div class="relative rounded-2xl bg-surface-container-lowest/90 backdrop-blur-2xl p-space-lg shadow-2xl flex flex-col gap-space-md">
-<!-- Glass Top Header Bar -->
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2">
-<span class="flex h-2.5 w-2.5 rounded-full bg-primary animate-pulse"></span>
-<span class="font-label-code text-label-code text-primary uppercase tracking-wider">Live Match Event</span>
-</div>
-<span class="font-label-code text-label-code text-on-surface-variant px-2 py-0.5 rounded bg-surface-container">Ingested 12s ago</span>
-</div>
-<!-- Radar Match Gauge Container -->
-<div class="p-space-md rounded-xl bg-surface-container-low flex items-center justify-between gap-space-md">
-<div class="flex items-center gap-space-md">
-<!-- Radial SVG Meter -->
-<div class="relative w-16 h-16 flex items-center justify-center">
-<svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
-<path class="text-surface-variant" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3.5"></path>
-<path class="text-primary" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="94, 100" stroke-linecap="round" stroke-width="3.5"></path>
-</svg>
-<div class="absolute flex flex-col items-center justify-center">
-<span class="font-label-code font-semibold text-on-surface text-body-sm leading-none">94</span>
-<span class="font-label-code text-[8px] text-on-surface-variant uppercase">score</span>
-</div>
-</div>
-<div>
-<div class="inline-flex items-center gap-1 text-primary font-label-code text-label-badge bg-primary/10 px-2 py-0.5 rounded">
-<span class="material-symbols-outlined text-[12px]">verified</span>
-<span>TOP 1% FIT SCORE</span>
-</div>
-<div class="font-headline-sm text-body-md font-semibold text-on-surface mt-1">High Conversion Probability</div>
-<div class="font-body-sm text-body-sm text-on-surface-variant">Client hires in &lt;3 proposals</div>
-</div>
-</div>
-<div class="hidden sm:flex flex-col items-end text-right">
-<span class="font-label-code text-label-code text-on-surface-variant">Est. Hourly</span>
-<span class="font-headline-sm text-body-lg text-primary font-semibold">$95 - $130</span>
-</div>
-</div>
-<!-- Job Details Snippet -->
-<div class="flex flex-col gap-1.5">
-<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold hover:text-primary transition-colors cursor-pointer">
-              Senior Full Stack Next.js &amp; AI Agent Engineer
-            </h3>
-<div class="flex flex-wrap items-center gap-2 text-on-surface-variant font-label-code text-body-sm">
-<span class="text-on-surface flex items-center gap-1"><span class="material-symbols-outlined text-primary text-[16px]">check_circle</span> Payment Verified</span>
-<span>•</span>
-<span class="text-tertiary flex items-center gap-0.5">5.0 <span class="material-symbols-outlined text-[14px]">star</span></span>
-<span>•</span>
-<span>$140k+ Spent</span>
-<span>•</span>
-<span>United States</span>
-</div>
-</div>
-<!-- AI Assessment Block -->
-<div class="p-space-sm rounded-lg bg-surface-container text-body-sm font-body-sm text-on-surface-variant flex items-start gap-2.5">
-<span class="material-symbols-outlined text-tertiary text-[20px] shrink-0 mt-0.5">psychology</span>
-<div>
-<span class="text-on-surface font-medium">AI Rationale:</span> Client has an active LangGraph workflow. Strong match for your previous Next.js v15 + OpenAI SDK showcases. Very low client price resistance.
-            </div>
-</div>
-<!-- Dispatch Alert Pill -->
-<div class="mt-1 flex items-center justify-between p-2.5 rounded-lg bg-surface-container-high/60 backdrop-blur-md">
-<div class="flex items-center gap-2">
-<span class="material-symbols-outlined text-primary text-[18px]">send_and_archive</span>
-<span class="font-label-code text-label-badge text-on-surface">Pushed to Telegram &amp; Slack</span>
-</div>
-<span class="font-label-code text-label-badge text-primary animate-pulse">0.8s latency</span>
-</div>
-</div>
-</div>
-</div>
-</section>
-<!-- SECTION 3: LIVE JOBS FEED -->
-<section class="relative py-16 lg:py-24" id="live-jobs">
-<div class="flex flex-col gap-space-lg">
-<!-- Section Header -->
-<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
-<div class="flex flex-col gap-space-xs max-w-2xl">
-<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-high w-max">
-<span class="relative flex h-2 w-2">
-<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-</span>
-<span class="font-label-code text-label-code text-primary uppercase">Live from Upwork Telemetry</span>
-</div>
-<h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
-            Fresh opportunities pulled straight from Upwork.
-          </h2>
-<p class="font-body-md text-body-md text-on-surface-variant">
-            10 newest verified jobs—sign in to unlock tailored proposal generation, client spend analytics, and automated push alerts.
-          </p>
-</div>
-<div class="flex items-center gap-2 font-label-code text-label-code text-on-surface-variant">
-<span class="material-symbols-outlined text-primary text-[16px] animate-spin">autorenew</span>
-<span>Feed refreshes in: <span class="text-primary font-semibold" id="countdown-timer">142s</span></span>
-</div>
-</div>
-<!-- Filter Controls Bar -->
-<div class="flex flex-wrap items-center gap-2 p-2 rounded-xl bg-surface-container-lowest">
-<button class="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface font-label-code text-label-code flex items-center gap-1.5 hover:bg-surface-container-highest transition-colors">
-<span>Category: All Engineering &amp; Design</span>
-<span class="material-symbols-outlined text-[16px]">expand_more</span>
-</button>
-<button class="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface font-label-code text-label-code flex items-center gap-1.5 hover:bg-surface-container-highest transition-colors">
-<span>Location: Worldwide &amp; US Only</span>
-<span class="material-symbols-outlined text-[16px]">expand_more</span>
-</button>
-<button class="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface font-label-code text-label-code flex items-center gap-1.5 hover:bg-surface-container-highest transition-colors">
-<span>Budget: &gt;$50/hr or &gt;$1,000 Fixed</span>
-<span class="material-symbols-outlined text-[16px]">expand_more</span>
-</button>
-<button class="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-label-code text-label-code flex items-center gap-1.5">
-<span class="material-symbols-outlined text-[16px]">verified</span>
-<span>Verified Clients Only</span>
-</button>
-</div>
-<!-- Live Interactive Jobs Table -->
-<div class="overflow-hidden rounded-2xl bg-surface-container-lowest shadow-xl">
-<div class="overflow-x-auto">
-<table class="w-full text-left border-collapse">
-<thead>
-<tr class="bg-surface-container-low font-label-code text-label-code text-on-surface-variant uppercase tracking-wider">
-<th class="py-3.5 px-space-md">Lead / Project</th>
-<th class="py-3.5 px-space-md">Age &amp; Client Country</th>
-<th class="py-3.5 px-space-md">Compensation</th>
-<th class="py-3.5 px-space-md">Domain Match</th>
-<th class="py-3.5 px-space-md text-right">UpScore</th>
-</tr>
-</thead>
-<tbody class="divide-y divide-surface-container-high/40 font-body-md text-body-sm">
-<!-- Row 1 -->
-<tr class="hover:bg-surface-container-low/80 transition-colors group cursor-pointer">
-<td class="py-4 px-space-md">
-<div class="flex flex-col gap-0.5">
-<span class="font-headline-sm text-body-md font-medium text-on-surface group-hover:text-primary transition-colors">Senior React Native Mobile App Architect</span>
-<span class="text-on-surface-variant text-body-sm line-clamp-1">Refactor legacy bridge to TurboModules, integrate Bluetooth BLE real-time peripherals.</span>
-</div>
-</td>
-<td class="py-4 px-space-md whitespace-nowrap">
-<div class="flex flex-col">
-<span class="text-on-surface flex items-center gap-1.5">🇺🇸 United States</span>
-<span class="text-on-surface-variant font-label-code text-label-badge">18 min ago · 4 proposals</span>
-</div>
-</td>
-<td class="py-4 px-space-md whitespace-nowrap">
-<span class="text-primary font-label-code font-medium text-body-md">$80 – $110 / hr</span>
-</td>
-<td class="py-4 px-space-md">
-<span class="px-2 py-0.5 rounded bg-surface-container text-tertiary font-label-code text-label-badge">Mobile Engineering</span>
-</td>
-<td class="py-4 px-space-md text-right whitespace-nowrap">
-<span class="inline-flex items-center justify-center font-label-code font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary">
-                    96 / 100
-                  </span>
-</td>
-</tr>
-<!-- Row 2 -->
-<tr class="hover:bg-surface-container-low/80 transition-colors group cursor-pointer">
-<td class="py-4 px-space-md">
-<div class="flex flex-col gap-0.5">
-<span class="font-headline-sm text-body-md font-medium text-on-surface group-hover:text-primary transition-colors">Figma UI/UX Designer for Fintech SaaS Portal</span>
-<span class="text-on-surface-variant text-body-sm line-clamp-1">Complete redesign of investor dashboard with accessible charting and high-density tables.</span>
-</div>
-</td>
-<td class="py-4 px-space-md whitespace-nowrap">
-<div class="flex flex-col">
-<span class="text-on-surface flex items-center gap-1.5">🇨🇦 Canada</span>
-<span class="text-on-surface-variant font-label-code text-label-badge">26 min ago · 2 proposals</span>
-</div>
-</td>
-<td class="py-4 px-space-md whitespace-nowrap">
-<span class="text-primary font-label-code font-medium text-body-md">$65 – $90 / hr</span>
-</td>
-<td class="py-4 px-space-md">
-<span class="px-2 py-0.5 rounded bg-surface-container text-tertiary font-label-code text-label-badge">Product Design</span>
-</td>
-<td class="py-4 px-space-md text-right whitespace-nowrap">
-<span class="inline-flex items-center justify-center font-label-code font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary">
-                    95 / 100
-                  </span>
-</td>
-</tr>
-<!-- Row 3 -->
-<tr class="hover:bg-surface-container-low/80 transition-colors group cursor-pointer">
-<td class="py-4 px-space-md">
-<div class="flex flex-col gap-0.5">
-<span class="font-headline-sm text-body-md font-medium text-on-surface group-hover:text-primary transition-colors">.NET / Umbraco Cloud Backend Developer</span>
-<span class="text-on-surface-variant text-body-sm line-clamp-1">Custom API headless integrations for multinational logistics client with Azure microservices.</span>
-</div>
-</td>
-<td class="py-4 px-space-md whitespace-nowrap">
-<div class="flex flex-col">
-<span class="text-on-surface flex items-center gap-1.5">🌐 Global Client</span>
-<span class="text-on-surface-variant font-label-code text-label-badge">35 min ago · 6 proposals</span>
-</div>
-</td>
-<td class="py-4 px-space-md whitespace-nowrap">
-<span class="text-tertiary font-label-code font-medium text-body-md">$35 – $55 / hr</span>
-</td>
-<td class="py-4 px-space-md">
-<span class="px-2 py-0.5 rounded bg-surface-container text-tertiary font-label-code text-label-badge">Backend C#</span>
-</td>
-<td class="py-4 px-space-md text-right whitespace-nowrap">
-<span class="inline-flex items-center justify-center font-label-code font-bold px-2.5 py-1 rounded-lg bg-tertiary/10 text-tertiary">
-                    92 / 100
-                  </span>
-</td>
-</tr>
-<!-- Row 4 -->
-<tr class="hover:bg-surface-container-low/80 transition-colors group cursor-pointer">
-<td class="py-4 px-space-md">
-<div class="flex flex-col gap-0.5">
-<span class="font-headline-sm text-body-md font-medium text-on-surface group-hover:text-primary transition-colors">B2B Copywriter &amp; Cold Outbound Specialist</span>
-<span class="text-on-surface-variant text-body-sm line-clamp-1">Deliver 12 outbound email sequences targeting enterprise VP of SecOps.</span>
-</div>
-</td>
-<td class="py-4 px-space-md whitespace-nowrap">
-<div class="flex flex-col">
-<span class="text-on-surface flex items-center gap-1.5">🇬🇧 United Kingdom</span>
-<span class="text-on-surface-variant font-label-code text-label-badge">51 min ago · 3 proposals</span>
-</div>
-</td>
-<td class="py-4 px-space-md whitespace-nowrap">
-<span class="text-primary font-label-code font-medium text-body-md">$1,200 Fixed</span>
-</td>
-<td class="py-4 px-space-md">
-<span class="px-2 py-0.5 rounded bg-surface-container text-tertiary font-label-code text-label-badge">Growth Copy</span>
-</td>
-<td class="py-4 px-space-md text-right whitespace-nowrap">
-<span class="inline-flex items-center justify-center font-label-code font-bold px-2.5 py-1 rounded-lg bg-tertiary/10 text-tertiary">
-                    91 / 100
-                  </span>
-</td>
-</tr>
-<!-- Row 5 -->
-<tr class="hover:bg-surface-container-low/80 transition-colors group cursor-pointer">
-<td class="py-4 px-space-md">
-<div class="flex flex-col gap-0.5">
-<span class="font-headline-sm text-body-md font-medium text-on-surface group-hover:text-primary transition-colors">Inside Sales / Lead Researcher Support</span>
-<span class="text-on-surface-variant text-body-sm line-clamp-1">Build daily database of verified contacts in HubSpot for US software distributors.</span>
-</div>
-</td>
-<td class="py-4 px-space-md whitespace-nowrap">
-<div class="flex flex-col">
-<span class="text-on-surface flex items-center gap-1.5">🇵🇭 Philippines</span>
-<span class="text-on-surface-variant font-label-code text-label-badge">1h ago · 8 proposals</span>
-</div>
-</td>
-<td class="py-4 px-space-md whitespace-nowrap">
-<span class="text-on-surface font-label-code font-medium text-body-md">$450 Fixed</span>
-</td>
-<td class="py-4 px-space-md">
-<span class="px-2 py-0.5 rounded bg-surface-container text-tertiary font-label-code text-label-badge">Operations</span>
-</td>
-<td class="py-4 px-space-md text-right whitespace-nowrap">
-<span class="inline-flex items-center justify-center font-label-code font-bold px-2.5 py-1 rounded-lg bg-surface-container-high text-on-surface">
-                    88 / 100
-                  </span>
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="p-4 bg-surface-container-low/50 flex flex-col sm:flex-row items-center justify-between gap-2 text-on-surface-variant font-label-code text-label-code">
-<div class="flex items-center gap-2">
-<span class="h-2 w-2 rounded-full bg-primary animate-ping"></span>
-<span>UpScore Bot crawling 18 Upwork categories at 60s frequency</span>
-</div>
-<a class="text-primary hover:underline flex items-center gap-1" href="#pricing">
-<span>Unlock all 450+ daily high-tier feeds</span>
-<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-</a>
-</div>
-</div>
-</div>
-</section>
-<!-- SECTION 4: FEATURES SECTION (6 Pillar Grid & Featured Card) -->
-<section class="relative py-16 lg:py-24" id="features">
-<div class="flex flex-col gap-space-xl">
-<div class="flex flex-col gap-space-xs text-center items-center max-w-3xl mx-auto">
-<span class="font-label-code text-label-code text-primary uppercase tracking-wider">Algorithmic Edge</span>
-<h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
-          Everything you need to win more work
-        </h2>
-<p class="font-body-lg text-body-lg text-on-surface-variant">
-          From initial job post indexing to your signed contract—one unified system engineered to turn Upwork into an automated client acquisition engine.
-        </p>
-</div>
-<!-- Bento Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
-<!-- Feature 1: Featured Wide Card -->
-<div class="md:col-span-2 lg:col-span-2 rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl relative overflow-hidden flex flex-col justify-between">
-<div class="absolute -top-16 -right-16 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
-<div class="flex flex-col gap-space-sm relative z-10">
-<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-[24px]">notifications_active</span>
-</div>
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Smart Job Alerts</h3>
-<p class="font-body-md text-body-md text-on-surface-variant max-w-xl">
-              Zero-latency webhooks. While other freelancers wait for Upwork’s delayed daily digest or hit manual refresh, our distributed scrapers ping your channels in under 90 seconds from job publication.
-            </p>
-</div>
-<!-- Interactive Graphic Mockup -->
-<div class="mt-6 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-<div class="p-3 rounded-xl bg-surface-container-low flex items-center gap-3">
-<div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
-<span class="material-symbols-outlined text-[18px]">bolt</span>
-</div>
-<div class="flex flex-col min-w-0">
-<span class="font-body-md text-body-sm text-on-surface font-medium truncate">Zero Latency Push</span>
-<span class="font-label-code text-label-badge text-on-surface-variant">Telegram &amp; Slack hooks</span>
-</div>
-</div>
-<div class="p-3 rounded-xl bg-surface-container-low flex items-center gap-3">
-<div class="w-8 h-8 rounded-full bg-tertiary/20 flex items-center justify-center text-tertiary shrink-0">
-<span class="material-symbols-outlined text-[18px]">shield</span>
-</div>
-<div class="flex flex-col min-w-0">
-<span class="font-body-md text-body-sm text-on-surface font-medium truncate">Anti-Scam Filter</span>
-<span class="font-label-code text-label-badge text-on-surface-variant">Drops $5 budget spam</span>
-</div>
-</div>
-</div>
-</div>
-<!-- Feature 2: AI Proposals -->
-<div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
-<div class="flex flex-col gap-space-sm">
-<div class="w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
-<span class="material-symbols-outlined text-[24px]">draw</span>
-</div>
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">AI Proposals</h3>
-<p class="font-body-md text-body-sm text-on-surface-variant">
-              Generate surgical 3-paragraph opening hooks referencing specific nuances from the client's brief and past hiring tendencies.
-            </p>
-</div>
-<div class="mt-6 p-3 rounded-xl bg-surface-container-low font-label-code text-label-badge text-on-surface-variant">
-            “I noticed your Supabase schema migration needs...”
-          </div>
-</div>
-<!-- Feature 3: Opportunity Score -->
-<div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
-<div class="flex flex-col gap-space-sm">
-<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-[24px]">speed</span>
-</div>
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Opportunity Score</h3>
-<p class="font-body-md text-body-sm text-on-surface-variant">
-              Proprietary 0-100 rating analyzing client payment history, average hourly wage paid, hire conversion rate, and prompt clarity.
-            </p>
-</div>
-<div class="mt-6 flex items-center justify-between text-body-sm">
-<span class="font-label-code text-label-badge text-on-surface-variant">Algorithm Model</span>
-<span class="text-primary font-label-code text-label-badge">v2.4 Bayesian</span>
-</div>
-</div>
-<!-- Feature 4: Market Intel -->
-<div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
-<div class="flex flex-col gap-space-sm">
-<div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
-<span class="material-symbols-outlined text-[24px]">analytics</span>
-</div>
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Market Intel</h3>
-<p class="font-body-md text-body-sm text-on-surface-variant">
-              Track hourly rate benchmarks across your niche and gauge how aggressively other freelancers bid on similar contracts.
-            </p>
-</div>
-<div class="mt-6 flex items-center gap-2">
-<span class="h-2 w-full bg-surface-variant rounded-full overflow-hidden flex">
-<span class="bg-primary w-2/3 h-full"></span>
-<span class="bg-tertiary w-1/4 h-full"></span>
-</span>
-</div>
-</div>
-<!-- Feature 5: Precise Filters & Verified Clients -->
-<div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
-<div class="flex flex-col gap-space-sm">
-<div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-[24px]">filter_alt</span>
-</div>
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">High-Spend Filtering</h3>
-<p class="font-body-md text-body-sm text-on-surface-variant">
-              Ignore accounts that spend $15/hr or haven't verified billing. Focus strictly on clients with $10k+ historical spend.
-            </p>
-</div>
-<div class="mt-6 flex items-center gap-2 text-primary font-label-code text-label-badge">
-<span class="material-symbols-outlined text-[16px]">verified_user</span>
-<span>Zero Unverified Ingestion</span>
-</div>
-</div>
-</div>
-</div>
-</section>
-<!-- SECTION 5: INTEGRATIONS SECTION (8-item stack) -->
-<section class="relative py-16 lg:py-24" id="integrations">
-<div class="flex flex-col gap-space-xl">
-<div class="flex flex-col gap-space-xs text-center items-center max-w-2xl mx-auto">
-<span class="font-label-code text-label-code text-primary uppercase tracking-wider">Zero Tab Juggling</span>
-<h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
-          Alerts that reach you where you work
-        </h2>
-<p class="font-body-lg text-body-lg text-on-surface-variant">
-          Never sit on the Upwork feed refreshing manually. Connect UpScore directly to your favorite communication and automation stack.
-        </p>
-</div>
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-gutter">
-<!-- Integration 1: WhatsApp -->
-<div class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
-<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-[28px]">chat</span>
-</div>
-<span class="font-headline-sm text-body-md font-semibold text-on-surface">WhatsApp</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Instant mobile push</span>
-</div>
-<!-- Integration 2: Webhooks -->
-<div class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
-<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-tertiary">
-<span class="material-symbols-outlined text-[28px]">webhook</span>
-</div>
-<span class="font-headline-sm text-body-md font-semibold text-on-surface">Webhooks</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Custom JSON payloads</span>
-</div>
-<!-- Integration 3: Slack -->
-<div class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
-<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-secondary">
-<span class="material-symbols-outlined text-[28px]">tag</span>
-</div>
-<span class="font-headline-sm text-body-md font-semibold text-on-surface">Slack</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Dedicated #leads channel</span>
-</div>
-<!-- Integration 4: Telegram -->
-<div class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
-<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-tertiary">
-<span class="material-symbols-outlined text-[28px]">send</span>
-</div>
-<span class="font-headline-sm text-body-md font-semibold text-on-surface">Telegram</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">&lt;5s notification speeds</span>
-</div>
-<!-- Integration 5: n8n -->
-<div class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
-<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-[28px]">hub</span>
-</div>
-<span class="font-headline-sm text-body-md font-semibold text-on-surface">n8n</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Self-hosted pipelines</span>
-</div>
-<!-- Integration 6: Make -->
-<div class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
-<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-secondary">
-<span class="material-symbols-outlined text-[28px]">alt_route</span>
-</div>
-<span class="font-headline-sm text-body-md font-semibold text-on-surface">Make</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Airtable &amp; CRM routing</span>
-</div>
-<!-- Integration 7: Zapier -->
-<div class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
-<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-[28px]">sync_alt</span>
-</div>
-<span class="font-headline-sm text-body-md font-semibold text-on-surface">Zapier</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">5,000+ app connectors</span>
-</div>
-<!-- Integration 8: Gmail -->
-<div class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
-<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-tertiary">
-<span class="material-symbols-outlined text-[28px]">mail</span>
-</div>
-<span class="font-headline-sm text-body-md font-semibold text-on-surface">Gmail</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">High-conviction digests</span>
-</div>
-</div>
-</div>
-</section>
-<!-- SECTION 6: AVAILABILITY & STATS -->
-<section class="relative py-16 lg:py-24">
-<div class="flex flex-col gap-space-xl">
-<div class="flex flex-col gap-space-xs">
-<span class="font-label-code text-label-code text-primary uppercase tracking-wider">Multi-Surface Access</span>
-<h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
-          Available everywhere you work
-        </h2>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
-<!-- Live: Web Platform -->
-<div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
-<div class="flex flex-col gap-space-sm">
-<div class="flex items-center justify-between">
-<span class="material-symbols-outlined text-primary text-[28px]">web</span>
-<span class="font-label-code text-label-badge text-primary bg-primary/10 px-2 py-0.5 rounded">AVAILABLE NOW</span>
-</div>
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Web Platform</h3>
-<p class="font-body-md text-body-sm text-on-surface-variant">
-              Full desktop command center with custom regex rule builder, analytics feeds, and instant proposal generator.
-            </p>
-</div>
-<a class="mt-6 text-primary hover:underline font-label-code text-label-code flex items-center gap-1" href="#">
-<span>Open Web App</span>
-<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-</a>
-</div>
-<!-- Live: Chrome Extension -->
-<div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
-<div class="flex flex-col gap-space-sm">
-<div class="flex items-center justify-between">
-<span class="material-symbols-outlined text-tertiary text-[28px]">extension</span>
-<span class="font-label-code text-label-badge text-primary bg-primary/10 px-2 py-0.5 rounded">AVAILABLE NOW</span>
-</div>
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Chrome Extension</h3>
-<p class="font-body-md text-body-sm text-on-surface-variant">
-              Overlays UpScore ratings and client hire histories directly on the native Upwork browse screen.
-            </p>
-</div>
-<a class="mt-6 text-primary hover:underline font-label-code text-label-code flex items-center gap-1" href="#">
-<span>Add to Chrome</span>
-<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-</a>
-</div>
-<!-- Coming Soon: Android -->
-<div class="rounded-2xl bg-surface-container-low/60 p-space-lg shadow-md flex flex-col justify-between opacity-80">
-<div class="flex flex-col gap-space-sm">
-<div class="flex items-center justify-between">
-<span class="material-symbols-outlined text-on-surface-variant text-[28px]">phone_android</span>
-<span class="font-label-code text-label-badge text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">BETA Q3 2026</span>
-</div>
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Android App</h3>
-<p class="font-body-md text-body-sm text-on-surface-variant">
-              Native push notifications, instant 1-tap proposal bookmarking, and local background telemetry sync.
-            </p>
-</div>
-<span class="mt-6 text-on-surface-variant font-label-code text-label-code">Waitlist open</span>
-</div>
-<!-- Coming Soon: iOS -->
-<div class="rounded-2xl bg-surface-container-low/60 p-space-lg shadow-md flex flex-col justify-between opacity-80">
-<div class="flex flex-col gap-space-sm">
-<div class="flex items-center justify-between">
-<span class="material-symbols-outlined text-on-surface-variant text-[28px]">phone_iphone</span>
-<span class="font-label-code text-label-badge text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">TESTFLIGHT SOON</span>
-</div>
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">iOS App</h3>
-<p class="font-body-md text-body-sm text-on-surface-variant">
-              Live Activity widgets on lock screen showing high-score job alerts the moment they hit the market.
-            </p>
-</div>
-<span class="mt-6 text-on-surface-variant font-label-code text-label-code">Waitlist open</span>
-</div>
-</div>
-<!-- Stats Metric Bar -->
-<div class="grid grid-cols-2 md:grid-cols-4 gap-gutter p-space-lg rounded-2xl bg-surface-container-lowest shadow-xl">
-<div class="flex flex-col">
-<span class="font-label-code text-label-code text-on-surface-variant">Total Scanned</span>
-<span class="font-headline-lg text-headline-md lg:text-headline-lg font-bold text-primary">10,055</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Jobs tracked daily</span>
-</div>
-<div class="flex flex-col">
-<span class="font-label-code text-label-code text-on-surface-variant">Today's Inflow</span>
-<span class="font-headline-lg text-headline-md lg:text-headline-lg font-bold text-tertiary">876</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Qualified matches</span>
-</div>
-<div class="flex flex-col">
-<span class="font-label-code text-label-code text-on-surface-variant">Integrations</span>
-<span class="font-headline-lg text-headline-md lg:text-headline-lg font-bold text-on-surface">6</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Active alert channels</span>
-</div>
-<div class="flex flex-col">
-<span class="font-label-code text-label-code text-on-surface-variant">Global Reach</span>
-<span class="font-headline-lg text-headline-md lg:text-headline-lg font-bold text-primary">81</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Client countries indexed</span>
-</div>
-</div>
-</div>
-</section>
-<!-- SECTION 7: HOW IT WORKS -->
-<section class="relative py-16 lg:py-24" id="how-it-works">
-<div class="flex flex-col gap-space-xl">
-<div class="flex flex-col gap-space-xs text-center items-center max-w-2xl mx-auto">
-<span class="font-label-code text-label-code text-primary uppercase tracking-wider">Fast Lane Workflow</span>
-<h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
-          From job post to contract in three steps
-        </h2>
-<p class="font-body-lg text-body-lg text-on-surface-variant">
-          Stop scrolling endless pages of low-budget spam. Let our crawler score the market in seconds.
-        </p>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter relative">
-<!-- Step 1 -->
-<div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col gap-space-md relative">
-<div class="font-label-code text-headline-lg font-bold text-primary/20 leading-none">01</div>
-<div class="flex flex-col gap-space-xs">
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Tell us what you do</h3>
-<p class="font-body-md text-body-sm text-on-surface-variant">
-              Pick your technical stack, minimum required hourly rate, verified payment preferences, and negative keywords in 60 seconds.
-            </p>
-</div>
-<div class="p-3 rounded-lg bg-surface-container font-label-code text-label-badge text-on-surface-variant">
-            Next.js • Tailwind • $85+/hr • Payment Verified
-          </div>
-</div>
-<!-- Step 2 -->
-<div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col gap-space-md relative">
-<div class="font-label-code text-headline-lg font-bold text-tertiary/20 leading-none">02</div>
-<div class="flex flex-col gap-space-xs">
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">We scan &amp; score</h3>
-<p class="font-body-md text-body-sm text-on-surface-variant">
-              Our continuous ingestion engine ingests jobs every minute, scoring them based on client spend, hiring probability, and competition density.
-            </p>
-</div>
-<div class="p-3 rounded-lg bg-surface-container font-label-code text-label-badge text-primary flex items-center justify-between">
-<span>Score: 94 / 100</span>
-<span>&lt; 5 competitors</span>
-</div>
-</div>
-<!-- Step 3 -->
-<div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col gap-space-md relative">
-<div class="font-label-code text-headline-lg font-bold text-secondary/20 leading-none">03</div>
-<div class="flex flex-col gap-space-xs">
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">You win the work</h3>
-<p class="font-body-md text-body-sm text-on-surface-variant">
-              Receive the alert on Telegram or Slack. Tap the notification, review the extracted pain points, and send your winning proposal first.
-            </p>
-</div>
-<div class="p-3 rounded-lg bg-surface-container font-label-code text-label-badge text-tertiary flex items-center gap-1.5">
-<span class="material-symbols-outlined text-[16px]">done_all</span>
-<span>Sent 3m before competition</span>
-</div>
-</div>
-</div>
-</div>
-</section>
-<!-- SECTION 8: TESTIMONIAL CAROUSEL CARD -->
-<section class="relative py-16 lg:py-24">
-<div class="max-w-4xl mx-auto rounded-2xl bg-surface-container-lowest p-space-lg lg:p-space-xl shadow-2xl relative overflow-hidden">
-<!-- Glow ambient background -->
-<div class="absolute -bottom-24 -left-24 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
-<div class="flex flex-col gap-space-lg relative z-10">
-<!-- Top Carousel Bar -->
-<div class="flex items-center justify-between">
-<div class="flex items-center gap-2">
-<span class="font-label-code text-label-badge px-2 py-0.5 rounded bg-primary/10 text-primary">PROOF OF VALUE</span>
-<span class="font-label-code text-label-code text-on-surface-variant">Case 01 / 03</span>
-</div>
-<div class="flex items-center text-tertiary">
-<span class="material-symbols-outlined text-[18px]">star</span>
-<span class="material-symbols-outlined text-[18px]">star</span>
-<span class="material-symbols-outlined text-[18px]">star</span>
-<span class="material-symbols-outlined text-[18px]">star</span>
-<span class="material-symbols-outlined text-[18px]">star</span>
-</div>
-</div>
-<!-- Quote -->
-<blockquote class="font-headline-md text-headline-sm lg:text-headline-md text-on-surface font-medium leading-relaxed">
-          “I used to refresh Upwork every 15 minutes and lose deals to fast bidders. Now UpScore alerts land on my Telegram before I even open my laptop. Landed two $5k+ monthly retainers in my first three weeks.”
-        </blockquote>
-<!-- Author row -->
-<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md pt-space-sm border-t border-surface-container-high/40">
-<div class="flex items-center gap-space-sm">
-<div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center font-headline-sm text-primary font-bold">
-              AK
-            </div>
-<div class="flex flex-col">
-<span class="font-headline-sm text-body-md font-semibold text-on-surface">Areeb K.</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">Full-stack Cloud Engineer · Upwork Top Rated Plus ($180k+ earned)</span>
-</div>
-</div>
-<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container font-label-code text-label-badge text-primary w-max">
-<span class="material-symbols-outlined text-[14px]">verified</span>
-<span>Verified Upwork Profile</span>
-</div>
-</div>
-</div>
-</div>
-</section>
-<!-- SECTION 9: PRICING SECTION -->
-<section class="relative py-16 lg:py-24" id="pricing">
-<div class="flex flex-col gap-space-xl">
-<div class="flex flex-col gap-space-xs text-center items-center max-w-2xl mx-auto">
-<span class="font-label-code text-label-code text-primary uppercase tracking-wider">Transparent Investment</span>
-<h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
-          Start free. Upgrade when you’re winning.
-        </h2>
-<p class="font-body-lg text-body-lg text-on-surface-variant">
-          Simple pricing designed to pay for itself on your very first won proposal.
-        </p>
-<!-- Toggle (Visual simulation) -->
-<div class="inline-flex items-center gap-3 p-1.5 rounded-xl bg-surface-container-lowest mt-4 shadow-sm">
-<button class="px-4 py-1.5 rounded-lg bg-surface-container-high text-on-surface font-label-code text-label-code font-medium">Monthly</button>
-<button class="px-4 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface font-label-code text-label-code flex items-center gap-1.5">
-<span>Yearly</span>
-<span class="px-1.5 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold">SAVE 10%</span>
-</button>
-</div>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter max-w-4xl mx-auto w-full">
-<!-- Plan 1: Free -->
-<div class="rounded-2xl bg-surface-container-lowest p-space-lg lg:p-space-xl shadow-xl flex flex-col justify-between">
-<div class="flex flex-col gap-space-md">
-<div>
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Free</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">For freelancers just getting started with smarter discovery</p>
-</div>
-<div class="flex items-baseline gap-1">
-<span class="font-headline-lg text-headline-lg font-bold text-on-surface">$0</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">forever</span>
-</div>
-<div class="flex flex-col gap-2.5 pt-4">
-<div class="flex items-center gap-2 text-body-sm text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]">check</span>
-<span>Up to 10 filtered jobs per refresh</span>
-</div>
-<div class="flex items-center gap-2 text-body-sm text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]">check</span>
-<span>AI scoring on top 3 recent jobs</span>
-</div>
-<div class="flex items-center gap-2 text-body-sm text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]">check</span>
-<span>Access to Live Web Dashboard</span>
-</div>
-<div class="flex items-center gap-2 text-body-sm text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]">check</span>
-<span>Standard Chrome Extension widget</span>
-</div>
-</div>
-</div>
-<a class="mt-8 inline-flex items-center justify-center px-space-md py-3 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-headline-sm text-body-md transition-colors" href="#">
-            Start free
-          </a>
-</div>
-<!-- Plan 2: Pro (Featured Glow) -->
-<div class="relative rounded-2xl bg-surface-container-lowest p-space-lg lg:p-space-xl shadow-2xl flex flex-col justify-between">
-<!-- Ambient Glow Border Effect -->
-<div class="absolute -inset-0.5 rounded-2xl bg-gradient-to-b from-primary/40 to-tertiary/20 -z-10 blur-sm"></div>
-<div class="flex flex-col gap-space-md">
-<div class="flex items-center justify-between">
-<div>
-<h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Pro</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">For high-conviction agencies &amp; contractors</p>
-</div>
-<span class="font-label-code text-label-badge bg-primary/20 text-primary px-2.5 py-1 rounded-full font-bold">POPULAR</span>
-</div>
-<div class="flex items-baseline gap-1">
-<span class="font-headline-lg text-headline-lg font-bold text-primary">$12</span>
-<span class="font-body-sm text-body-sm text-on-surface-variant">/ month billed monthly</span>
-</div>
-<div class="flex flex-col gap-2.5 pt-4">
-<div class="flex items-center gap-2 text-body-sm text-on-surface font-medium">
-<span class="material-symbols-outlined text-primary text-[18px]">check</span>
-<span>Unlimited continuous real-time jobs feed</span>
-</div>
-<div class="flex items-center gap-2 text-body-sm text-on-surface font-medium">
-<span class="material-symbols-outlined text-primary text-[18px]">check</span>
-<span>Instant Telegram &amp; Slack Webhook alerts</span>
-</div>
-<div class="flex items-center gap-2 text-body-sm text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]">check</span>
-<span>Unlimited tailored AI Proposals &amp; client hooks</span>
-</div>
-<div class="flex items-center gap-2 text-body-sm text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]">check</span>
-<span>Market trends &amp; competitor bid distribution</span>
-</div>
-<div class="flex items-center gap-2 text-body-sm text-on-surface">
-<span class="material-symbols-outlined text-primary text-[18px]">check</span>
-<span>Unlimited negative keywords &amp; budget filters</span>
-</div>
-</div>
-</div>
-<a class="mt-8 inline-flex items-center justify-center px-space-md py-3 rounded-xl bg-primary-container hover:bg-primary text-on-primary-container font-headline-sm text-body-md font-semibold shadow-[0_0_24px_rgba(16,185,129,0.3)] transition-all" href="#">
-            Upgrade to Pro
-          </a>
-</div>
-</div>
-<p class="text-center font-label-code text-label-code text-on-surface-variant max-w-xl mx-auto">
-        Prices in USD. UpScore Pro is billed via secure Stripe checkout—yearly billing saves $14 compared to monthly payments.
-      </p>
-</div>
-</section>
-<!-- SECTION 10: FAQ SECTION -->
-<section class="relative py-16 lg:py-24" id="faq">
-<div class="flex flex-col gap-space-xl max-w-3xl mx-auto w-full">
-<div class="flex flex-col gap-space-xs text-center items-center">
-<span class="font-label-code text-label-code text-primary uppercase tracking-wider">Everything Clarified</span>
-<h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
-          Frequently asked questions
-        </h2>
-</div>
-<div class="flex flex-col gap-space-sm">
-<!-- Q1 -->
-<details class="group p-space-md rounded-xl bg-surface-container-lowest shadow-md [&amp;_summary::-webkit-details-marker]:hidden cursor-pointer">
-<summary class="flex items-center justify-between font-headline-sm text-body-md font-semibold text-on-surface">
-<span>Is the Free plan really free forever?</span>
-<span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
-</summary>
-<p class="mt-3 font-body-md text-body-sm text-on-surface-variant leading-relaxed">
-            Yes. The Free plan gives you access to recent jobs, standard opportunity scores, and our basic extension without asking for credit card information.
-          </p>
-</details>
-<!-- Q2 -->
-<details class="group p-space-md rounded-xl bg-surface-container-lowest shadow-md [&amp;_summary::-webkit-details-marker]:hidden cursor-pointer">
-<summary class="flex items-center justify-between font-headline-sm text-body-md font-semibold text-on-surface">
-<span>How fast are the job alerts dispatched?</span>
-<span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
-</summary>
-<p class="mt-3 font-body-md text-body-sm text-on-surface-variant leading-relaxed">
-            Within 60 to 180 seconds of a client hitting publish on Upwork. Our distributed worker network crawls feeds around the clock with zero lag.
-          </p>
-</details>
-<!-- Q3 -->
-<details class="group p-space-md rounded-xl bg-surface-container-lowest shadow-md [&amp;_summary::-webkit-details-marker]:hidden cursor-pointer">
-<summary class="flex items-center justify-between font-headline-sm text-body-md font-semibold text-on-surface">
-<span>Does UpScore require my Upwork login credentials?</span>
-<span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
-</summary>
-<p class="mt-3 font-body-md text-body-sm text-on-surface-variant leading-relaxed">
-            Never. We will never ask for your password or direct account credentials. Our ingestion engine monitors public feed APIs and RSS infrastructure.
-          </p>
-</details>
-<!-- Q4 -->
-<details class="group p-space-md rounded-xl bg-surface-container-lowest shadow-md [&amp;_summary::-webkit-details-marker]:hidden cursor-pointer">
-<summary class="flex items-center justify-between font-headline-sm text-body-md font-semibold text-on-surface">
-<span>Which notification destinations are supported?</span>
-<span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
-</summary>
-<p class="mt-3 font-body-md text-body-sm text-on-surface-variant leading-relaxed">
-            You can push leads straight to Telegram, Slack, custom HTTPS webhooks, WhatsApp, Gmail, Make, n8n, and Zapier.
-          </p>
-</details>
-<!-- Q5 -->
-<details class="group p-space-md rounded-xl bg-surface-container-lowest shadow-md [&amp;_summary::-webkit-details-marker]:hidden cursor-pointer">
-<summary class="flex items-center justify-between font-headline-sm text-body-md font-semibold text-on-surface">
-<span>How does the 0-100 UpScore metric work?</span>
-<span class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
-</summary>
-<p class="mt-3 font-body-md text-body-sm text-on-surface-variant leading-relaxed">
-            Our model evaluates the client's past hire percentage, average rate paid, feedback score, job description specificity, and current proposal count.
-          </p>
-</details>
-</div>
-</div>
-</section>
-<!-- SECTION 11: FINAL CTA BANNER -->
-<section class="relative py-16 lg:py-24">
-<div class="relative rounded-3xl bg-surface-container-lowest p-space-lg lg:p-space-xl overflow-hidden shadow-2xl text-center flex flex-col items-center gap-space-md">
-<!-- Radial Aura -->
-<div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.18)_0%,transparent_70%)] pointer-events-none"></div>
-<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-label-code text-label-code">
-<span class="h-2 w-2 rounded-full bg-primary animate-ping"></span>
-<span>OVER 4,200 FREELANCERS ONBOARDED</span>
-</div>
-<h2 class="font-display-hero text-headline-lg lg:text-headline-lg font-bold text-on-surface max-w-2xl">
-        Your next high-paying project is posted right now
-      </h2>
-<p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl">
-        Join leading independent engineers and agencies who bid before the competition even notices the post.
-      </p>
-<div class="flex flex-col sm:flex-row items-center gap-space-md pt-2">
-<a class="px-space-xl py-3.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary-container font-headline-sm text-body-md font-semibold shadow-[0_0_32px_rgba(16,185,129,0.4)] transition-all" href="#pricing">
-          Get started free
-        </a>
-<a class="text-on-surface-variant hover:text-on-surface font-label-code text-label-code" href="#">
-          I already have an account →
-        </a>
-</div>
-<div class="flex items-center gap-6 text-on-surface-variant font-label-code text-label-badge pt-4">
-<span>✓ No credit card needed</span>
-<span>✓ Setup in 60 seconds</span>
-<span>✓ Cancel anytime</span>
-</div>
-</div>
-</section>
-<!-- SECTION 12: DETAILED FOOTER EXTENSION -->
-<section class="relative pt-12 pb-16 border-t border-surface-container-high/30">
-<div class="grid grid-cols-2 md:grid-cols-5 gap-gutter">
-<!-- Brand column -->
-<div class="col-span-2 flex flex-col gap-space-sm">
-<div class="flex items-center gap-2">
-<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">UpScore</span>
-<span class="font-label-code text-label-badge bg-primary/10 text-primary px-2 py-0.5 rounded">v2.4</span>
-</div>
-<p class="font-body-sm text-body-sm text-on-surface-variant max-w-xs">
-          AI-powered Upwork opportunity finder — instant alerts, algorithmic opportunity scoring, and AI proposal drafts.
-        </p>
-</div>
-<!-- Links 1 -->
-<div class="flex flex-col gap-space-xs font-body-sm text-body-sm">
-<span class="font-label-code text-label-code text-on-surface font-semibold uppercase">Product</span>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#features">Features</a>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#how-it-works">How It Works</a>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#pricing">Pricing</a>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#live-jobs">Live Feed</a>
-</div>
-<!-- Links 2 -->
-<div class="flex flex-col gap-space-xs font-body-sm text-body-sm">
-<span class="font-label-code text-label-code text-on-surface font-semibold uppercase">Tools</span>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">AI Proposal Studio</a>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Market Benchmarks</a>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Custom Webhooks</a>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Chrome Extension</a>
-</div>
-<!-- Links 3 -->
-<div class="flex flex-col gap-space-xs font-body-sm text-body-sm">
-<span class="font-label-code text-label-code text-on-surface font-semibold uppercase">Legal</span>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Terms of Service</a>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Privacy Policy</a>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Security Architecture</a>
-<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Status Telemetry</a>
-</div>
-</div>
-<!-- Sub-bottom copyright -->
-<div class="mt-12 pt-6 border-t border-surface-container-high/30 flex flex-col sm:flex-row items-center justify-between gap-4 font-label-code text-label-badge text-on-surface-variant">
-<span>© 2026 UpScore. AI-powered Upwork opportunity finder. Built for contractors.</span>
-<div class="flex items-center gap-4">
-<span>Upwork® is a registered trademark of Upwork Inc.</span>
-</div>
-</div>
-</section>
-<!-- Client-side Telemetry Countdown Timer Script -->
-<script>
-    (function() {
-      let seconds = 142;
-      const el = document.getElementById('countdown-timer');
-      if (el) {
-        setInterval(() => {
-          seconds--;
-          if (seconds <= 0) seconds = 180;
-          el.innerText = seconds + 's';
-        }, 1000);
+<html class="dark" lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>UpScore - Algorithmic Edge for Freelance &amp; Agency Leads</title>
+  <link href="https://fonts.googleapis.com" rel="preconnect" />
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+    rel="stylesheet" />
+  <style>
+    @layer base {
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
       }
-    })();
-  </script>
-</div></div></main><footer class="relative z-10 w-full bg-surface-container-lowest mt-space-xl"><div class="max-w-7xl mx-auto px-margin-mobile lg:px-margin py-space-xl"><div class="flex flex-col md:flex-row items-center justify-between gap-space-lg"><div class="flex items-center gap-space-sm"><img alt="UpScore Brand Logo" class="h-6 w-auto object-contain opacity-80" src="https://lh3.googleusercontent.com/aida/AEtjO1WqGLpmvXq1OT3i7tubI-Y7p45DHqWgZhuv2ILwjmS-4-Pdk3V4CX8geuaTZdnSS9yhKnBPiv4-0pGEjZwdxS_LtXI8BA_vH_mNWKvclpALXtHMZ00gHQR39WUBKyAd0r1KFOx0exAKXao96LWPc12rhDfndhSGKwMzNGqhTOfMXPoHo0twayhYHXrL76oCcYxfCu85mLgGBo0RmqNX4Fwy7pbUyHNQkk5wzZvmsSWgCTGdApayJzp22g8"/><span class="font-headline-sm text-headline-sm text-on-surface font-medium">UpScore</span><span class="font-label-badge text-label-badge px-space-xs py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-code">v2.4 Engine</span></div><div class="flex flex-wrap items-center gap-space-lg text-on-surface-variant font-body-sm text-body-sm"><a class="hover:text-on-surface transition-colors" data-path="live-jobs" href="#live-jobs">Telemetry Feed</a><a class="hover:text-on-surface transition-colors" data-path="features" href="#features">Scoring Models</a><a class="hover:text-on-surface transition-colors" data-path="privacy-policy" href="#privacy">Privacy Architecture</a><a class="hover:text-on-surface transition-colors" data-path="terms-of-service" href="#terms">Terms</a></div><div class="font-body-sm text-body-sm text-on-surface-variant">© 2025 UpScore Systems Inc. High-conviction intelligence.</div></div></div></footer></body></html>
+
+      body {
+        overscroll-behavior: none;
+      }
+
+      main> :first-child {
+        margin-top: 0 !important;
+      }
+
+      main> :last-child {
+        margin-bottom: 0 !important;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script
+    id="tailwind-config">tailwind.config = { darkMode: 'class', theme: { extend: { 'colors': { 'surface-variant': '#32353b', 'tertiary': '#4cd7f6', 'surface-container': '#1d2025', 'primary': '#4edea3', 'outline-variant': '#3c4a42', 'surface-container-high': '#272a30', 'background': '#101319', 'surface-container-lowest': '#0b0e13', 'on-tertiary-fixed-variant': '#004e5c', 'on-background': '#e1e2ea', 'on-secondary': '#3c0091', 'on-error': '#690005', 'on-secondary-fixed-variant': '#5516be', 'surface-container-highest': '#32353b', 'on-tertiary-container': '#003f4b', 'surface': '#101319', 'primary-fixed-dim': '#4edea3', 'secondary-fixed': '#e9ddff', 'on-secondary-container': '#c4abff', 'outline': '#86948a', 'tertiary-fixed-dim': '#4cd7f6', 'inverse-primary': '#006c49', 'error': '#ffb4ab', 'tertiary-container': '#00b2d0', 'on-error-container': '#ffdad6', 'secondary-fixed-dim': '#d0bcff', 'on-tertiary': '#003640', 'primary-fixed': '#6ffbbe', 'surface-container-low': '#191c21', 'primary-container': '#10b981', 'on-surface-variant': '#bbcabf', 'inverse-on-surface': '#2d3036', 'surface-bright': '#36393f', 'on-surface': '#e1e2ea', 'on-primary-container': '#00422b', 'inverse-surface': '#e1e2ea', 'on-primary-fixed-variant': '#005236', 'surface-tint': '#4edea3', 'on-primary-fixed': '#002113', 'secondary': '#d0bcff', 'on-secondary-fixed': '#23005c', 'on-primary': '#003824', 'secondary-container': '#571bc1', 'tertiary-fixed': '#acedff', 'on-tertiary-fixed': '#001f26', 'error-container': '#93000a', 'surface-dim': '#101319' }, 'borderRadius': { 'DEFAULT': '0.25rem', 'lg': '0.5rem', 'xl': '0.75rem', 'full': '9999px' }, 'spacing': { 'space-xl': '2.5rem', 'space-xs': '0.25rem', 'gutter': '1.5rem', 'space-md': '1rem', 'margin-mobile': '1.25rem', 'space-lg': '1.5rem', 'margin': '2.5rem', 'gutter-mobile': '1rem', 'space-sm': '0.5rem' }, 'fontFamily': { 'headline-lg': ['Geist'], 'body-sm': ['Geist'], 'display-hero-mobile': ['Geist'], 'label-badge': ['Geist'], 'label-code': ['JetBrains Mono'], 'headline-sm': ['Geist'], 'headline-lg-mobile': ['Geist'], 'display-hero': ['Geist'], 'headline-md': ['Geist'], 'body-lg': ['Geist'], 'body-md': ['Geist'], 'headline-md-mobile': ['Geist'] }, 'fontSize': { 'headline-lg': ['44px', { 'lineHeight': '52px', 'letterSpacing': '-0.025em', 'fontWeight': '600' }], 'body-sm': ['13px', { 'lineHeight': '20px', 'letterSpacing': '0em', 'fontWeight': '400' }], 'display-hero-mobile': ['36px', { 'lineHeight': '44px', 'letterSpacing': '-0.02em', 'fontWeight': '600' }], 'label-badge': ['11px', { 'lineHeight': '14px', 'letterSpacing': '0.06em', 'fontWeight': '600' }], 'label-code': ['12px', { 'lineHeight': '16px', 'letterSpacing': '0.04em', 'fontWeight': '500' }], 'headline-sm': ['20px', { 'lineHeight': '28px', 'letterSpacing': '-0.01em', 'fontWeight': '500' }], 'headline-lg-mobile': ['28px', { 'lineHeight': '36px', 'letterSpacing': '-0.02em', 'fontWeight': '600' }], 'display-hero': ['64px', { 'lineHeight': '72px', 'letterSpacing': '-0.03em', 'fontWeight': '600' }], 'headline-md': ['32px', { 'lineHeight': '40px', 'letterSpacing': '-0.02em', 'fontWeight': '500' }], 'body-lg': ['18px', { 'lineHeight': '28px', 'letterSpacing': '-0.01em', 'fontWeight': '400' }], 'body-md': ['15px', { 'lineHeight': '24px', 'letterSpacing': '-0.005em', 'fontWeight': '400' }], 'headline-md-mobile': ['24px', { 'lineHeight': '32px', 'letterSpacing': '-0.015em', 'fontWeight': '500' }] } } } };</script>
+</head>
+
+<body
+  class="bg-background font-body-md text-on-surface antialiased min-h-screen selection:bg-primary-container selection:text-on-primary-container">
+  <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+    <div
+      class="absolute -top-40 left-1/2 -translate-x-1/2 w-[1000px] h-[450px] bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.12)_0%,rgba(0,178,208,0.04)_40%,transparent_70%)] blur-3xl">
+    </div>
+  </div>
+  <header
+    class="fixed top-0 left-0 right-0 w-full z-50 bg-surface-container-lowest/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.4)]">
+    <div
+      class="h-16 max-w-[1440px] mx-auto px-margin-mobile lg:px-margin flex items-center justify-between gap-space-md">
+      <div class="flex items-center gap-space-sm"><img alt="UpScore Brand Logo" class="h-8 w-auto object-contain"
+          src="https://lh3.googleusercontent.com/aida/AEtjO1WqGLpmvXq1OT3i7tubI-Y7p45DHqWgZhuv2ILwjmS-4-Pdk3V4CX8geuaTZdnSS9yhKnBPiv4-0pGEjZwdxS_LtXI8BA_vH_mNWKvclpALXtHMZ00gHQR39WUBKyAd0r1KFOx0exAKXao96LWPc12rhDfndhSGKwMzNGqhTOfMXPoHo0twayhYHXrL76oCcYxfCu85mLgGBo0RmqNX4Fwy7pbUyHNQkk5wzZvmsSWgCTGdApayJzp22g8" /><a
+          class="flex items-center gap-space-xs" data-path="landing-page" href="#"><span
+            class="font-headline-sm text-headline-sm text-on-surface font-semibold tracking-tight">UpScore</span><span
+            class="relative flex h-2 w-2 ml-space-xs"><span
+              class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span
+              class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span></span></a></div>
+      <nav class="hidden lg:flex items-center gap-space-lg"
+        data-active-classes="text-on-surface bg-surface-container-high rounded-lg"><a
+          class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm"
+          data-path="live-jobs" href="#live-jobs">Live Jobs</a><a
+          class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm"
+          data-path="features" href="#features">Features</a><a
+          class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm"
+          data-path="integrations" href="#integrations">Integrations</a><a
+          class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm"
+          data-path="how-it-works" href="#how-it-works">How It Works</a><a
+          class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm"
+          data-path="pricing" href="#pricing">Pricing</a><a
+          class="font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors py-space-xs px-space-sm"
+          data-path="faq" href="#faq">FAQ</a></nav>
+      <div class="flex items-center gap-space-md"><a
+          class="hidden sm:inline-flex items-center justify-center font-body-sm text-body-sm font-medium text-on-surface px-space-md py-space-xs rounded-lg bg-surface-container-high/60 hover:bg-surface-container-highest hover:text-on-surface transition-all"
+          data-path="sign-in" href="#">Sign In</a><a
+          class="inline-flex items-center justify-center font-body-sm text-body-sm font-semibold text-on-primary-container bg-primary-container hover:bg-primary shadow-[0_0_24px_rgba(16,185,129,0.35)] px-space-md py-space-xs rounded-lg transition-all"
+          data-path="get-started" href="#">Get Started</a>
+        <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span
+            class="material-symbols-outlined text-on-primary text-[18px]">person</span></div>
+      </div>
+    </div>
+  </header>
+  <main class="relative z-10 w-full pt-16 bg-transparent">
+    <div class="max-w-[1440px] mx-auto px-margin-mobile lg:px-margin">
+      <div class="flex flex-col w-full text-on-surface overflow-hidden">
+        <!-- SECTION 1 & 2: HERO COMPONENT -->
+        <section class="relative pt-12 pb-20 lg:pt-16 lg:pb-32 overflow-hidden">
+          <!-- Atmospheric Underglow -->
+          <div
+            class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[360px] bg-gradient-to-tr from-primary/15 via-tertiary/10 to-transparent blur-[140px] pointer-events-none -z-10">
+          </div>
+          <div
+            class="absolute -top-12 right-0 w-[420px] h-[420px] bg-secondary-container/10 blur-[120px] pointer-events-none -z-10">
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-center">
+            <!-- Left Hero Pitch -->
+            <div class="lg:col-span-7 flex flex-col items-start gap-space-md">
+              <!-- Live Pill Badge -->
+              <div
+                class="inline-flex items-center gap-space-xs px-3 py-1.5 rounded-full bg-surface-container-high/80 backdrop-blur-md shadow-sm">
+                <span class="relative flex h-2 w-2">
+                  <span
+                    class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                </span>
+                <span class="font-label-code text-label-code text-primary tracking-wide">AI-SCORED REAL-TIME UPWORK
+                  ALERTS</span>
+              </div>
+              <!-- Hero Headline -->
+              <h1 class="font-display-hero text-headline-lg lg:text-display-hero tracking-tight text-on-surface">
+                Never miss the right <span
+                  class="text-transparent bg-clip-text bg-gradient-to-r from-primary via-tertiary to-primary-fixed">Upwork</span>
+                job again
+              </h1>
+              <!-- Subtitle -->
+              <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+                UpScore scans Upwork continuously, scores every lead with our algorithmic engine, and alerts you the
+                second a job matches your exact stack—so you submit high-conviction proposals before competition
+                saturates the post.
+              </p>
+              <!-- CTAs -->
+              <div class="flex flex-wrap items-center gap-space-md pt-space-xs">
+                <a class="inline-flex items-center justify-center gap-space-xs px-space-lg py-3 rounded-xl bg-primary-container text-on-primary-container font-headline-sm text-body-md font-semibold shadow-[0_0_32px_rgba(16,185,129,0.35)] hover:bg-primary transition-all duration-200"
+                  href="#pricing">
+                  <span>Start finding jobs free</span>
+                  <span class="material-symbols-outlined text-body-lg">arrow_forward</span>
+                </a>
+                <a class="inline-flex items-center justify-center gap-space-xs px-space-lg py-3 rounded-xl bg-surface-container-high/70 hover:bg-surface-container-highest text-on-surface font-headline-sm text-body-md transition-all duration-200 shadow-sm"
+                  href="#live-jobs">
+                  <span class="material-symbols-outlined text-primary text-body-lg">radar</span>
+                  <span>See live stream</span>
+                </a>
+              </div>
+              <!-- Trust signals -->
+              <div
+                class="flex flex-wrap items-center gap-y-2 gap-x-6 text-on-surface-variant font-label-code text-label-code pt-space-xs">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-primary text-[18px]">verified</span>
+                  <span>Free forever tier</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-primary text-[18px]">bolt</span>
+                  <span>AI scoring included</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-primary text-[18px]">lock_open</span>
+                  <span>Zero lock-in contract</span>
+                </div>
+              </div>
+            </div>
+            <!-- Right Visual Telemetry Glass Card -->
+            <div class="lg:col-span-5 relative mt-8 lg:mt-0">
+              <!-- Ambient halo -->
+              <div
+                class="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/30 to-tertiary/20 blur-xl opacity-60">
+              </div>
+              <div
+                class="relative rounded-2xl bg-surface-container-lowest/90 backdrop-blur-2xl p-space-lg shadow-2xl flex flex-col gap-space-md">
+                <!-- Glass Top Header Bar -->
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="flex h-2.5 w-2.5 rounded-full bg-primary animate-pulse"></span>
+                    <span class="font-label-code text-label-code text-primary uppercase tracking-wider">Live Match
+                      Event</span>
+                  </div>
+                  <span
+                    class="font-label-code text-label-code text-on-surface-variant px-2 py-0.5 rounded bg-surface-container">Ingested
+                    12s ago</span>
+                </div>
+                <!-- Radar Match Gauge Container -->
+                <div
+                  class="p-space-md rounded-xl bg-surface-container-low flex items-center justify-between gap-space-md">
+                  <div class="flex items-center gap-space-md">
+                    <!-- Radial SVG Meter -->
+                    <div class="relative w-16 h-16 flex items-center justify-center">
+                      <svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
+                        <path class="text-surface-variant"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none"
+                          stroke="currentColor" stroke-width="3.5"></path>
+                        <path class="text-primary"
+                          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none"
+                          stroke="currentColor" stroke-dasharray="94, 100" stroke-linecap="round" stroke-width="3.5">
+                        </path>
+                      </svg>
+                      <div class="absolute flex flex-col items-center justify-center">
+                        <span class="font-label-code font-semibold text-on-surface text-body-sm leading-none">94</span>
+                        <span class="font-label-code text-[8px] text-on-surface-variant uppercase">score</span>
+                      </div>
+                    </div>
+                    <div>
+                      <div
+                        class="inline-flex items-center gap-1 text-primary font-label-code text-label-badge bg-primary/10 px-2 py-0.5 rounded">
+                        <span class="material-symbols-outlined text-[12px]">verified</span>
+                        <span>TOP 1% FIT SCORE</span>
+                      </div>
+                      <div class="font-headline-sm text-body-md font-semibold text-on-surface mt-1">High Conversion
+                        Probability</div>
+                      <div class="font-body-sm text-body-sm text-on-surface-variant">Client hires in &lt;3 proposals
+                      </div>
+                    </div>
+                  </div>
+                  <div class="hidden sm:flex flex-col items-end text-right">
+                    <span class="font-label-code text-label-code text-on-surface-variant">Est. Hourly</span>
+                    <span class="font-headline-sm text-body-lg text-primary font-semibold">$95 - $130</span>
+                  </div>
+                </div>
+                <!-- Job Details Snippet -->
+                <div class="flex flex-col gap-1.5">
+                  <h3
+                    class="font-headline-sm text-headline-sm text-on-surface font-semibold hover:text-primary transition-colors cursor-pointer">
+                    Senior Full Stack Next.js &amp; AI Agent Engineer
+                  </h3>
+                  <div class="flex flex-wrap items-center gap-2 text-on-surface-variant font-label-code text-body-sm">
+                    <span class="text-on-surface flex items-center gap-1"><span
+                        class="material-symbols-outlined text-primary text-[16px]">check_circle</span> Payment
+                      Verified</span>
+                    <span>•</span>
+                    <span class="text-tertiary flex items-center gap-0.5">5.0 <span
+                        class="material-symbols-outlined text-[14px]">star</span></span>
+                    <span>•</span>
+                    <span>$140k+ Spent</span>
+                    <span>•</span>
+                    <span>United States</span>
+                  </div>
+                </div>
+                <!-- AI Assessment Block -->
+                <div
+                  class="p-space-sm rounded-lg bg-surface-container text-body-sm font-body-sm text-on-surface-variant flex items-start gap-2.5">
+                  <span class="material-symbols-outlined text-tertiary text-[20px] shrink-0 mt-0.5">psychology</span>
+                  <div>
+                    <span class="text-on-surface font-medium">AI Rationale:</span> Client has an active LangGraph
+                    workflow. Strong match for your previous Next.js v15 + OpenAI SDK showcases. Very low client price
+                    resistance.
+                  </div>
+                </div>
+                <!-- Dispatch Alert Pill -->
+                <div
+                  class="mt-1 flex items-center justify-between p-2.5 rounded-lg bg-surface-container-high/60 backdrop-blur-md">
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-[18px]">send_and_archive</span>
+                    <span class="font-label-code text-label-badge text-on-surface">Pushed to Telegram &amp; Slack</span>
+                  </div>
+                  <span class="font-label-code text-label-badge text-primary animate-pulse">0.8s latency</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- SECTION 3: LIVE JOBS FEED -->
+        <section class="relative py-16 lg:py-24" id="live-jobs">
+          <div class="flex flex-col gap-space-lg">
+            <!-- Section Header -->
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md">
+              <div class="flex flex-col gap-space-xs max-w-2xl">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container-high w-max">
+                  <span class="relative flex h-2 w-2">
+                    <span
+                      class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                  </span>
+                  <span class="font-label-code text-label-code text-primary uppercase">Live from Upwork Telemetry</span>
+                </div>
+                <h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
+                  Fresh opportunities pulled straight from Upwork.
+                </h2>
+                <p class="font-body-md text-body-md text-on-surface-variant">
+                  10 newest verified jobs—sign in to unlock tailored proposal generation, client spend analytics, and
+                  automated push alerts.
+                </p>
+              </div>
+              <div class="flex items-center gap-2 font-label-code text-label-code text-on-surface-variant">
+                <span class="material-symbols-outlined text-primary text-[16px] animate-spin">autorenew</span>
+                <span>Feed refreshes in: <span class="text-primary font-semibold"
+                    id="countdown-timer">142s</span></span>
+              </div>
+            </div>
+            <!-- Filter Controls Bar -->
+            <div class="flex flex-wrap items-center gap-2 p-2 rounded-xl bg-surface-container-lowest">
+              <button
+                class="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface font-label-code text-label-code flex items-center gap-1.5 hover:bg-surface-container-highest transition-colors">
+                <span>Category: All Engineering &amp; Design</span>
+                <span class="material-symbols-outlined text-[16px]">expand_more</span>
+              </button>
+              <button
+                class="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface font-label-code text-label-code flex items-center gap-1.5 hover:bg-surface-container-highest transition-colors">
+                <span>Location: Worldwide &amp; US Only</span>
+                <span class="material-symbols-outlined text-[16px]">expand_more</span>
+              </button>
+              <button
+                class="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface font-label-code text-label-code flex items-center gap-1.5 hover:bg-surface-container-highest transition-colors">
+                <span>Budget: &gt;$50/hr or &gt;$1,000 Fixed</span>
+                <span class="material-symbols-outlined text-[16px]">expand_more</span>
+              </button>
+              <button
+                class="px-3 py-1.5 rounded-lg bg-primary/10 text-primary font-label-code text-label-code flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">verified</span>
+                <span>Verified Clients Only</span>
+              </button>
+            </div>
+            <!-- Live Interactive Jobs Table -->
+            <div class="overflow-hidden rounded-2xl bg-surface-container-lowest shadow-xl">
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr
+                      class="bg-surface-container-low font-label-code text-label-code text-on-surface-variant uppercase tracking-wider">
+                      <th class="py-3.5 px-space-md">Lead / Project</th>
+                      <th class="py-3.5 px-space-md">Age &amp; Client Country</th>
+                      <th class="py-3.5 px-space-md">Compensation</th>
+                      <th class="py-3.5 px-space-md">Domain Match</th>
+                      <th class="py-3.5 px-space-md text-right">UpScore</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-surface-container-high/40 font-body-md text-body-sm">
+                    <!-- Row 1 -->
+                    <tr class="hover:bg-surface-container-low/80 transition-colors group cursor-pointer">
+                      <td class="py-4 px-space-md">
+                        <div class="flex flex-col gap-0.5">
+                          <span
+                            class="font-headline-sm text-body-md font-medium text-on-surface group-hover:text-primary transition-colors">Senior
+                            React Native Mobile App Architect</span>
+                          <span class="text-on-surface-variant text-body-sm line-clamp-1">Refactor legacy bridge to
+                            TurboModules, integrate Bluetooth BLE real-time peripherals.</span>
+                        </div>
+                      </td>
+                      <td class="py-4 px-space-md whitespace-nowrap">
+                        <div class="flex flex-col">
+                          <span class="text-on-surface flex items-center gap-1.5">🇺🇸 United States</span>
+                          <span class="text-on-surface-variant font-label-code text-label-badge">18 min ago · 4
+                            proposals</span>
+                        </div>
+                      </td>
+                      <td class="py-4 px-space-md whitespace-nowrap">
+                        <span class="text-primary font-label-code font-medium text-body-md">$80 – $110 / hr</span>
+                      </td>
+                      <td class="py-4 px-space-md">
+                        <span
+                          class="px-2 py-0.5 rounded bg-surface-container text-tertiary font-label-code text-label-badge">Mobile
+                          Engineering</span>
+                      </td>
+                      <td class="py-4 px-space-md text-right whitespace-nowrap">
+                        <span
+                          class="inline-flex items-center justify-center font-label-code font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary">
+                          96 / 100
+                        </span>
+                      </td>
+                    </tr>
+                    <!-- Row 2 -->
+                    <tr class="hover:bg-surface-container-low/80 transition-colors group cursor-pointer">
+                      <td class="py-4 px-space-md">
+                        <div class="flex flex-col gap-0.5">
+                          <span
+                            class="font-headline-sm text-body-md font-medium text-on-surface group-hover:text-primary transition-colors">Figma
+                            UI/UX Designer for Fintech SaaS Portal</span>
+                          <span class="text-on-surface-variant text-body-sm line-clamp-1">Complete redesign of investor
+                            dashboard with accessible charting and high-density tables.</span>
+                        </div>
+                      </td>
+                      <td class="py-4 px-space-md whitespace-nowrap">
+                        <div class="flex flex-col">
+                          <span class="text-on-surface flex items-center gap-1.5">🇨🇦 Canada</span>
+                          <span class="text-on-surface-variant font-label-code text-label-badge">26 min ago · 2
+                            proposals</span>
+                        </div>
+                      </td>
+                      <td class="py-4 px-space-md whitespace-nowrap">
+                        <span class="text-primary font-label-code font-medium text-body-md">$65 – $90 / hr</span>
+                      </td>
+                      <td class="py-4 px-space-md">
+                        <span
+                          class="px-2 py-0.5 rounded bg-surface-container text-tertiary font-label-code text-label-badge">Product
+                          Design</span>
+                      </td>
+                      <td class="py-4 px-space-md text-right whitespace-nowrap">
+                        <span
+                          class="inline-flex items-center justify-center font-label-code font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary">
+                          95 / 100
+                        </span>
+                      </td>
+                    </tr>
+                    <!-- Row 3 -->
+                    <tr class="hover:bg-surface-container-low/80 transition-colors group cursor-pointer">
+                      <td class="py-4 px-space-md">
+                        <div class="flex flex-col gap-0.5">
+                          <span
+                            class="font-headline-sm text-body-md font-medium text-on-surface group-hover:text-primary transition-colors">.NET
+                            / Umbraco Cloud Backend Developer</span>
+                          <span class="text-on-surface-variant text-body-sm line-clamp-1">Custom API headless
+                            integrations for multinational logistics client with Azure microservices.</span>
+                        </div>
+                      </td>
+                      <td class="py-4 px-space-md whitespace-nowrap">
+                        <div class="flex flex-col">
+                          <span class="text-on-surface flex items-center gap-1.5">🌐 Global Client</span>
+                          <span class="text-on-surface-variant font-label-code text-label-badge">35 min ago · 6
+                            proposals</span>
+                        </div>
+                      </td>
+                      <td class="py-4 px-space-md whitespace-nowrap">
+                        <span class="text-tertiary font-label-code font-medium text-body-md">$35 – $55 / hr</span>
+                      </td>
+                      <td class="py-4 px-space-md">
+                        <span
+                          class="px-2 py-0.5 rounded bg-surface-container text-tertiary font-label-code text-label-badge">Backend
+                          C#</span>
+                      </td>
+                      <td class="py-4 px-space-md text-right whitespace-nowrap">
+                        <span
+                          class="inline-flex items-center justify-center font-label-code font-bold px-2.5 py-1 rounded-lg bg-tertiary/10 text-tertiary">
+                          92 / 100
+                        </span>
+                      </td>
+                    </tr>
+                    <!-- Row 4 -->
+                    <tr class="hover:bg-surface-container-low/80 transition-colors group cursor-pointer">
+                      <td class="py-4 px-space-md">
+                        <div class="flex flex-col gap-0.5">
+                          <span
+                            class="font-headline-sm text-body-md font-medium text-on-surface group-hover:text-primary transition-colors">B2B
+                            Copywriter &amp; Cold Outbound Specialist</span>
+                          <span class="text-on-surface-variant text-body-sm line-clamp-1">Deliver 12 outbound email
+                            sequences targeting enterprise VP of SecOps.</span>
+                        </div>
+                      </td>
+                      <td class="py-4 px-space-md whitespace-nowrap">
+                        <div class="flex flex-col">
+                          <span class="text-on-surface flex items-center gap-1.5">🇬🇧 United Kingdom</span>
+                          <span class="text-on-surface-variant font-label-code text-label-badge">51 min ago · 3
+                            proposals</span>
+                        </div>
+                      </td>
+                      <td class="py-4 px-space-md whitespace-nowrap">
+                        <span class="text-primary font-label-code font-medium text-body-md">$1,200 Fixed</span>
+                      </td>
+                      <td class="py-4 px-space-md">
+                        <span
+                          class="px-2 py-0.5 rounded bg-surface-container text-tertiary font-label-code text-label-badge">Growth
+                          Copy</span>
+                      </td>
+                      <td class="py-4 px-space-md text-right whitespace-nowrap">
+                        <span
+                          class="inline-flex items-center justify-center font-label-code font-bold px-2.5 py-1 rounded-lg bg-tertiary/10 text-tertiary">
+                          91 / 100
+                        </span>
+                      </td>
+                    </tr>
+                    <!-- Row 5 -->
+                    <tr class="hover:bg-surface-container-low/80 transition-colors group cursor-pointer">
+                      <td class="py-4 px-space-md">
+                        <div class="flex flex-col gap-0.5">
+                          <span
+                            class="font-headline-sm text-body-md font-medium text-on-surface group-hover:text-primary transition-colors">Inside
+                            Sales / Lead Researcher Support</span>
+                          <span class="text-on-surface-variant text-body-sm line-clamp-1">Build daily database of
+                            verified contacts in HubSpot for US software distributors.</span>
+                        </div>
+                      </td>
+                      <td class="py-4 px-space-md whitespace-nowrap">
+                        <div class="flex flex-col">
+                          <span class="text-on-surface flex items-center gap-1.5">🇵🇭 Philippines</span>
+                          <span class="text-on-surface-variant font-label-code text-label-badge">1h ago · 8
+                            proposals</span>
+                        </div>
+                      </td>
+                      <td class="py-4 px-space-md whitespace-nowrap">
+                        <span class="text-on-surface font-label-code font-medium text-body-md">$450 Fixed</span>
+                      </td>
+                      <td class="py-4 px-space-md">
+                        <span
+                          class="px-2 py-0.5 rounded bg-surface-container text-tertiary font-label-code text-label-badge">Operations</span>
+                      </td>
+                      <td class="py-4 px-space-md text-right whitespace-nowrap">
+                        <span
+                          class="inline-flex items-center justify-center font-label-code font-bold px-2.5 py-1 rounded-lg bg-surface-container-high text-on-surface">
+                          88 / 100
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div
+                class="p-4 bg-surface-container-low/50 flex flex-col sm:flex-row items-center justify-between gap-2 text-on-surface-variant font-label-code text-label-code">
+                <div class="flex items-center gap-2">
+                  <span class="h-2 w-2 rounded-full bg-primary animate-ping"></span>
+                  <span>UpScore Bot crawling 18 Upwork categories at 60s frequency</span>
+                </div>
+                <a class="text-primary hover:underline flex items-center gap-1" href="#pricing">
+                  <span>Unlock all 450+ daily high-tier feeds</span>
+                  <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- SECTION 4: FEATURES SECTION (6 Pillar Grid & Featured Card) -->
+        <section class="relative py-16 lg:py-24" id="features">
+          <div class="flex flex-col gap-space-xl">
+            <div class="flex flex-col gap-space-xs text-center items-center max-w-3xl mx-auto">
+              <span class="font-label-code text-label-code text-primary uppercase tracking-wider">Algorithmic
+                Edge</span>
+              <h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
+                Everything you need to win more work
+              </h2>
+              <p class="font-body-lg text-body-lg text-on-surface-variant">
+                From initial job post indexing to your signed contract—one unified system engineered to turn Upwork into
+                an automated client acquisition engine.
+              </p>
+            </div>
+            <!-- Bento Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter">
+              <!-- Feature 1: Featured Wide Card -->
+              <div
+                class="md:col-span-2 lg:col-span-2 rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl relative overflow-hidden flex flex-col justify-between">
+                <div
+                  class="absolute -top-16 -right-16 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none">
+                </div>
+                <div class="flex flex-col gap-space-sm relative z-10">
+                  <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-[24px]">notifications_active</span>
+                  </div>
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Smart Job Alerts</h3>
+                  <p class="font-body-md text-body-md text-on-surface-variant max-w-xl">
+                    Zero-latency webhooks. While other freelancers wait for Upwork’s delayed daily digest or hit manual
+                    refresh, our distributed scrapers ping your channels in under 90 seconds from job publication.
+                  </p>
+                </div>
+                <!-- Interactive Graphic Mockup -->
+                <div class="mt-6 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div class="p-3 rounded-xl bg-surface-container-low flex items-center gap-3">
+                    <div
+                      class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
+                      <span class="material-symbols-outlined text-[18px]">bolt</span>
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                      <span class="font-body-md text-body-sm text-on-surface font-medium truncate">Zero Latency
+                        Push</span>
+                      <span class="font-label-code text-label-badge text-on-surface-variant">Telegram &amp; Slack
+                        hooks</span>
+                    </div>
+                  </div>
+                  <div class="p-3 rounded-xl bg-surface-container-low flex items-center gap-3">
+                    <div
+                      class="w-8 h-8 rounded-full bg-tertiary/20 flex items-center justify-center text-tertiary shrink-0">
+                      <span class="material-symbols-outlined text-[18px]">shield</span>
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                      <span class="font-body-md text-body-sm text-on-surface font-medium truncate">Anti-Scam
+                        Filter</span>
+                      <span class="font-label-code text-label-badge text-on-surface-variant">Drops $5 budget spam</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <!-- Feature 2: AI Proposals -->
+              <div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
+                <div class="flex flex-col gap-space-sm">
+                  <div class="w-10 h-10 rounded-lg bg-tertiary/10 flex items-center justify-center text-tertiary">
+                    <span class="material-symbols-outlined text-[24px]">draw</span>
+                  </div>
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">AI Proposals</h3>
+                  <p class="font-body-md text-body-sm text-on-surface-variant">
+                    Generate surgical 3-paragraph opening hooks referencing specific nuances from the client's brief and
+                    past hiring tendencies.
+                  </p>
+                </div>
+                <div
+                  class="mt-6 p-3 rounded-xl bg-surface-container-low font-label-code text-label-badge text-on-surface-variant">
+                  “I noticed your Supabase schema migration needs...”
+                </div>
+              </div>
+              <!-- Feature 3: Opportunity Score -->
+              <div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
+                <div class="flex flex-col gap-space-sm">
+                  <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-[24px]">speed</span>
+                  </div>
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Opportunity Score</h3>
+                  <p class="font-body-md text-body-sm text-on-surface-variant">
+                    Proprietary 0-100 rating analyzing client payment history, average hourly wage paid, hire conversion
+                    rate, and prompt clarity.
+                  </p>
+                </div>
+                <div class="mt-6 flex items-center justify-between text-body-sm">
+                  <span class="font-label-code text-label-badge text-on-surface-variant">Algorithm Model</span>
+                  <span class="text-primary font-label-code text-label-badge">v2.4 Bayesian</span>
+                </div>
+              </div>
+              <!-- Feature 4: Market Intel -->
+              <div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
+                <div class="flex flex-col gap-space-sm">
+                  <div class="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                    <span class="material-symbols-outlined text-[24px]">analytics</span>
+                  </div>
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Market Intel</h3>
+                  <p class="font-body-md text-body-sm text-on-surface-variant">
+                    Track hourly rate benchmarks across your niche and gauge how aggressively other freelancers bid on
+                    similar contracts.
+                  </p>
+                </div>
+                <div class="mt-6 flex items-center gap-2">
+                  <span class="h-2 w-full bg-surface-variant rounded-full overflow-hidden flex">
+                    <span class="bg-primary w-2/3 h-full"></span>
+                    <span class="bg-tertiary w-1/4 h-full"></span>
+                  </span>
+                </div>
+              </div>
+              <!-- Feature 5: Precise Filters & Verified Clients -->
+              <div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
+                <div class="flex flex-col gap-space-sm">
+                  <div class="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <span class="material-symbols-outlined text-[24px]">filter_alt</span>
+                  </div>
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">High-Spend Filtering</h3>
+                  <p class="font-body-md text-body-sm text-on-surface-variant">
+                    Ignore accounts that spend $15/hr or haven't verified billing. Focus strictly on clients with $10k+
+                    historical spend.
+                  </p>
+                </div>
+                <div class="mt-6 flex items-center gap-2 text-primary font-label-code text-label-badge">
+                  <span class="material-symbols-outlined text-[16px]">verified_user</span>
+                  <span>Zero Unverified Ingestion</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- SECTION 5: INTEGRATIONS SECTION (8-item stack) -->
+        <section class="relative py-16 lg:py-24" id="integrations">
+          <div class="flex flex-col gap-space-xl">
+            <div class="flex flex-col gap-space-xs text-center items-center max-w-2xl mx-auto">
+              <span class="font-label-code text-label-code text-primary uppercase tracking-wider">Zero Tab
+                Juggling</span>
+              <h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
+                Alerts that reach you where you work
+              </h2>
+              <p class="font-body-lg text-body-lg text-on-surface-variant">
+                Never sit on the Upwork feed refreshing manually. Connect UpScore directly to your favorite
+                communication and automation stack.
+              </p>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-gutter">
+              <!-- Integration 1: WhatsApp -->
+              <div
+                class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
+                <div
+                  class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
+                  <span class="material-symbols-outlined text-[28px]">chat</span>
+                </div>
+                <span class="font-headline-sm text-body-md font-semibold text-on-surface">WhatsApp</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Instant mobile push</span>
+              </div>
+              <!-- Integration 2: Webhooks -->
+              <div
+                class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
+                <div
+                  class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-tertiary">
+                  <span class="material-symbols-outlined text-[28px]">webhook</span>
+                </div>
+                <span class="font-headline-sm text-body-md font-semibold text-on-surface">Webhooks</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Custom JSON payloads</span>
+              </div>
+              <!-- Integration 3: Slack -->
+              <div
+                class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
+                <div
+                  class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-secondary">
+                  <span class="material-symbols-outlined text-[28px]">tag</span>
+                </div>
+                <span class="font-headline-sm text-body-md font-semibold text-on-surface">Slack</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Dedicated #leads channel</span>
+              </div>
+              <!-- Integration 4: Telegram -->
+              <div
+                class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
+                <div
+                  class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-tertiary">
+                  <span class="material-symbols-outlined text-[28px]">send</span>
+                </div>
+                <span class="font-headline-sm text-body-md font-semibold text-on-surface">Telegram</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">&lt;5s notification speeds</span>
+              </div>
+              <!-- Integration 5: n8n -->
+              <div
+                class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
+                <div
+                  class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
+                  <span class="material-symbols-outlined text-[28px]">hub</span>
+                </div>
+                <span class="font-headline-sm text-body-md font-semibold text-on-surface">n8n</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Self-hosted pipelines</span>
+              </div>
+              <!-- Integration 6: Make -->
+              <div
+                class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
+                <div
+                  class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-secondary">
+                  <span class="material-symbols-outlined text-[28px]">alt_route</span>
+                </div>
+                <span class="font-headline-sm text-body-md font-semibold text-on-surface">Make</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Airtable &amp; CRM routing</span>
+              </div>
+              <!-- Integration 7: Zapier -->
+              <div
+                class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
+                <div
+                  class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-primary">
+                  <span class="material-symbols-outlined text-[28px]">sync_alt</span>
+                </div>
+                <span class="font-headline-sm text-body-md font-semibold text-on-surface">Zapier</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">5,000+ app connectors</span>
+              </div>
+              <!-- Integration 8: Gmail -->
+              <div
+                class="rounded-xl bg-surface-container-lowest p-space-md shadow-md flex flex-col items-center text-center gap-space-xs hover:bg-surface-container-low transition-colors">
+                <div
+                  class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center text-tertiary">
+                  <span class="material-symbols-outlined text-[28px]">mail</span>
+                </div>
+                <span class="font-headline-sm text-body-md font-semibold text-on-surface">Gmail</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">High-conviction digests</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- SECTION 6: AVAILABILITY & STATS -->
+        <section class="relative py-16 lg:py-24">
+          <div class="flex flex-col gap-space-xl">
+            <div class="flex flex-col gap-space-xs">
+              <span class="font-label-code text-label-code text-primary uppercase tracking-wider">Multi-Surface
+                Access</span>
+              <h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
+                Available everywhere you work
+              </h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
+              <!-- Live: Web Platform -->
+              <div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
+                <div class="flex flex-col gap-space-sm">
+                  <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined text-primary text-[28px]">web</span>
+                    <span
+                      class="font-label-code text-label-badge text-primary bg-primary/10 px-2 py-0.5 rounded">AVAILABLE
+                      NOW</span>
+                  </div>
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Web Platform</h3>
+                  <p class="font-body-md text-body-sm text-on-surface-variant">
+                    Full desktop command center with custom regex rule builder, analytics feeds, and instant proposal
+                    generator.
+                  </p>
+                </div>
+                <a class="mt-6 text-primary hover:underline font-label-code text-label-code flex items-center gap-1"
+                  href="#">
+                  <span>Open Web App</span>
+                  <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </a>
+              </div>
+              <!-- Live: Chrome Extension -->
+              <div class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col justify-between">
+                <div class="flex flex-col gap-space-sm">
+                  <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined text-tertiary text-[28px]">extension</span>
+                    <span
+                      class="font-label-code text-label-badge text-primary bg-primary/10 px-2 py-0.5 rounded">AVAILABLE
+                      NOW</span>
+                  </div>
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Chrome Extension</h3>
+                  <p class="font-body-md text-body-sm text-on-surface-variant">
+                    Overlays UpScore ratings and client hire histories directly on the native Upwork browse screen.
+                  </p>
+                </div>
+                <a class="mt-6 text-primary hover:underline font-label-code text-label-code flex items-center gap-1"
+                  href="#">
+                  <span>Add to Chrome</span>
+                  <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </a>
+              </div>
+              <!-- Coming Soon: Android -->
+              <div
+                class="rounded-2xl bg-surface-container-low/60 p-space-lg shadow-md flex flex-col justify-between opacity-80">
+                <div class="flex flex-col gap-space-sm">
+                  <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined text-on-surface-variant text-[28px]">phone_android</span>
+                    <span
+                      class="font-label-code text-label-badge text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">BETA
+                      Q3 2026</span>
+                  </div>
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Android App</h3>
+                  <p class="font-body-md text-body-sm text-on-surface-variant">
+                    Native push notifications, instant 1-tap proposal bookmarking, and local background telemetry sync.
+                  </p>
+                </div>
+                <span class="mt-6 text-on-surface-variant font-label-code text-label-code">Waitlist open</span>
+              </div>
+              <!-- Coming Soon: iOS -->
+              <div
+                class="rounded-2xl bg-surface-container-low/60 p-space-lg shadow-md flex flex-col justify-between opacity-80">
+                <div class="flex flex-col gap-space-sm">
+                  <div class="flex items-center justify-between">
+                    <span class="material-symbols-outlined text-on-surface-variant text-[28px]">phone_iphone</span>
+                    <span
+                      class="font-label-code text-label-badge text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">TESTFLIGHT
+                      SOON</span>
+                  </div>
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">iOS App</h3>
+                  <p class="font-body-md text-body-sm text-on-surface-variant">
+                    Live Activity widgets on lock screen showing high-score job alerts the moment they hit the market.
+                  </p>
+                </div>
+                <span class="mt-6 text-on-surface-variant font-label-code text-label-code">Waitlist open</span>
+              </div>
+            </div>
+            <!-- Stats Metric Bar -->
+            <div
+              class="grid grid-cols-2 md:grid-cols-4 gap-gutter p-space-lg rounded-2xl bg-surface-container-lowest shadow-xl">
+              <div class="flex flex-col">
+                <span class="font-label-code text-label-code text-on-surface-variant">Total Scanned</span>
+                <span class="font-headline-lg text-headline-md lg:text-headline-lg font-bold text-primary">10,055</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Jobs tracked daily</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="font-label-code text-label-code text-on-surface-variant">Today's Inflow</span>
+                <span class="font-headline-lg text-headline-md lg:text-headline-lg font-bold text-tertiary">876</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Qualified matches</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="font-label-code text-label-code text-on-surface-variant">Integrations</span>
+                <span class="font-headline-lg text-headline-md lg:text-headline-lg font-bold text-on-surface">6</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Active alert channels</span>
+              </div>
+              <div class="flex flex-col">
+                <span class="font-label-code text-label-code text-on-surface-variant">Global Reach</span>
+                <span class="font-headline-lg text-headline-md lg:text-headline-lg font-bold text-primary">81</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">Client countries indexed</span>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- SECTION 7: HOW IT WORKS -->
+        <section class="relative py-16 lg:py-24" id="how-it-works">
+          <div class="flex flex-col gap-space-xl">
+            <div class="flex flex-col gap-space-xs text-center items-center max-w-2xl mx-auto">
+              <span class="font-label-code text-label-code text-primary uppercase tracking-wider">Fast Lane
+                Workflow</span>
+              <h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
+                From job post to contract in three steps
+              </h2>
+              <p class="font-body-lg text-body-lg text-on-surface-variant">
+                Stop scrolling endless pages of low-budget spam. Let our crawler score the market in seconds.
+              </p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-gutter relative">
+              <!-- Step 1 -->
+              <div
+                class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col gap-space-md relative">
+                <div class="font-label-code text-headline-lg font-bold text-primary/20 leading-none">01</div>
+                <div class="flex flex-col gap-space-xs">
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Tell us what you do</h3>
+                  <p class="font-body-md text-body-sm text-on-surface-variant">
+                    Pick your technical stack, minimum required hourly rate, verified payment preferences, and negative
+                    keywords in 60 seconds.
+                  </p>
+                </div>
+                <div
+                  class="p-3 rounded-lg bg-surface-container font-label-code text-label-badge text-on-surface-variant">
+                  Next.js • Tailwind • $85+/hr • Payment Verified
+                </div>
+              </div>
+              <!-- Step 2 -->
+              <div
+                class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col gap-space-md relative">
+                <div class="font-label-code text-headline-lg font-bold text-tertiary/20 leading-none">02</div>
+                <div class="flex flex-col gap-space-xs">
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">We scan &amp; score</h3>
+                  <p class="font-body-md text-body-sm text-on-surface-variant">
+                    Our continuous ingestion engine ingests jobs every minute, scoring them based on client spend,
+                    hiring probability, and competition density.
+                  </p>
+                </div>
+                <div
+                  class="p-3 rounded-lg bg-surface-container font-label-code text-label-badge text-primary flex items-center justify-between">
+                  <span>Score: 94 / 100</span>
+                  <span>&lt; 5 competitors</span>
+                </div>
+              </div>
+              <!-- Step 3 -->
+              <div
+                class="rounded-2xl bg-surface-container-lowest p-space-lg shadow-xl flex flex-col gap-space-md relative">
+                <div class="font-label-code text-headline-lg font-bold text-secondary/20 leading-none">03</div>
+                <div class="flex flex-col gap-space-xs">
+                  <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">You win the work</h3>
+                  <p class="font-body-md text-body-sm text-on-surface-variant">
+                    Receive the alert on Telegram or Slack. Tap the notification, review the extracted pain points, and
+                    send your winning proposal first.
+                  </p>
+                </div>
+                <div
+                  class="p-3 rounded-lg bg-surface-container font-label-code text-label-badge text-tertiary flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px]">done_all</span>
+                  <span>Sent 3m before competition</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- SECTION 8: TESTIMONIAL CAROUSEL CARD -->
+        <section class="relative py-16 lg:py-24">
+          <div
+            class="max-w-4xl mx-auto rounded-2xl bg-surface-container-lowest p-space-lg lg:p-space-xl shadow-2xl relative overflow-hidden">
+            <!-- Glow ambient background -->
+            <div class="absolute -bottom-24 -left-24 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none">
+            </div>
+            <div class="flex flex-col gap-space-lg relative z-10">
+              <!-- Top Carousel Bar -->
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="font-label-code text-label-badge px-2 py-0.5 rounded bg-primary/10 text-primary">PROOF OF
+                    VALUE</span>
+                  <span class="font-label-code text-label-code text-on-surface-variant">Case 01 / 03</span>
+                </div>
+                <div class="flex items-center text-tertiary">
+                  <span class="material-symbols-outlined text-[18px]">star</span>
+                  <span class="material-symbols-outlined text-[18px]">star</span>
+                  <span class="material-symbols-outlined text-[18px]">star</span>
+                  <span class="material-symbols-outlined text-[18px]">star</span>
+                  <span class="material-symbols-outlined text-[18px]">star</span>
+                </div>
+              </div>
+              <!-- Quote -->
+              <blockquote
+                class="font-headline-md text-headline-sm lg:text-headline-md text-on-surface font-medium leading-relaxed">
+                “I used to refresh Upwork every 15 minutes and lose deals to fast bidders. Now UpScore alerts land on my
+                Telegram before I even open my laptop. Landed two $5k+ monthly retainers in my first three weeks.”
+              </blockquote>
+              <!-- Author row -->
+              <div
+                class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-md pt-space-sm border-t border-surface-container-high/40">
+                <div class="flex items-center gap-space-sm">
+                  <div
+                    class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center font-headline-sm text-primary font-bold">
+                    AK
+                  </div>
+                  <div class="flex flex-col">
+                    <span class="font-headline-sm text-body-md font-semibold text-on-surface">Areeb K.</span>
+                    <span class="font-body-sm text-body-sm text-on-surface-variant">Full-stack Cloud Engineer · Upwork
+                      Top Rated Plus ($180k+ earned)</span>
+                  </div>
+                </div>
+                <div
+                  class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container font-label-code text-label-badge text-primary w-max">
+                  <span class="material-symbols-outlined text-[14px]">verified</span>
+                  <span>Verified Upwork Profile</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <!-- SECTION 9: PRICING SECTION -->
+        <section class="relative py-16 lg:py-24" id="pricing">
+          <div class="flex flex-col gap-space-xl">
+            <div class="flex flex-col gap-space-xs text-center items-center max-w-2xl mx-auto">
+              <span class="font-label-code text-label-code text-primary uppercase tracking-wider">Transparent
+                Investment</span>
+              <h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
+                Start free. Upgrade when you’re winning.
+              </h2>
+              <p class="font-body-lg text-body-lg text-on-surface-variant">
+                Simple pricing designed to pay for itself on your very first won proposal.
+              </p>
+              <!-- Toggle (Visual simulation) -->
+              <div class="inline-flex items-center gap-3 p-1.5 rounded-xl bg-surface-container-lowest mt-4 shadow-sm">
+                <button
+                  class="px-4 py-1.5 rounded-lg bg-surface-container-high text-on-surface font-label-code text-label-code font-medium">Monthly</button>
+                <button
+                  class="px-4 py-1.5 rounded-lg text-on-surface-variant hover:text-on-surface font-label-code text-label-code flex items-center gap-1.5">
+                  <span>Yearly</span>
+                  <span class="px-1.5 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold">SAVE 10%</span>
+                </button>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-gutter max-w-4xl mx-auto w-full">
+              <!-- Plan 1: Free -->
+              <div
+                class="rounded-2xl bg-surface-container-lowest p-space-lg lg:p-space-xl shadow-xl flex flex-col justify-between">
+                <div class="flex flex-col gap-space-md">
+                  <div>
+                    <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Free</h3>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">For freelancers just getting
+                      started with smarter discovery</p>
+                  </div>
+                  <div class="flex items-baseline gap-1">
+                    <span class="font-headline-lg text-headline-lg font-bold text-on-surface">$0</span>
+                    <span class="font-body-sm text-body-sm text-on-surface-variant">forever</span>
+                  </div>
+                  <div class="flex flex-col gap-2.5 pt-4">
+                    <div class="flex items-center gap-2 text-body-sm text-on-surface">
+                      <span class="material-symbols-outlined text-primary text-[18px]">check</span>
+                      <span>Up to 10 filtered jobs per refresh</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-body-sm text-on-surface">
+                      <span class="material-symbols-outlined text-primary text-[18px]">check</span>
+                      <span>AI scoring on top 3 recent jobs</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-body-sm text-on-surface">
+                      <span class="material-symbols-outlined text-primary text-[18px]">check</span>
+                      <span>Access to Live Web Dashboard</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-body-sm text-on-surface">
+                      <span class="material-symbols-outlined text-primary text-[18px]">check</span>
+                      <span>Standard Chrome Extension widget</span>
+                    </div>
+                  </div>
+                </div>
+                <a class="mt-8 inline-flex items-center justify-center px-space-md py-3 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-headline-sm text-body-md transition-colors"
+                  href="#">
+                  Start free
+                </a>
+              </div>
+              <!-- Plan 2: Pro (Featured Glow) -->
+              <div
+                class="relative rounded-2xl bg-surface-container-lowest p-space-lg lg:p-space-xl shadow-2xl flex flex-col justify-between">
+                <!-- Ambient Glow Border Effect -->
+                <div
+                  class="absolute -inset-0.5 rounded-2xl bg-gradient-to-b from-primary/40 to-tertiary/20 -z-10 blur-sm">
+                </div>
+                <div class="flex flex-col gap-space-md">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <h3 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Pro</h3>
+                      <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">For high-conviction agencies
+                        &amp; contractors</p>
+                    </div>
+                    <span
+                      class="font-label-code text-label-badge bg-primary/20 text-primary px-2.5 py-1 rounded-full font-bold">POPULAR</span>
+                  </div>
+                  <div class="flex items-baseline gap-1">
+                    <span class="font-headline-lg text-headline-lg font-bold text-primary">$12</span>
+                    <span class="font-body-sm text-body-sm text-on-surface-variant">/ month billed monthly</span>
+                  </div>
+                  <div class="flex flex-col gap-2.5 pt-4">
+                    <div class="flex items-center gap-2 text-body-sm text-on-surface font-medium">
+                      <span class="material-symbols-outlined text-primary text-[18px]">check</span>
+                      <span>Unlimited continuous real-time jobs feed</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-body-sm text-on-surface font-medium">
+                      <span class="material-symbols-outlined text-primary text-[18px]">check</span>
+                      <span>Instant Telegram &amp; Slack Webhook alerts</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-body-sm text-on-surface">
+                      <span class="material-symbols-outlined text-primary text-[18px]">check</span>
+                      <span>Unlimited tailored AI Proposals &amp; client hooks</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-body-sm text-on-surface">
+                      <span class="material-symbols-outlined text-primary text-[18px]">check</span>
+                      <span>Market trends &amp; competitor bid distribution</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-body-sm text-on-surface">
+                      <span class="material-symbols-outlined text-primary text-[18px]">check</span>
+                      <span>Unlimited negative keywords &amp; budget filters</span>
+                    </div>
+                  </div>
+                </div>
+                <a class="mt-8 inline-flex items-center justify-center px-space-md py-3 rounded-xl bg-primary-container hover:bg-primary text-on-primary-container font-headline-sm text-body-md font-semibold shadow-[0_0_24px_rgba(16,185,129,0.3)] transition-all"
+                  href="#">
+                  Upgrade to Pro
+                </a>
+              </div>
+            </div>
+            <p class="text-center font-label-code text-label-code text-on-surface-variant max-w-xl mx-auto">
+              Prices in USD. UpScore Pro is billed via secure Stripe checkout—yearly billing saves $14 compared to
+              monthly payments.
+            </p>
+          </div>
+        </section>
+        <!-- SECTION 10: FAQ SECTION -->
+        <section class="relative py-16 lg:py-24" id="faq">
+          <div class="flex flex-col gap-space-xl max-w-3xl mx-auto w-full">
+            <div class="flex flex-col gap-space-xs text-center items-center">
+              <span class="font-label-code text-label-code text-primary uppercase tracking-wider">Everything
+                Clarified</span>
+              <h2 class="font-headline-lg text-headline-md lg:text-headline-lg font-semibold text-on-surface">
+                Frequently asked questions
+              </h2>
+            </div>
+            <div class="flex flex-col gap-space-sm">
+              <!-- Q1 -->
+              <details
+                class="group p-space-md rounded-xl bg-surface-container-lowest shadow-md [&amp;_summary::-webkit-details-marker]:hidden cursor-pointer">
+                <summary
+                  class="flex items-center justify-between font-headline-sm text-body-md font-semibold text-on-surface">
+                  <span>Is the Free plan really free forever?</span>
+                  <span
+                    class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
+                </summary>
+                <p class="mt-3 font-body-md text-body-sm text-on-surface-variant leading-relaxed">
+                  Yes. The Free plan gives you access to recent jobs, standard opportunity scores, and our basic
+                  extension without asking for credit card information.
+                </p>
+              </details>
+              <!-- Q2 -->
+              <details
+                class="group p-space-md rounded-xl bg-surface-container-lowest shadow-md [&amp;_summary::-webkit-details-marker]:hidden cursor-pointer">
+                <summary
+                  class="flex items-center justify-between font-headline-sm text-body-md font-semibold text-on-surface">
+                  <span>How fast are the job alerts dispatched?</span>
+                  <span
+                    class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
+                </summary>
+                <p class="mt-3 font-body-md text-body-sm text-on-surface-variant leading-relaxed">
+                  Within 60 to 180 seconds of a client hitting publish on Upwork. Our distributed worker network crawls
+                  feeds around the clock with zero lag.
+                </p>
+              </details>
+              <!-- Q3 -->
+              <details
+                class="group p-space-md rounded-xl bg-surface-container-lowest shadow-md [&amp;_summary::-webkit-details-marker]:hidden cursor-pointer">
+                <summary
+                  class="flex items-center justify-between font-headline-sm text-body-md font-semibold text-on-surface">
+                  <span>Does UpScore require my Upwork login credentials?</span>
+                  <span
+                    class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
+                </summary>
+                <p class="mt-3 font-body-md text-body-sm text-on-surface-variant leading-relaxed">
+                  Never. We will never ask for your password or direct account credentials. Our ingestion engine
+                  monitors public feed APIs and RSS infrastructure.
+                </p>
+              </details>
+              <!-- Q4 -->
+              <details
+                class="group p-space-md rounded-xl bg-surface-container-lowest shadow-md [&amp;_summary::-webkit-details-marker]:hidden cursor-pointer">
+                <summary
+                  class="flex items-center justify-between font-headline-sm text-body-md font-semibold text-on-surface">
+                  <span>Which notification destinations are supported?</span>
+                  <span
+                    class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
+                </summary>
+                <p class="mt-3 font-body-md text-body-sm text-on-surface-variant leading-relaxed">
+                  You can push leads straight to Telegram, Slack, custom HTTPS webhooks, WhatsApp, Gmail, Make, n8n, and
+                  Zapier.
+                </p>
+              </details>
+              <!-- Q5 -->
+              <details
+                class="group p-space-md rounded-xl bg-surface-container-lowest shadow-md [&amp;_summary::-webkit-details-marker]:hidden cursor-pointer">
+                <summary
+                  class="flex items-center justify-between font-headline-sm text-body-md font-semibold text-on-surface">
+                  <span>How does the 0-100 UpScore metric work?</span>
+                  <span
+                    class="material-symbols-outlined text-on-surface-variant transition-transform group-open:rotate-180">expand_more</span>
+                </summary>
+                <p class="mt-3 font-body-md text-body-sm text-on-surface-variant leading-relaxed">
+                  Our model evaluates the client's past hire percentage, average rate paid, feedback score, job
+                  description specificity, and current proposal count.
+                </p>
+              </details>
+            </div>
+          </div>
+        </section>
+        <!-- SECTION 11: FINAL CTA BANNER -->
+        <section class="relative py-16 lg:py-24">
+          <div
+            class="relative rounded-3xl bg-surface-container-lowest p-space-lg lg:p-space-xl overflow-hidden shadow-2xl text-center flex flex-col items-center gap-space-md">
+            <!-- Radial Aura -->
+            <div
+              class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.18)_0%,transparent_70%)] pointer-events-none">
+            </div>
+            <div
+              class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary font-label-code text-label-code">
+              <span class="h-2 w-2 rounded-full bg-primary animate-ping"></span>
+              <span>OVER 4,200 FREELANCERS ONBOARDED</span>
+            </div>
+            <h2 class="font-display-hero text-headline-lg lg:text-headline-lg font-bold text-on-surface max-w-2xl">
+              Your next high-paying project is posted right now
+            </h2>
+            <p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl">
+              Join leading independent engineers and agencies who bid before the competition even notices the post.
+            </p>
+            <div class="flex flex-col sm:flex-row items-center gap-space-md pt-2">
+              <a class="px-space-xl py-3.5 rounded-xl bg-primary-container hover:bg-primary text-on-primary-container font-headline-sm text-body-md font-semibold shadow-[0_0_32px_rgba(16,185,129,0.4)] transition-all"
+                href="#pricing">
+                Get started free
+              </a>
+              <a class="text-on-surface-variant hover:text-on-surface font-label-code text-label-code" href="#">
+                I already have an account →
+              </a>
+            </div>
+            <div class="flex items-center gap-6 text-on-surface-variant font-label-code text-label-badge pt-4">
+              <span>✓ No credit card needed</span>
+              <span>✓ Setup in 60 seconds</span>
+              <span>✓ Cancel anytime</span>
+            </div>
+          </div>
+        </section>
+        <!-- SECTION 12: DETAILED FOOTER EXTENSION -->
+        <section class="relative pt-12 pb-16 border-t border-surface-container-high/30">
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-gutter">
+            <!-- Brand column -->
+            <div class="col-span-2 flex flex-col gap-space-sm">
+              <div class="flex items-center gap-2">
+                <span class="font-headline-sm text-headline-sm text-on-surface font-semibold">UpScore</span>
+                <span
+                  class="font-label-code text-label-badge bg-primary/10 text-primary px-2 py-0.5 rounded">v2.4</span>
+              </div>
+              <p class="font-body-sm text-body-sm text-on-surface-variant max-w-xs">
+                AI-powered Upwork opportunity finder — instant alerts, algorithmic opportunity scoring, and AI proposal
+                drafts.
+              </p>
+            </div>
+            <!-- Links 1 -->
+            <div class="flex flex-col gap-space-xs font-body-sm text-body-sm">
+              <span class="font-label-code text-label-code text-on-surface font-semibold uppercase">Product</span>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#features">Features</a>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#how-it-works">How It
+                Works</a>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#pricing">Pricing</a>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#live-jobs">Live Feed</a>
+            </div>
+            <!-- Links 2 -->
+            <div class="flex flex-col gap-space-xs font-body-sm text-body-sm">
+              <span class="font-label-code text-label-code text-on-surface font-semibold uppercase">Tools</span>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">AI Proposal Studio</a>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Market Benchmarks</a>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Custom Webhooks</a>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Chrome Extension</a>
+            </div>
+            <!-- Links 3 -->
+            <div class="flex flex-col gap-space-xs font-body-sm text-body-sm">
+              <span class="font-label-code text-label-code text-on-surface font-semibold uppercase">Legal</span>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Terms of Service</a>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Privacy Policy</a>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Security
+                Architecture</a>
+              <a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Status Telemetry</a>
+            </div>
+          </div>
+          <!-- Sub-bottom copyright -->
+          <div
+            class="mt-12 pt-6 border-t border-surface-container-high/30 flex flex-col sm:flex-row items-center justify-between gap-4 font-label-code text-label-badge text-on-surface-variant">
+            <span>© 2026 UpScore. AI-powered Upwork opportunity finder. Built for contractors.</span>
+            <div class="flex items-center gap-4">
+              <span>Upwork® is a registered trademark of Upwork Inc.</span>
+            </div>
+          </div>
+        </section>
+        <!-- Client-side Telemetry Countdown Timer Script -->
+        <script>
+          (function () {
+            let seconds = 142;
+            const el = document.getElementById('countdown-timer');
+            if (el) {
+              setInterval(() => {
+                seconds--;
+                if (seconds <= 0) seconds = 180;
+                el.innerText = seconds + 's';
+              }, 1000);
+            }
+          })();
+        </script>
+      </div>
+    </div>
+  </main>
+  <footer class="relative z-10 w-full bg-surface-container-lowest mt-space-xl">
+    <div class="max-w-[1440px] mx-auto px-margin-mobile lg:px-margin py-space-xl">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-space-lg">
+        <div class="flex items-center gap-space-sm"><img alt="UpScore Brand Logo"
+            class="h-6 w-auto object-contain opacity-80"
+            src="https://lh3.googleusercontent.com/aida/AEtjO1WqGLpmvXq1OT3i7tubI-Y7p45DHqWgZhuv2ILwjmS-4-Pdk3V4CX8geuaTZdnSS9yhKnBPiv4-0pGEjZwdxS_LtXI8BA_vH_mNWKvclpALXtHMZ00gHQR39WUBKyAd0r1KFOx0exAKXao96LWPc12rhDfndhSGKwMzNGqhTOfMXPoHo0twayhYHXrL76oCcYxfCu85mLgGBo0RmqNX4Fwy7pbUyHNQkk5wzZvmsSWgCTGdApayJzp22g8" /><span
+            class="font-headline-sm text-headline-sm text-on-surface font-medium">UpScore</span><span
+            class="font-label-badge text-label-badge px-space-xs py-0.5 rounded-full bg-surface-container text-on-surface-variant font-label-code">v2.4
+            Engine</span></div>
+        <div class="flex flex-wrap items-center gap-space-lg text-on-surface-variant font-body-sm text-body-sm"><a
+            class="hover:text-on-surface transition-colors" data-path="live-jobs" href="#live-jobs">Telemetry Feed</a><a
+            class="hover:text-on-surface transition-colors" data-path="features" href="#features">Scoring Models</a><a
+            class="hover:text-on-surface transition-colors" data-path="privacy-policy" href="#privacy">Privacy
+            Architecture</a><a class="hover:text-on-surface transition-colors" data-path="terms-of-service"
+            href="#terms">Terms</a></div>
+        <div class="font-body-sm text-body-sm text-on-surface-variant">© 2025 UpScore Systems Inc. High-conviction
+          intelligence.</div>
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>

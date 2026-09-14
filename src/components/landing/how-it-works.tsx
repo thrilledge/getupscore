@@ -17,7 +17,7 @@ const steps: Step[] = [
     num: "01",
     title: "Tell us what you do",
     desc: "Pick your technical stack, minimum required hourly rate, verified payment preferences, and negative keywords in 60 seconds.",
-    chip: [{ text: "Next.js • Tailwind • $85+/hr • Payment Verified", color: "text-[#0A0A0A]/60" }],
+    chip: [{ text: "Next.js • $85+/hr • Payment Verified", color: "text-[#0A0A0A]/60" }],
   },
   {
     num: "02",
@@ -75,7 +75,7 @@ export function HowItWorks() {
         }}
       />
 
-      <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+      <div className="relative mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
         <div
           style={{ transitionDelay: isVisible ? "100ms" : "0ms" }}
           className={`mx-auto max-w-3xl text-center transition-all duration-700 ease-out ${isVisible ? "translate-y-0 opacity-100 blur-0" : "translate-y-10 opacity-0 blur-[4px]"}`}

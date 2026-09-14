@@ -63,7 +63,7 @@ export function Integrations() {
       <div aria-hidden="true" className="pointer-events-none absolute -left-40 top-32 size-[420px] rounded-full bg-[#00C98B]/10 blur-[130px]" />
       <div aria-hidden="true" className="pointer-events-none absolute -right-40 bottom-24 size-[420px] rounded-full bg-[#00C98B]/10 blur-[130px]" />
 
-      <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+      <div className="relative mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
         <div
           style={{ transitionDelay: isVisible ? "100ms" : "0ms" }}
           className={`mx-auto max-w-3xl text-center transition-all duration-700 ease-out ${isVisible ? "translate-y-0 opacity-100 blur-0" : "translate-y-10 opacity-0 blur-[4px]"}`}

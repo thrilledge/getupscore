@@ -184,7 +184,7 @@ export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
         }}
       />
 
-      <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+      <div className="relative mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
         <div
           style={{ transitionDelay: isVisible ? "100ms" : "0ms" }}
           className={`mb-10 flex flex-col items-start justify-between gap-6 transition-all duration-700 ease-out lg:mb-12 lg:flex-row lg:items-end motion-reduce:translate-y-0 motion-reduce:opacity-100 motion-reduce:blur-0 motion-reduce:transition-none ${isVisible

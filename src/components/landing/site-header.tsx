@@ -48,7 +48,7 @@ export function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0A0A0A] shadow-[0_8px_25px_rgba(0,0,0,0.12)]">
-      <div className="mx-auto grid h-16 w-[calc(100%-2rem)] max-w-[1756px] grid-cols-[1fr_auto] items-center sm:w-[calc(100%-3rem)] lg:h-[72px] lg:w-[calc(100%-7rem)] lg:grid-cols-[1fr_auto_1fr]">
+      <div className="mx-auto grid h-16 w-[calc(100%-2rem)] max-w-[1400px] grid-cols-[1fr_auto] items-center sm:w-[calc(100%-3rem)] lg:h-[72px] lg:w-[calc(100%-7rem)] lg:grid-cols-[1fr_auto_1fr]">
         {/* Logo */}
         <Link
           href="/"

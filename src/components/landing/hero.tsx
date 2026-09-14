@@ -166,7 +166,7 @@ export function Hero({ jobs = [] }: { jobs?: LiveJob[] }) {
         className="pointer-events-none absolute left-1/2 top-1/3 size-[500px] -translate-x-1/2 rounded-full bg-[#00C98B]/5 blur-[120px]"
       />
 
-      <div className="relative mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24">
+      <div className="relative mx-auto w-full max-w-[1440px] px-5 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24">
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-10">
           {/* Left Hero Pitch */}
           <div className="lg:col-span-7 flex flex-col items-center text-center lg:items-start lg:text-left">
@@ -181,7 +181,7 @@ export function Hero({ jobs = [] }: { jobs?: LiveJob[] }) {
               </div>
             </div>
 
-            <h1 className="hero-reveal hero-delay-2 max-w-4xl font-heading text-[44px] font-bold leading-[1.08] tracking-[-0.03em] text-[#0A0A0A] sm:text-6xl lg:text-[72px] xl:text-[80px]">
+            <h1 className="hero-reveal hero-delay-2 font-heading text-[44px] font-bold leading-[1.08] tracking-[-0.03em] text-[#0A0A0A] sm:text-6xl lg:text-[72px]">
               Never miss the right{" "}
               <span className="bg-gradient-to-r from-[#00C98B] via-[#00C98B] to-[#00A975] bg-clip-text text-transparent">
                 Upwork

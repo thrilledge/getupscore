@@ -21,8 +21,8 @@ function IconTile({
   return (
     <span
       className={`grid size-10 place-items-center rounded-lg ${accent === "primary"
-          ? "bg-[#00C98B]/10 text-[#00C98B]"
-          : "bg-[#00A975]/10 text-[#00A975]"
+        ? "bg-[#00C98B]/10 text-[#00C98B]"
+        : "bg-[#00A975]/10 text-[#00A975]"
         }`}
     >
       {children}
@@ -87,7 +87,7 @@ export function Features() {
         }}
       />
 
-      <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-12">
+      <div className="relative mx-auto max-w-[1440px] px-5 sm:px-8 lg:px-12">
         <div
           style={{
             transitionDelay: isVisible ? "100ms" : "0ms",
