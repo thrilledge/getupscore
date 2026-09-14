@@ -1,6 +1,10 @@
 -- Add distinct client countries to get_job_filter_facets() so the Jobs page
 -- filter sheet can offer a Client Country dropdown (search_jobs already
 -- supports p_country).
+--
+-- NOTE: Applied on the live DB via the Supabase Management API (supabase CLI
+-- db push is blocked: login-role 403 "does not have the necessary
+-- privileges"). Keep this file in sync with what was applied there.
 
 CREATE OR REPLACE FUNCTION public.get_job_filter_facets()
 RETURNS json

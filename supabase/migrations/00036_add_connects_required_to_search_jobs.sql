@@ -78,7 +78,7 @@ BEGIN
       AND (p_subcategory IS NULL OR p_subcategory = '' OR j.subcategory = p_subcategory)
       AND (p_duration IS NULL OR p_duration = '' OR j.duration_label = p_duration)
       AND (p_ids IS NULL OR array_length(p_ids, 1) IS NULL OR j.id::text = ANY(p_ids))
-    ORDER BY j.posted_at DESC NULLS LAST
+    ORDER BY COALESCE(j.posted_at, j.created_at) DESC NULLS LAST
     LIMIT p_limit OFFSET p_offset
   ),
   enriched AS (

@@ -13,8 +13,9 @@ const themeOptions: { value: Theme; label: string; icon: typeof Sun }[] = [
 ];
 
 const navigationItems = [
-  { label: "Live Jobs", href: "#jobs" },
+  { label: "Live Jobs", href: "#live-jobs" },
   { label: "Features", href: "#features" },
+  { label: "Integrations", href: "#integrations" },
   { label: "How It Works", href: "#how-it-works" },
   { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },

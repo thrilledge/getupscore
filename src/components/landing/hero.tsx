@@ -3,10 +3,14 @@ import { env } from "@/lib/env";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
+  BadgeCheck,
   BrainCircuit,
-  CalendarClock,
-  ShieldCheck,
-  Sparkles,
+  CircleCheck,
+  LockOpen,
+  Radar,
+  Send,
+  Star,
+  Zap,
 } from "lucide-react";
 
 export function Hero() {
@@ -145,93 +149,212 @@ export function Hero() {
         className="pointer-events-none absolute left-1/2 top-1/3 size-[500px] -translate-x-1/2 rounded-full bg-[#00C98B]/5 blur-[120px]"
       />
 
-      <div className="relative mx-auto w-full max-w-7xl px-5 py-16 text-center sm:px-8 sm:py-20 lg:px-12 lg:py-24">
-        <div className="hero-reveal hero-delay-1 mx-auto mb-7 w-fit">
-          <div className="group inline-flex cursor-default items-center gap-2 rounded-full border border-[#0A0A0A]/10 bg-white/75 px-4 py-2 text-xs font-semibold tracking-wide text-[#0A0A0A]/75 shadow-[0_8px_28px_rgba(0,0,0,0.05)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-[#00C98B]/50 hover:shadow-[0_12px_32px_rgba(0,201,139,0.12)] sm:text-sm">
-            <span className="grid size-6 place-items-center rounded-full bg-[#00C98B]/10">
-              <Sparkles className="size-3.5 text-[#00C98B] transition-transform duration-300 group-hover:rotate-12 group-hover:scale-110" />
-            </span>
+      <div className="relative mx-auto w-full max-w-7xl px-5 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-12 lg:gap-10">
+          {/* Left Hero Pitch */}
+          <div className="lg:col-span-7 flex flex-col items-center text-center lg:items-start lg:text-left">
+            <div className="hero-reveal hero-delay-1 mb-7 w-fit">
+              <div className="group inline-flex cursor-default items-center gap-2 rounded-full border border-[#0A0A0A]/10 bg-white/75 px-4 py-2 text-xs font-semibold tracking-wide text-[#0A0A0A]/75 shadow-[0_8px_28px_rgba(0,0,0,0.05)] backdrop-blur-md transition-all duration-300 hover:-translate-y-1 hover:border-[#00C98B]/50 hover:shadow-[0_12px_32px_rgba(0,201,139,0.12)] sm:text-sm">
+                <span className="relative flex size-2.5">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#00C98B] opacity-60 motion-reduce:animate-none" />
+                  <span className="relative inline-flex size-2.5 rounded-full bg-[#00C98B]" />
+                </span>
 
-            AI-scored, real-time job alerts for freelancers
+                AI-scored, real-time Upwork alerts
+              </div>
+            </div>
+
+            <h1 className="hero-reveal hero-delay-2 max-w-4xl font-heading text-[44px] font-bold leading-[1.08] tracking-[-0.03em] text-[#0A0A0A] sm:text-6xl lg:text-[72px] xl:text-[80px]">
+              Never miss the right{" "}
+              <span className="bg-gradient-to-r from-[#00C98B] via-[#00C98B] to-[#00A975] bg-clip-text text-transparent">
+                Upwork
+              </span>{" "}
+              job again
+            </h1>
+
+            <p className="hero-reveal hero-delay-3 mt-7 max-w-2xl text-base leading-7 text-[#0A0A0A]/60 sm:text-lg sm:leading-8">
+              {env.APP_NAME} scans Upwork continuously, scores every lead with
+              our algorithmic engine, and alerts you the second a job matches
+              your exact stack — so you can submit high-conviction proposals
+              before competition saturates the post.
+            </p>
+
+            <div className="hero-reveal hero-delay-4 mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row lg:items-start">
+              <Button
+                render={<Link href="/signup" />}
+                size="lg"
+                className="group h-13 w-full rounded-xl bg-[#00C98B] px-8 text-base font-bold text-[#0A0A0A] shadow-[0_0_32px_rgba(0,201,139,0.3)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#00C98B]/90 hover:shadow-[0_16px_40px_rgba(0,201,139,0.38)] sm:w-auto"
+              >
+                Start finding jobs free
+
+                <ArrowRight className="size-5 transition-transform duration-300 group-hover:translate-x-1" />
+              </Button>
+
+              <Button
+                render={<Link href="#live-jobs" />}
+                variant="outline"
+                size="lg"
+                className="h-13 w-full gap-2 rounded-xl border-[#0A0A0A]/15 bg-white/60 px-8 text-base font-bold text-[#0A0A0A] shadow-none backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#00C98B]/60 hover:bg-[#00C98B]/10 hover:text-[#0A0A0A] sm:w-auto"
+              >
+                <Radar className="size-5 text-[#00C98B]" />
+                See live stream
+              </Button>
+            </div>
+
+            <div className="hero-reveal hero-delay-5 mt-10 flex max-w-3xl flex-col items-center justify-center gap-4 text-sm font-medium text-[#0A0A0A]/60 sm:flex-row sm:gap-8 lg:items-start">
+              <span className="group inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:text-[#0A0A0A]">
+                <BadgeCheck className="size-4 text-[#00C98B]" />
+                Free forever tier
+              </span>
+
+              <span className="group inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:text-[#0A0A0A]">
+                <Zap className="size-4 text-[#00C98B]" />
+                AI scoring included
+              </span>
+
+              <span className="group inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:text-[#0A0A0A]">
+                <LockOpen className="size-4 text-[#00C98B]" />
+                Zero lock-in contract
+              </span>
+            </div>
           </div>
-        </div>
 
-        <h1 className="hero-reveal hero-delay-2 mx-auto max-w-5xl font-heading text-[46px] font-bold leading-[1.1] tracking-[-0.03em] text-[#0A0A0A] sm:text-6xl lg:text-[78px] xl:text-[88px]">
-          Never miss the{" "}
-          <span className="relative inline-block whitespace-nowrap text-[#00C98B]">
-
-            right
-
-            <svg
+          {/* Right Visual Telemetry Glass Card */}
+          <div className="hero-reveal hero-delay-3 lg:col-span-5">
+            <div
               aria-hidden="true"
-              viewBox="0 0 250 18"
-              preserveAspectRatio="none"
-              className="hero-underline absolute -bottom-1 left-0 h-3 w-full text-[#00C98B]/30"
-            >
-              <path
-                d="M4 8 C70 15, 170 15, 246 7"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="7"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
+              className="absolute -inset-1 -z-10 rounded-[24px] bg-gradient-to-r from-[#00C98B]/30 to-[#00A975]/20 blur-xl opacity-60"
+            />
 
-          <span className="mt-2 block sm:mt-3">Upwork job again</span>
-        </h1>
+            <div className="relative flex flex-col gap-4 rounded-[24px] border border-[#0A0A0A]/10 bg-white/70 p-6 shadow-2xl backdrop-blur-2xl">
+              {/* Glass Top Header Bar */}
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#00C98B]">
+                  <span className="relative flex size-2.5">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#00C98B] opacity-60 motion-reduce:animate-none" />
+                    <span className="relative inline-flex size-2.5 rounded-full bg-[#00C98B]" />
+                  </span>
+                  Live Match Event
+                </span>
 
-        <p className="hero-reveal hero-delay-3 mx-auto mt-7 max-w-3xl text-base leading-7 text-[#0A0A0A]/60 sm:text-lg sm:leading-8 lg:text-xl">
-          {env.APP_NAME} scans Upwork every few minutes, scores every opportunity
-          with AI, and alerts you the moment a job matches your skills — so you
-          can reply while the competition is still reading.
-        </p>
+                <span className="rounded bg-[#0A0A0A]/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0A0A0A]/50">
+                  Ingested 12s ago
+                </span>
+              </div>
 
-        <div className="hero-reveal hero-delay-4 mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <Button
-            render={<Link href="/signup" />}
-            size="lg"
-            className="group h-14 w-full rounded-full bg-[#0A0A0A] px-7 text-base font-bold text-white shadow-[0_14px_35px_rgba(0,0,0,0.16)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#0A0A0A]/90 hover:shadow-[0_18px_45px_rgba(0,0,0,0.22)] sm:w-auto"
-          >
-            Start finding jobs free
+              {/* Radar Match Gauge */}
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-[#0A0A0A]/5 bg-[#F7FFFC] p-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative grid size-16 place-items-center">
+                    <svg
+                      aria-hidden="true"
+                      viewBox="0 0 36 36"
+                      className="size-16 -rotate-90"
+                    >
+                      <path
+                        className="text-[#0A0A0A]/10"
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3.5"
+                      />
+                      <path
+                        className="text-[#00C98B]"
+                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeDasharray="94, 100"
+                        strokeLinecap="round"
+                        strokeWidth="3.5"
+                      />
+                    </svg>
 
-            <ArrowRight className="size-5 transition-transform duration-300 group-hover:translate-x-1" />
-          </Button>
+                    <div className="absolute flex flex-col items-center justify-center">
+                      <span className="text-lg font-bold leading-none text-[#0A0A0A]">
+                        94
+                      </span>
+                      <span className="text-[9px] uppercase text-[#0A0A0A]/50">
+                        score
+                      </span>
+                    </div>
+                  </div>
 
-          <Button
-            render={<Link href="#jobs" />}
-            variant="outline"
-            size="lg"
-            className="h-14 w-full rounded-full border-[#0A0A0A]/15 bg-white/60 px-8 text-base font-bold text-[#0A0A0A] shadow-none backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#00C98B]/60 hover:bg-[#00C98B]/10 hover:text-[#0A0A0A] sm:w-auto"
-          >
-            See live jobs
-          </Button>
-        </div>
+                  <div>
+                    <span className="inline-flex items-center gap-1 rounded bg-[#00C98B]/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-[#00C98B]">
+                      <BadgeCheck className="size-3" />
+                      TOP 1% FIT SCORE
+                    </span>
 
-        <div className="hero-reveal hero-delay-5 mx-auto mt-10 flex max-w-3xl flex-col items-center justify-center gap-4 text-sm font-medium text-[#0A0A0A]/60 sm:flex-row sm:gap-8">
-          <span className="group inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:text-[#0A0A0A]">
-            <span className="grid size-8 place-items-center rounded-full bg-[#00C98B]/10 transition-colors group-hover:bg-[#00C98B]/20">
-              <ShieldCheck className="size-4 text-[#00C98B]" />
-            </span>
+                    <p className="mt-1 text-sm font-bold text-[#0A0A0A]">
+                      High Conversion Probability
+                    </p>
 
-            Free to start
-          </span>
+                    <p className="text-xs text-[#0A0A0A]/55">
+                      Client hires in &lt;3 proposals
+                    </p>
+                  </div>
+                </div>
 
-          <span className="group inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:text-[#0A0A0A]">
-            <span className="grid size-8 place-items-center rounded-full bg-[#00C98B]/10 transition-colors group-hover:bg-[#00C98B]/20">
-              <BrainCircuit className="size-4 text-[#00C98B]" />
-            </span>
+                <div className="hidden flex-col items-end text-right sm:flex">
+                  <span className="text-xs text-[#0A0A0A]/50">
+                    Est. Hourly
+                  </span>
+                  <span className="text-lg font-bold text-[#00C98B]">
+                    $95–$130
+                  </span>
+                </div>
+              </div>
 
-            AI analysis included
-          </span>
+              {/* Job Details Snippet */}
+              <div className="flex flex-col gap-1.5">
+                <h3 className="font-heading cursor-pointer text-base font-bold leading-snug text-[#0A0A0A] transition-colors hover:text-[#00A975]">
+                  Senior Full Stack Next.js &amp; AI Agent Engineer
+                </h3>
 
-          <span className="group inline-flex items-center gap-2 transition-all duration-300 hover:-translate-y-0.5 hover:text-[#0A0A0A]">
-            <span className="grid size-8 place-items-center rounded-full bg-[#00C98B]/10 transition-colors group-hover:bg-[#00C98B]/20">
-              <CalendarClock className="size-4 text-[#00C98B]" />
-            </span>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-[#0A0A0A]/55">
+                  <span className="inline-flex items-center gap-1 text-[#0A0A0A]">
+                    <CircleCheck className="size-3.5 text-[#00C98B]" />
+                    Payment Verified
+                  </span>
+                  <span>•</span>
+                  <span className="inline-flex items-center gap-0.5 text-[#00A975]">
+                    5.0
+                    <Star className="size-3.5 fill-[#00C98B] text-[#00C98B]" />
+                  </span>
+                  <span>•</span>
+                  <span>$140k+ Spent</span>
+                  <span>•</span>
+                  <span>United States</span>
+                </div>
+              </div>
 
-            Cancel anytime
-          </span>
+              {/* AI Assessment Block */}
+              <div className="flex items-start gap-2.5 rounded-lg border border-[#0A0A0A]/5 bg-[#0A0A0A]/5 p-3 text-sm leading-6 text-[#0A0A0A]/60">
+                <BrainCircuit className="mt-0.5 size-5 shrink-0 text-[#00A975]" />
+
+                <p>
+                  <span className="font-semibold text-[#0A0A0A]">
+                    AI Rationale:
+                  </span>{" "}
+                  Client has an active LangGraph workflow. Strong match for
+                  your previous Next.js v15 + OpenAI SDK showcases. Very low
+                  client price resistance.
+                </p>
+              </div>
+
+              {/* Dispatch Alert Pill */}
+              <div className="flex items-center justify-between rounded-lg border border-[#0A0A0A]/5 bg-[#F7FFFC] p-3">
+                <span className="inline-flex items-center gap-2 text-sm font-bold text-[#0A0A0A]">
+                  <Send className="size-4 text-[#00C98B]" />
+                  Pushed to Telegram &amp; Slack
+                </span>
+
+                <span className="animate-pulse text-xs font-bold text-[#00C98B] motion-reduce:animate-none">
+                  0.8s latency
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

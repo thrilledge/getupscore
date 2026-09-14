@@ -23,6 +23,7 @@ async function fetchJobs() {
         `
         id,
         title,
+        description,
         posted_at,
         budget,
         hourly_min,
@@ -31,6 +32,9 @@ async function fetchJobs() {
         client_country,
         client_location_country,
         payment_verified,
+        proposals_count,
+        client_total_spend,
+        client_rating,
         category,
         subcategory
         `
