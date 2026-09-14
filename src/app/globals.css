@@ -126,14 +126,22 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground font-sans;
   }
+
   html {
     @apply font-sans;
     scroll-behavior: smooth;
   }
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-heading;
   }
 }
@@ -172,52 +180,108 @@
 /* ------------------------------------------------------------------------ */
 
 /* Surfaces --------------------------------------------------------------- */
-.dark [class~="bg-white"] { background-color: var(--card); }
+.dark [class~="bg-white"] {
+  background-color: var(--card);
+}
+
 .dark [class~="bg-[#F8F9F9]"],
 .dark [class~="bg-[#FAFAFA]"],
 .dark [class~="bg-[#F7FFFC]"],
 .dark [class~="bg-gray-50"],
 .dark [class~="bg-gray-100"],
-.dark [class~="bg-gray-200"] { background-color: var(--muted); }
-.dark [class~="bg-[#F7F8F8]"] { background-color: var(--background); }
+.dark [class~="bg-gray-200"] {
+  background-color: var(--muted);
+}
+
+.dark [class~="bg-[#F7F8F8]"] {
+  background-color: var(--background);
+}
 
 /* Near-black foreground text — opacity hierarchy preserved via color-mix -- */
 .dark [class~="text-[#0A0A0A]"],
-.dark [class~="text-black"] { color: var(--foreground); }
+.dark [class~="text-black"] {
+  color: var(--foreground);
+}
+
 .dark [class~="text-[#0A0A0A]/75"],
-.dark [class~="text-black/75"] { color: color-mix(in oklab, var(--foreground) 75%, transparent); }
+.dark [class~="text-black/75"] {
+  color: color-mix(in oklab, var(--foreground) 75%, transparent);
+}
+
 .dark [class~="text-[#0A0A0A]/70"],
-.dark [class~="text-black/70"] { color: color-mix(in oklab, var(--foreground) 70%, transparent); }
+.dark [class~="text-black/70"] {
+  color: color-mix(in oklab, var(--foreground) 70%, transparent);
+}
+
 .dark [class~="text-[#0A0A0A]/65"],
-.dark [class~="text-black/65"] { color: color-mix(in oklab, var(--foreground) 65%, transparent); }
+.dark [class~="text-black/65"] {
+  color: color-mix(in oklab, var(--foreground) 65%, transparent);
+}
+
 .dark [class~="text-[#0A0A0A]/60"],
-.dark [class~="text-black/60"] { color: color-mix(in oklab, var(--foreground) 60%, transparent); }
+.dark [class~="text-black/60"] {
+  color: color-mix(in oklab, var(--foreground) 60%, transparent);
+}
+
 .dark [class~="text-[#0A0A0A]/55"],
-.dark [class~="text-black/55"] { color: color-mix(in oklab, var(--foreground) 55%, transparent); }
+.dark [class~="text-black/55"] {
+  color: color-mix(in oklab, var(--foreground) 55%, transparent);
+}
+
 .dark [class~="text-[#0A0A0A]/50"],
-.dark [class~="text-black/50"] { color: color-mix(in oklab, var(--foreground) 50%, transparent); }
+.dark [class~="text-black/50"] {
+  color: color-mix(in oklab, var(--foreground) 50%, transparent);
+}
+
 .dark [class~="text-[#0A0A0A]/45"],
-.dark [class~="text-black/45"] { color: color-mix(in oklab, var(--foreground) 45%, transparent); }
+.dark [class~="text-black/45"] {
+  color: color-mix(in oklab, var(--foreground) 45%, transparent);
+}
+
 .dark [class~="text-[#0A0A0A]/40"],
-.dark [class~="text-black/40"] { color: color-mix(in oklab, var(--foreground) 40%, transparent); }
+.dark [class~="text-black/40"] {
+  color: color-mix(in oklab, var(--foreground) 40%, transparent);
+}
+
 .dark [class~="text-[#0A0A0A]/35"],
-.dark [class~="text-black/35"] { color: color-mix(in oklab, var(--foreground) 35%, transparent); }
+.dark [class~="text-black/35"] {
+  color: color-mix(in oklab, var(--foreground) 35%, transparent);
+}
+
 .dark [class~="text-[#0A0A0A]/30"],
-.dark [class~="text-black/30"] { color: color-mix(in oklab, var(--foreground) 30%, transparent); }
+.dark [class~="text-black/30"] {
+  color: color-mix(in oklab, var(--foreground) 30%, transparent);
+}
+
 .dark [class~="text-[#0A0A0A]/25"],
-.dark [class~="text-black/25"] { color: color-mix(in oklab, var(--foreground) 25%, transparent); }
+.dark [class~="text-black/25"] {
+  color: color-mix(in oklab, var(--foreground) 25%, transparent);
+}
+
 .dark [class~="text-[#0A0A0A]/20"],
-.dark [class~="text-black/20"] { color: color-mix(in oklab, var(--foreground) 20%, transparent); }
-.dark [class~="text-[#0A0A0A]/5"] { color: color-mix(in oklab, var(--foreground) 5%, transparent); }
+.dark [class~="text-black/20"] {
+  color: color-mix(in oklab, var(--foreground) 20%, transparent);
+}
+
+.dark [class~="text-[#0A0A0A]/5"] {
+  color: color-mix(in oklab, var(--foreground) 5%, transparent);
+}
 
 /* Muted gray body text --------------------------------------------------- */
 .dark [class~="text-gray-700"],
 .dark [class~="text-gray-600"],
-.dark [class~="text-gray-500"] { color: var(--muted-foreground); }
+.dark [class~="text-gray-500"] {
+  color: var(--muted-foreground);
+}
 
 /* Placeholders ----------------------------------------------------------- */
-.dark [class~="placeholder:text-[#0A0A0A]/30"]::placeholder { color: color-mix(in oklab, var(--foreground) 30%, transparent); }
-.dark [class~="placeholder:text-[#0A0A0A]/35"]::placeholder { color: color-mix(in oklab, var(--foreground) 35%, transparent); }
+.dark [class~="placeholder:text-[#0A0A0A]/30"]::placeholder {
+  color: color-mix(in oklab, var(--foreground) 30%, transparent);
+}
+
+.dark [class~="placeholder:text-[#0A0A0A]/35"]::placeholder {
+  color: color-mix(in oklab, var(--foreground) 35%, transparent);
+}
 
 /* Borders — collapse the whole near-black range onto the border token ---- */
 .dark [class~="border-[#0A0A0A]"],
@@ -233,43 +297,89 @@
 .dark [class~="border-black/20"],
 .dark [class~="border-black/15"],
 .dark [class~="border-black/10"],
-.dark [class~="border-black/5"] { border-color: var(--border); }
+.dark [class~="border-black/5"] {
+  border-color: var(--border);
+}
 
 /* Translucent dark overlays → translucent white on dark surfaces --------- */
 .dark [class~="bg-[#0A0A0A]/5"],
-.dark [class~="bg-black/5"] { background-color: oklch(1 0 0 / 0.05); }
-.dark [class~="bg-[#0A0A0A]/7"] { background-color: oklch(1 0 0 / 0.07); }
+.dark [class~="bg-black/5"] {
+  background-color: oklch(1 0 0 / 0.05);
+}
+
+.dark [class~="bg-[#0A0A0A]/7"] {
+  background-color: oklch(1 0 0 / 0.07);
+}
+
 .dark [class~="bg-[#0A0A0A]/10"],
-.dark [class~="bg-black/10"] { background-color: oklch(1 0 0 / 0.10); }
+.dark [class~="bg-black/10"] {
+  background-color: oklch(1 0 0 / 0.10);
+}
+
 .dark [class~="bg-[#0A0A0A]/15"],
-.dark [class~="bg-black/15"] { background-color: oklch(1 0 0 / 0.15); }
+.dark [class~="bg-black/15"] {
+  background-color: oklch(1 0 0 / 0.15);
+}
+
 .dark [class~="bg-[#0A0A0A]/20"],
-.dark [class~="bg-black/20"] { background-color: oklch(1 0 0 / 0.20); }
-.dark [class~="bg-black/25"] { background-color: oklch(1 0 0 / 0.25); }
-.dark [class~="bg-black/30"] { background-color: oklch(1 0 0 / 0.30); }
+.dark [class~="bg-black/20"] {
+  background-color: oklch(1 0 0 / 0.20);
+}
+
+.dark [class~="bg-black/25"] {
+  background-color: oklch(1 0 0 / 0.25);
+}
+
+.dark [class~="bg-black/30"] {
+  background-color: oklch(1 0 0 / 0.30);
+}
 
 /* Hero gradient — flip the mint background to the dark surface hierarchy.   */
 /* The stop colors are CSS vars referenced by `--tw-gradient-stops`, so       */
 /* overriding them here keeps the Tailwind-composed gradient intact.          */
-.dark [class~="from-[#F2FFFA]"] { --tw-gradient-from: var(--background); }
-.dark [class~="via-[#F8FFFC]"] { --tw-gradient-via: color-mix(in oklab, var(--card) 97%, #00C98B 3%); }
-.dark [class~="to-white"] { --tw-gradient-to: var(--card); }
+.dark [class~="from-[#F2FFFA]"] {
+  --tw-gradient-from: var(--background);
+}
+
+.dark [class~="via-[#F8FFFC]"] {
+  --tw-gradient-via: color-mix(in oklab, var(--card) 97%, #00C98B 3%);
+}
+
+.dark [class~="to-white"] {
+  --tw-gradient-to: var(--card);
+}
 
 /* Translucent WHITE glass pills (badges / outline buttons / info cards) —    */
 /* their text is remapped to the light `foreground` on dark, so keeping the   */
 /* white glass would put light-on-light and render it invisible. Drop these   */
 /* to dark glass instead. Lower-opacity overlays (bg-white/5, /10), which sit  */
 /* on already-dark surfaces, stay untouched.                                   */
-.dark [class~="bg-white/60"] { background-color: oklch(1 0 0 / 0.06); }
-.dark [class~="bg-white/70"] { background-color: oklch(1 0 0 / 0.07); }
-.dark [class~="bg-white/75"] { background-color: oklch(1 0 0 / 0.08); }
-.dark [class~="bg-white/80"] { background-color: oklch(1 0 0 / 0.10); }
-.dark [class~="bg-white/90"] { background-color: oklch(1 0 0 / 0.12); }
+.dark [class~="bg-white/60"] {
+  background-color: oklch(1 0 0 / 0.06);
+}
+
+.dark [class~="bg-white/70"] {
+  background-color: oklch(1 0 0 / 0.07);
+}
+
+.dark [class~="bg-white/75"] {
+  background-color: oklch(1 0 0 / 0.08);
+}
+
+.dark [class~="bg-white/80"] {
+  background-color: oklch(1 0 0 / 0.10);
+}
+
+.dark [class~="bg-white/90"] {
+  background-color: oklch(1 0 0 / 0.12);
+}
 
 /* Divider remaps — `divide-*` colors land on each child via the `> :not(:last-child)` */
 /* combinator, so they need their own scoped rule instead of a bare token match.       */
-.dark [class~="divide-[#0A0A0A]/10"] > :not(:last-child),
-.dark [class~="divide-[#0A0A0A]/7"] > :not(:last-child) { border-color: var(--border); }
+.dark [class~="divide-[#0A0A0A]/10"]> :not(:last-child),
+.dark [class~="divide-[#0A0A0A]/7"]> :not(:last-child) {
+  border-color: var(--border);
+}
 
 /* ------------------------------------------------------------------------ */
 /* State-variant remaps — a bare-token remap like `[class~="bg-gray-100"]`    */
@@ -279,15 +389,21 @@
 
 .dark [class~="hover:bg-gray-50"]:hover,
 .dark [class~="hover:bg-gray-100"]:hover,
-.dark [class~="hover:bg-gray-200"]:hover { background-color: var(--muted); }
+.dark [class~="hover:bg-gray-200"]:hover {
+  background-color: var(--muted);
+}
 
 .dark [class~="hover:text-[#0A0A0A]"]:hover,
-.dark [class~="hover:text-black"]:hover { color: var(--foreground); }
+.dark [class~="hover:text-black"]:hover {
+  color: var(--foreground);
+}
 
 /* Spinner arcs — `border-t-[#0A0A0A]` is a directional token the bare        */
 /* `border-[#0A0A0A]` remap misses, so the spinning segment would stay         */
 /* black-on-dark. Lift it to the foreground so it reads on any surface.        */
-.dark [class~="border-t-[#0A0A0A]"] { border-top-color: var(--foreground); }
+.dark [class~="border-t-[#0A0A0A]"] {
+  border-top-color: var(--foreground);
+}
 
 /* ------------------------------------------------------------------------ */
 /* Bright brand-green surfaces: near-black ink that sits on solid mint must   */
@@ -296,40 +412,71 @@
 /* ------------------------------------------------------------------------ */
 .dark [class~="bg-[#00C98B]"][class~="text-[#0A0A0A]"],
 .dark [class~="bg-[#00A975]"][class~="text-[#0A0A0A]"],
-.dark [class~="bg-[#00b57d]"][class~="text-[#0A0A0A]"] { color: #0A0A0A; }
+.dark [class~="bg-[#00b57d]"][class~="text-[#0A0A0A]"] {
+  color: #0A0A0A;
+}
 
 .dark [class~="hover:bg-[#00C98B]"]:hover[class~="hover:text-[#0A0A0A]"],
 .dark [class~="hover:bg-[#00A975]"]:hover[class~="hover:text-[#0A0A0A]"],
-.dark [class~="hover:bg-[#00b57d]"]:hover[class~="hover:text-[#0A0A0A]"] { color: #0A0A0A; }
+.dark [class~="hover:bg-[#00b57d]"]:hover[class~="hover:text-[#0A0A0A]"] {
+  color: #0A0A0A;
+}
 
 .dark .group:hover [class~="group-hover:bg-[#00C98B]"][class~="group-hover:text-[#0A0A0A]"],
 .dark .group:hover [class~="group-hover:bg-[#00A975]"][class~="group-hover:text-[#0A0A0A]"],
-.dark .group:hover [class~="group-hover:bg-[#00b57d]"][class~="group-hover:text-[#0A0A0A]"] { color: #0A0A0A; }
+.dark .group:hover [class~="group-hover:bg-[#00b57d]"][class~="group-hover:text-[#0A0A0A]"] {
+  color: #0A0A0A;
+}
 
 .dark .group[open] [class~="group-open:bg-[#00C98B]"][class~="group-open:text-[#0A0A0A]"],
 .dark .group[open] [class~="group-open:bg-[#00A975]"][class~="group-open:text-[#0A0A0A]"],
-.dark .group[open] [class~="group-open:bg-[#00b57d]"][class~="group-open:text-[#0A0A0A]"] { color: #0A0A0A; }
+.dark .group[open] [class~="group-open:bg-[#00b57d]"][class~="group-open:text-[#0A0A0A]"] {
+  color: #0A0A0A;
+}
 
 /* ------------------------------------------------------------------------ */
 /* Colored status text — the 600/700 shades are tuned for light mode and go   */
 /* muddy on the dark card; lift them a step to the 400 level in dark.         */
 /* ------------------------------------------------------------------------ */
 .dark [class~="text-red-600"],
-.dark [class~="text-red-700"] { color: #f87171; }
+.dark [class~="text-red-700"] {
+  color: #f87171;
+}
+
 .dark [class~="text-blue-600"],
-.dark [class~="text-blue-700"] { color: #60a5fa; }
+.dark [class~="text-blue-700"] {
+  color: #60a5fa;
+}
+
 .dark [class~="text-green-600"],
-.dark [class~="text-green-700"] { color: #4ade80; }
+.dark [class~="text-green-700"] {
+  color: #4ade80;
+}
+
 .dark [class~="text-yellow-600"],
-.dark [class~="text-yellow-700"] { color: #facc15; }
+.dark [class~="text-yellow-700"] {
+  color: #facc15;
+}
+
 .dark [class~="text-purple-600"],
-.dark [class~="text-purple-700"] { color: #c084fc; }
+.dark [class~="text-purple-700"] {
+  color: #c084fc;
+}
+
 .dark [class~="text-orange-600"],
-.dark [class~="text-orange-700"] { color: #fb923c; }
+.dark [class~="text-orange-700"] {
+  color: #fb923c;
+}
+
 .dark [class~="text-amber-600"],
-.dark [class~="text-amber-700"] { color: #fbbf24; }
+.dark [class~="text-amber-700"] {
+  color: #fbbf24;
+}
+
 .dark [class~="text-emerald-600"],
-.dark [class~="text-emerald-700"] { color: #34d399; }
+.dark [class~="text-emerald-700"] {
+  color: #34d399;
+}
 
 /* ------------------------------------------------------------------------ */
 /* Landing feature-showcase tab transition                                 */
@@ -340,6 +487,7 @@
     transform: translateY(12px);
     filter: blur(2px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

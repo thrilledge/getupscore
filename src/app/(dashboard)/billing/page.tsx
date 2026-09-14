@@ -139,6 +139,24 @@ function formatDate(iso: string | null | undefined): string {
   });
 }
 
+function BillingLoader() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 pt-28">
+      <div className="relative grid size-16 place-items-center">
+        <span className="absolute inset-0 animate-ping rounded-2xl border border-[#00C98B]/25" />
+
+        <span className="absolute inset-1 animate-spin rounded-xl border-2 border-[#0A0A0A]/10 border-t-[#00C98B]" />
+
+        <span className="size-2.5 rounded-full bg-[#00C98B] shadow-[0_0_15px_rgba(0,201,139,0.9)]" />
+      </div>
+
+      <p className="font-heading text-sm font-semibold text-muted-foreground">
+        Billing details are loading…
+      </p>
+    </div>
+  );
+}
+
 export default function BillingPage() {
   const { user, loading: userLoading } = useUser();
   const {
@@ -337,11 +355,7 @@ export default function BillingPage() {
   const portalOverviewUrl = overview?.portal?.overview;
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="size-8 animate-spin rounded-full border-2 border-white/10 border-t-[#00C98B]" />
-      </div>
-    );
+    return <BillingLoader />;
   }
 
   return (
@@ -646,11 +660,7 @@ export default function BillingPage() {
       )}
 
       {/* Overview loading (paid, not yet loaded) */}
-      {isPaid && !overview && (
-        <p className="text-sm text-muted-foreground">
-          Billing details are loading…
-        </p>
-      )}
+      {isPaid && !overview && <BillingLoader />}
 
       {/* Pro Plan — Full Width */}
       {!isPaid && (
@@ -674,11 +684,10 @@ export default function BillingPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setPeriod("monthly")}
-                className={`flex-1 rounded-xl border-2 p-4 text-left transition-all ${
-                  period === "monthly"
-                    ? "border-[#00C98B] bg-[#00C98B]/5"
-                    : "border-[#0A0A0A]/10 hover:border-[#0A0A0A]/20"
-                }`}
+                className={`flex-1 rounded-xl border-2 p-4 text-left transition-all ${period === "monthly"
+                  ? "border-[#00C98B] bg-[#00C98B]/5"
+                  : "border-[#0A0A0A]/10 hover:border-[#0A0A0A]/20"
+                  }`}
               >
                 <div className="flex items-baseline gap-1">
                   <span className="font-heading text-2xl font-bold">
@@ -695,11 +704,10 @@ export default function BillingPage() {
 
               <button
                 onClick={() => setPeriod("yearly")}
-                className={`flex-1 rounded-xl border-2 p-4 text-left transition-all ${
-                  period === "yearly"
-                    ? "border-[#00C98B] bg-[#00C98B]/5"
-                    : "border-[#0A0A0A]/10 hover:border-[#0A0A0A]/20"
-                }`}
+                className={`flex-1 rounded-xl border-2 p-4 text-left transition-all ${period === "yearly"
+                  ? "border-[#00C98B] bg-[#00C98B]/5"
+                  : "border-[#0A0A0A]/10 hover:border-[#0A0A0A]/20"
+                  }`}
               >
                 <div className="flex items-baseline gap-1">
                   <span className="font-heading text-2xl font-bold">
