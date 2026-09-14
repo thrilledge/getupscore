@@ -54,23 +54,23 @@ export async function GET(request: Request) {
   }
 
   const subId = billing.paddle_subscription_id;
-  const customerId = billing.paddle_customer_id;
 
-  const [subscription, paymentMethods, invoices, portalUrls] =
-    await Promise.all([
-      getPaddleSubscription(subId),
-      safeRead<PaddlePaymentMethod[]>(
-        () =>
-          customerId
-            ? listPaddlePaymentMethods(customerId)
-            : Promise.resolve([]),
-        []
-      ),
-      safeRead<PaddleInvoice[]>(() => listPaddleTransactions(subId), []),
-      customerId && subId
-        ? safeRead(() => createPaddlePortalUrls(customerId, subId), null)
-        : Promise.resolve(null),
-    ]);
+  const subscription = await getPaddleSubscription(subId);
+  const customerId =
+    subscription?.customer_id ?? billing.paddle_customer_id ?? "";
+
+  const [paymentMethods, invoices, portalUrls] = await Promise.all([
+    customerId
+      ? safeRead<PaddlePaymentMethod[]>(
+          () => listPaddlePaymentMethods(customerId),
+          []
+        )
+      : Promise.resolve([]),
+    safeRead<PaddleInvoice[]>(() => listPaddleTransactions(subId), []),
+    customerId
+      ? safeRead(() => createPaddlePortalUrls(customerId, subId), null)
+      : Promise.resolve(null),
+  ]);
 
   const periodEnd =
     subscription?.current_billing_period?.ends_at ?? billing.current_period_end;
