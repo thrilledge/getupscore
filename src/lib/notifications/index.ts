@@ -16,6 +16,7 @@ import { sendTelegram, escapeTelegramHtml } from "./senders/telegram";
 import { sendSlack } from "./senders/slack";
 import { sendDiscord } from "./senders/discord";
 import { sendWebhook } from "./senders/webhook";
+import { sendWhatsApp } from "./senders/whatsapp";
 
 // ─── Types ───
 
@@ -48,7 +49,7 @@ export interface DispatchResult {
 
 // ─── Channel Type ───
 
-type ChannelType = "email" | "telegram" | "slack" | "discord" | "webhook" | "sms";
+type ChannelType = "email" | "telegram" | "slack" | "discord" | "webhook" | "sms" | "whatsapp" | "n8n" | "make" | "zapier";
 
 // Lightweight channel type for the query result
 interface ChannelRow {
@@ -185,6 +186,21 @@ async function sendToChannel(
       return sendWebhook(config as any, {
         event: "job_alert",
         ...payload.webhookData,
+      });
+
+    case "n8n":
+    case "make":
+    case "zapier":
+      // These integrations consume a generic POST webhook payload.
+      return sendWebhook(config as any, {
+        event: "job_alert",
+        channel_type: channel.type,
+        ...payload.webhookData,
+      });
+
+    case "whatsapp":
+      return sendWhatsApp(config as any, {
+        text: payload.text,
       });
 
     case "sms":

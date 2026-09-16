@@ -10,6 +10,10 @@ const channelTypes = [
   "discord",
   "webhook",
   "sms",
+  "whatsapp",
+  "n8n",
+  "make",
+  "zapier",
 ] as const;
 
 export type ChannelType = (typeof channelTypes)[number];
@@ -21,6 +25,10 @@ export const channelTypeLabels: Record<ChannelType, string> = {
   discord: "Discord",
   webhook: "Webhook",
   sms: "SMS",
+  whatsapp: "WhatsApp",
+  n8n: "n8n",
+  make: "Make",
+  zapier: "Zapier",
 };
 
 export const channelTypeIcons: Record<ChannelType, string> = {
@@ -30,6 +38,10 @@ export const channelTypeIcons: Record<ChannelType, string> = {
   discord: "MessageCircle",
   webhook: "Webhook",
   sms: "Smartphone",
+  whatsapp: "Phone",
+  n8n: "Network",
+  make: "Route",
+  zapier: "Zap",
 };
 
 /**
@@ -64,6 +76,24 @@ const configSchemas: Record<ChannelType, z.ZodType> = {
   sms: z.object({
     phone: z.string().min(1, "Phone number is required"),
     provider: z.string().optional(),
+  }),
+  whatsapp: z.object({
+    phone: z.string().min(1, "Phone number is required"),
+    base_url: z.string().url("Invalid OpenWA URL"),
+    session_id: z.string().min(1, "Session ID is required"),
+    api_key: z.string().min(1, "API key is required"),
+  }),
+  n8n: z.object({
+    url: z.string().url("Invalid URL"),
+    method: z.enum(["GET", "POST", "PUT"]).optional().default("POST"),
+  }),
+  make: z.object({
+    url: z.string().url("Invalid URL"),
+    method: z.enum(["GET", "POST", "PUT"]).optional().default("POST"),
+  }),
+  zapier: z.object({
+    url: z.string().url("Invalid URL"),
+    method: z.enum(["GET", "POST", "PUT"]).optional().default("POST"),
   }),
 };
 
@@ -108,6 +138,15 @@ export function getConfigFieldPlaceholder(
     discord: { webhook_url: "https://discord.com/api/webhooks/..." },
     webhook: { url: "https://example.com/webhook" },
     sms: { phone: "+1234567890" },
+    whatsapp: {
+      phone: "+1234567890",
+      base_url: "http://144.91.85.40/openwa",
+      session_id: "upscore",
+      api_key: "openwa-api-key",
+    },
+    n8n: { url: "https://n8n.example.com/webhook/..." },
+    make: { url: "https://hook.make.com/..." },
+    zapier: { url: "https://hooks.zapier.com/hooks/catch/..." },
   };
   return placeholders[type]?.[field] ?? "";
 }
@@ -126,6 +165,15 @@ export function getConfigFieldLabel(
     discord: { webhook_url: "Webhook URL" },
     webhook: { url: "Webhook URL", method: "HTTP Method" },
     sms: { phone: "Phone Number", provider: "Provider (optional)" },
+    whatsapp: {
+      phone: "Recipient Phone",
+      base_url: "OpenWA Base URL",
+      session_id: "Session ID",
+      api_key: "API Key",
+    },
+    n8n: { url: "n8n Webhook URL", method: "HTTP Method" },
+    make: { url: "Make Webhook URL", method: "HTTP Method" },
+    zapier: { url: "Zapier Webhook URL", method: "HTTP Method" },
   };
   return labels[type]?.[field] ?? field;
 }
@@ -141,6 +189,10 @@ export function getConfigFields(type: ChannelType): string[] {
     discord: ["webhook_url"],
     webhook: ["url", "method"],
     sms: ["phone", "provider"],
+    whatsapp: ["phone", "base_url", "session_id", "api_key"],
+    n8n: ["url", "method"],
+    make: ["url", "method"],
+    zapier: ["url", "method"],
   };
   return fields[type] ?? [];
 }

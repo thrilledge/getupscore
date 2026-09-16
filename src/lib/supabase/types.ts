@@ -1002,6 +1002,10 @@ export type Database = {
         | "discord"
         | "webhook"
         | "sms"
+        | "whatsapp"
+        | "n8n"
+        | "make"
+        | "zapier"
       notification_status: "pending" | "sent" | "failed"
       proposal_status: "draft" | "sent" | "won" | "lost"
     }
@@ -1134,7 +1138,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      channel_type: ["email", "telegram", "slack", "discord", "webhook", "sms"],
+      channel_type: ["email", "telegram", "slack", "discord", "webhook", "sms", "whatsapp", "n8n", "make", "zapier"],
       notification_status: ["pending", "sent", "failed"],
       proposal_status: ["draft", "sent", "won", "lost"],
     },

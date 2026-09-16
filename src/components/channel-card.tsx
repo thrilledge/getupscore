@@ -46,16 +46,21 @@ import {
   MessageCircle,
   MessageSquare,
   MoreHorizontal,
+  Network,
   Pencil,
+  Phone,
   Power,
   PowerOff,
+  Route,
   Send,
   Smartphone,
   TestTube,
   Trash2,
   Webhook,
   XCircle,
+  Zap,
 } from "lucide-react";
+
 import { supabase } from "@/lib/supabase/client";
 
 const iconMap: Record<string, React.ElementType> = {
@@ -65,6 +70,10 @@ const iconMap: Record<string, React.ElementType> = {
   MessageCircle,
   Webhook,
   Smartphone,
+  Phone,
+  Network,
+  Route,
+  Zap,
 };
 
 interface ChannelCardProps {
@@ -87,9 +96,13 @@ function getConfigSummary(
     case "slack":
     case "discord":
     case "webhook":
+    case "n8n":
+    case "make":
+    case "zapier":
       return config.url ?? config.webhook_url ?? "";
 
     case "sms":
+    case "whatsapp":
       return config.phone ?? "";
 
     default:

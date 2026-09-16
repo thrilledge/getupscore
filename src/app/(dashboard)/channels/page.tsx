@@ -18,6 +18,7 @@ import {
   Plus,
   Radio,
   RefreshCw,
+  Smartphone,
   Webhook,
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ import { supabase } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
 import type { NotificationChannel } from "@/lib/supabase/database-types";
 import { ChannelFormDialog } from "@/components/channel-form";
+import { WhatsAppConnectDialog } from "@/components/whatsapp-connect-dialog";
 import { ChannelCard } from "@/components/channel-card";
 import { SubscriptionGate } from "@/components/subscription-gate";
 import { Button } from "@/components/ui/button";
@@ -257,6 +259,20 @@ function ChannelsContent() {
             </Button>
 
             <div className="min-w-0 flex-1 xl:flex-none">
+              <WhatsAppConnectDialog
+                trigger={
+                  <Button className="h-10 w-full min-w-0 max-w-full overflow-hidden rounded-xl bg-white px-3 text-xs font-semibold text-[#0A0A0A] shadow-sm hover:bg-white/85 min-[380px]:px-4 min-[380px]:text-sm xl:w-auto">
+                    <Smartphone className="size-4 shrink-0" />
+
+                    <span className="truncate whitespace-nowrap">
+                      Connect WhatsApp
+                    </span>
+                  </Button>
+                }
+                onSuccess={() => refetch()}
+              />
+            </div>
+            <div className="min-w-0 flex-1 xl:flex-none">
               <ChannelFormDialog
                 trigger={
                   <Button className="h-10 w-full min-w-0 max-w-full overflow-hidden rounded-xl bg-[#00C98B] px-3 text-xs font-semibold text-[#0A0A0A] shadow-[0_8px_24px_rgba(0,201,139,0.2)] hover:bg-[#00C98B]/90 min-[380px]:px-4 min-[380px]:text-sm xl:w-auto">
@@ -385,7 +401,7 @@ function ChannelsContent() {
                     icon: MessageCircle,
                     title: "Messaging",
                     description:
-                      "Connect Telegram, Slack or Discord.",
+                      "Connect WhatsApp, Telegram, Slack or Discord.",
                   },
                   {
                     icon: Radio,

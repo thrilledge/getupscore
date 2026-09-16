@@ -43,11 +43,15 @@ import {
   Mail,
   MessageCircle,
   MessageSquare,
+  Network,
   Pencil,
+  Phone,
   Plus,
+  Route,
   Send,
   Smartphone,
   Webhook,
+  Zap,
 } from "lucide-react";
 
 const iconMap: Record<string, React.ElementType> = {
@@ -57,6 +61,10 @@ const iconMap: Record<string, React.ElementType> = {
   MessageCircle,
   Webhook,
   Smartphone,
+  Phone,
+  Network,
+  Route,
+  Zap,
 };
 
 function channelToFormValues(
