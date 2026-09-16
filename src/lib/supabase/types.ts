@@ -986,6 +986,13 @@ export type Database = {
         }
         Returns: Json
       }
+      get_market_trends_filtered: {
+        Args: {
+          p_days: number
+          p_filter_ids: string[]
+        }
+        Returns: Json
+      }
     }
     Enums: {
       channel_type:

@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   MessageSquare,
   Send,
@@ -15,6 +16,7 @@ import {
   AlertTriangle,
   Briefcase,
   FileText,
+  X,
 } from "lucide-react";
 
 type Message = {
@@ -57,7 +59,7 @@ const mdComponents: Components = {
   ),
   hr: () => <hr className="my-2 border-muted-foreground/20" />,
   table: ({ children }) => (
-    <div className="my-2 overflow-x-auto">
+    <div className="my-2 max-w-full overflow-x-auto">
       <table className="border-collapse text-[12.5px]">{children}</table>
     </div>
   ),
@@ -99,10 +101,12 @@ export function JobChat({
   jobId,
   jobTitle,
   className,
+  onClose,
 }: {
   jobId: string;
   jobTitle: string;
   className?: string;
+  onClose?: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window === "undefined") return [];
@@ -228,7 +232,7 @@ export function JobChat({
   }, [jobId]);
 
   return (
-    <div className={`rounded-xl border border-border/60 bg-card shadow-sm flex flex-col overflow-hidden ${className ?? ""}`}>
+    <div className={cn("rounded-xl border border-border/60 bg-card shadow-sm flex flex-col overflow-hidden", className)}>
       {/* Header */}
       <div className="flex items-center gap-2 p-4 border-b border-border/40">
         <div className="rounded-lg bg-accent-blue/10 p-1.5">
@@ -249,6 +253,17 @@ export function JobChat({
         >
           <Trash2 className="size-4" />
         </Button>
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-8 text-muted-foreground"
+            onClick={onClose}
+            title="Close chat"
+          >
+            <X className="size-4" />
+          </Button>
+        )}
       </div>
 
       {/* Messages */}
@@ -270,9 +285,9 @@ export function JobChat({
           {messages.map((msg, i) => {
             const isUser = msg.role === "user";
             return (
-              <div key={i} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+              <div key={i} className={`flex min-w-0 ${isUser ? "justify-end" : "justify-start"}`}>
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed break-words ${
+                  className={`max-w-[88%] min-w-0 rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed break-words ${
                     isUser
                       ? "bg-accent-blue text-white rounded-br-md"
                       : "bg-muted text-foreground rounded-bl-md"

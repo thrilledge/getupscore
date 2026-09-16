@@ -3,11 +3,9 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { JobDescription } from "@/components/job-description";
 import {
   Briefcase,
@@ -38,6 +36,7 @@ import {
 } from "lucide-react";
 import { FavoriteButton } from "@/components/favorite-button";
 import { JobChat } from "@/components/job-chat";
+import { ChatLauncher } from "@/components/chat-launcher";
 import { formatJobType } from "@/lib/format-job";
 
 type Analysis = {
@@ -324,7 +323,7 @@ export default function JobDetailPage() {
         Back to Jobs
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_500px] gap-6 items-start">
+      <div className="grid grid-cols-1 gap-6 items-start">
         <div className="space-y-6 min-w-0">
           {/* ── Header ── */}
           <div className="space-y-3">
@@ -948,9 +947,14 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        <div className="lg:sticky lg:top-20 lg:h-[calc(100vh-6rem)]">
-          <JobChat key={job.id} jobId={job.id} jobTitle={job.title} className="h-full" />
-        </div>
+        <ChatLauncher label="Job Assistant">
+          <JobChat
+            key={job.id}
+            jobId={job.id}
+            jobTitle={job.title}
+            className="h-full rounded-none border-0 shadow-none"
+          />
+        </ChatLauncher>
       </div>
     </div>
   );

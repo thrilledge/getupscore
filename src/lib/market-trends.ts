@@ -1,5 +1,7 @@
 export type MarketRange = 7 | 30;
 
+export type MarketScope = "all" | "filters" | "custom";
+
 export interface MarketTrendsMeta {
   periodDays: number;
   totalJobs: number;
@@ -89,6 +91,7 @@ export interface MarketTrends {
     paymentVerifiedYes: number;
     paymentVerifiedTotal: number;
   };
+  applied?: { scope: MarketScope; filterCount: number };
 }
 
 export const RANGES: Array<{ value: MarketRange; label: string }> = [

@@ -12,6 +12,7 @@ import ReactMarkdown, {
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
   BarChart3,
@@ -23,6 +24,7 @@ import {
   Target,
   Trash2,
   Wrench,
+  X,
 } from "lucide-react";
 
 type Message = {
@@ -128,7 +130,7 @@ const mdComponents: Components = {
   ),
 
   table: ({ children }) => (
-    <div className="my-2 overflow-x-auto rounded-lg border border-black/10">
+    <div className="my-2 max-w-full overflow-x-auto rounded-lg border border-black/10">
       <table className="w-full border-collapse text-[11px]">
         {children}
       </table>
@@ -193,8 +195,10 @@ const QUICK_ACTIONS: {
 
 export function ProfileAuditChat({
   className,
+  onClose,
 }: {
   className?: string;
+  onClose?: () => void;
 }) {
   const [messages, setMessages] = useState<
     Message[]
@@ -424,7 +428,10 @@ export function ProfileAuditChat({
 
   return (
     <div
-      className={`flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_14px_45px_rgba(0,0,0,0.06)] ${className ?? ""}`}
+      className={cn(
+        "flex min-h-[500px] flex-col overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_14px_45px_rgba(0,0,0,0.06)]",
+        className ?? ""
+      )}
     >
       {/* Header */}
       <div className="relative flex shrink-0 items-center gap-3 overflow-hidden bg-[#0A0A0A] px-4 py-4">
@@ -466,6 +473,20 @@ export function ProfileAuditChat({
         >
           <Trash2 className="size-3.5" />
         </Button>
+
+        {onClose && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            title="Close chat"
+            aria-label="Close profile audit chat"
+            className="relative size-8 shrink-0 rounded-lg text-white/45 hover:bg-white/10 hover:text-[#00C98B]"
+          >
+            <X className="size-4" />
+          </Button>
+        )}
       </div>
 
       {/* Messages */}
@@ -508,7 +529,7 @@ export function ProfileAuditChat({
             return (
               <div
                 key={index}
-                className={`flex items-end gap-2 ${isUser
+                className={`flex min-w-0 items-end gap-2 ${isUser
                     ? "justify-end"
                     : "justify-start"
                   }`}
@@ -520,9 +541,9 @@ export function ProfileAuditChat({
                 )}
 
                 <div
-                  className={`max-w-[88%] break-words px-3.5 py-2.5 text-[12px] leading-relaxed ${isUser
-                      ? "rounded-2xl rounded-br-md bg-[#0A0A0A] text-white shadow-[0_6px_18px_rgba(0,0,0,0.1)]"
-                      : "rounded-2xl rounded-bl-md border border-black/5 bg-[#F7F8F8] text-black/65"
+                  className={`min-w-0 break-words px-3.5 py-2.5 text-[12px] leading-relaxed ${isUser
+                      ? "max-w-[88%] rounded-2xl rounded-br-md bg-[#0A0A0A] text-white shadow-[0_6px_18px_rgba(0,0,0,0.1)]"
+                      : "max-w-[88%] rounded-2xl rounded-bl-md border border-black/5 bg-[#F7F8F8] text-black/65"
                     }`}
                 >
                   {isUser ? (

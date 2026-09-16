@@ -57,7 +57,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # VPS Deployment (Contabo)
 
 - **Host:** 144.91.85.40
-- **User:** root (password auth; key `C:\Users\Usama\.ssh\contabo_vps` also generated)
+- **User:** root (password auth; key `C:\Users\Usama\.ssh\contabo_vps` also generated) password: Pu9Ia6AKwRNc2
 - **OS:** Ubuntu 24.04.4 LTS, Node v22, Python 3.12
 - **Scripts path:** `/root/mcp-client/`
 - **Env file:** `/etc/upwork-mcp.env` (SUPABASE_URL + SUPABASE_SERVICE_KEY)

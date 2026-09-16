@@ -24,9 +24,16 @@ function heroScore(id: string): number {
 function formatRange(job: LiveJob): string {
   if (job.budget != null) return `$${job.budget.toLocaleString()}`;
   if (job.hourly_min != null && job.hourly_max != null)
-    return `$${job.hourly_min}–$${job.hourly_max}`;
-  if (job.hourly_min != null) return `$${job.hourly_min}`;
+    return `$${job.hourly_min}–$${job.hourly_max}/hr`;
+  if (job.hourly_min != null) return `$${job.hourly_min}/hr`;
   return "—";
+}
+
+function rangeLabel(job: LiveJob): string {
+  const type = (job.job_type || "").toLowerCase();
+  if (type.includes("hourly")) return "Hourly Rate";
+  if (type.includes("fixed")) return "Fixed Price";
+  return "Budget";
 }
 
 function formatSpend(value: number | null | undefined): string | null {
@@ -103,8 +110,6 @@ export function HeroJobStack({
           job.client_location_country || job.client_country || "Global";
         const rating = job.client_rating?.toFixed(1);
         const spend = formatSpend(job.client_total_spend);
-        const range = formatRange(job);
-        const rangeLabel = job.budget != null ? "Est. Budget" : "Est. Hourly";
         const verified = job.payment_verified === true;
         const proposalsLine =
           job.proposals_count != null
@@ -201,12 +206,12 @@ export function HeroJobStack({
                   </div>
                 </div>
 
-                <div className="hidden flex-col items-end text-right sm:flex">
+<div className="hidden flex-col items-end text-right sm:flex">
                   <span className="text-xs text-[#0A0A0A]/50">
-                    {rangeLabel}
+                    {rangeLabel(job)}
                   </span>
                   <span className="text-lg font-bold text-[#00C98B]">
-                    {range}
+                    {formatRange(job)}
                   </span>
                 </div>
               </div>

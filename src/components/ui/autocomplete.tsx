@@ -136,7 +136,7 @@ export function Autocomplete({
 
   return (
     <div className={`relative ${className}`}>
-      <div id={id} className="flex flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+      <div id={id} className="">
         {tags.map((tag, i) => (
           <span
             key={i}
@@ -159,7 +159,7 @@ export function Autocomplete({
           onFocus={() => inputValue && setShowSuggestions(true)}
           onKeyDown={handleKeyDown}
           placeholder={tags.length === 0 ? placeholder : ""}
-          className="min-w-[80px] flex-1 border-0 bg-transparent p-0 text-sm outline-none placeholder:text-muted-foreground"
+          className="h-10 min-w-0 w-full rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] px-2.5 text-xs text-[#0A0A0A] placeholder:text-[#0A0A0A]/30 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20 sm:text-sm border"
         />
       </div>
 
@@ -172,9 +172,8 @@ export function Autocomplete({
             <button
               key={s}
               type="button"
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors ${
-                i === activeIndex ? "bg-muted/70" : ""
-              } ${i > 0 ? "border-t border-border/40" : ""}`}
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors ${i === activeIndex ? "bg-muted/70" : ""
+                } ${i > 0 ? "border-t border-border/40" : ""}`}
               onMouseDown={(e) => {
                 e.preventDefault();
                 addTag(s);

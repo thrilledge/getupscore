@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ProfileAuditChat } from "@/components/profile-audit-chat";
+import { ChatLauncher } from "@/components/chat-launcher";
 import { toast } from "sonner";
 import {
   UserCircle,
@@ -201,7 +202,7 @@ export default function UpworkProfilePage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[minmax(0,1fr)_400px]">
+      <div className="grid grid-cols-1 items-start gap-5">
         <div className="min-w-0 space-y-5">
           {!profile ? (
             /* No profile state */
@@ -578,12 +579,11 @@ export default function UpworkProfilePage() {
             </Card>
           )}
         </div>
-
-        {/* Profile audit chat */}
-        <aside className="min-w-0 lg:sticky lg:top-20 lg:h-[calc(100svh-6rem)]">
-          <ProfileAuditChat className="h-full" />
-        </aside>
       </div>
+
+      <ChatLauncher label="Profile Auditor">
+        <ProfileAuditChat className="h-full rounded-none border-0 shadow-none min-h-0" />
+      </ChatLauncher>
     </div>
   );
 }
