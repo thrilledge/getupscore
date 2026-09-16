@@ -77,15 +77,15 @@ export default function NotificationsPage() {
   const fetchChannelStatus = useCallback(async () => {
     setChannelsLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getSession();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
         setChannelStatus([]);
         return;
       }
       const { data: channels } = await supabase
         .from("notification_channels")
         .select("id, type, name, is_active, is_verified, config")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .eq("is_active", true);
       setChannelStatus(channels ?? []);
     } catch {
