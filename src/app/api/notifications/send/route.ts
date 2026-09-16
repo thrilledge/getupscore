@@ -111,6 +111,17 @@ export async function POST(request: Request) {
         proposalTips: (analysis?.proposal_tips as string[]) || ["Focus on your relevant experience", "Highlight similar projects", "Ask smart questions about scope"],
       };
     } else {
+      // Test mode — include the user's active filter IDs so the rule filter
+      // gating in notifyUser() doesn't skip everything (empty matchedFilterIds
+      // would cause both "has filter" and "no filter" rules to be skipped).
+      const filterSupabase = createSupabaseAdminClient();
+      const { data: userFilters } = await filterSupabase
+        .from("job_filters")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("is_active", true);
+      const allFilterIds = (userFilters ?? []).map((f) => f.id);
+
       alertContext = {
         jobId: "test",
         upworkJobId: "test_job_id",
@@ -123,6 +134,7 @@ export async function POST(request: Request) {
         opportunityScore: 85,
         winProbability: 78,
         recommendation: "strong_apply",
+        matchedFilterIds: allFilterIds.length > 0 ? allFilterIds : ["__test__"],
         proposalTips: [
           "Lead with your React/Node experience",
           "Mention specific projects you've built",
