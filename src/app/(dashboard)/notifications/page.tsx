@@ -39,7 +39,6 @@ interface ChannelStatus {
   name: string;
   is_active: boolean;
   is_verified: boolean;
-  config: Record<string, string>;
 }
 
 function ChannelStatusBadge({
@@ -84,7 +83,6 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [channelStatus, setChannelStatus] = useState<ChannelStatus[]>([]);
-  const [channelsLoading, setChannelsLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
@@ -110,7 +108,6 @@ export default function NotificationsPage() {
   }, []);
 
   const fetchChannelStatus = useCallback(async () => {
-    setChannelsLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -119,14 +116,12 @@ export default function NotificationsPage() {
       }
       const { data: channels } = await supabase
         .from("notification_channels")
-        .select("id, type, name, is_active, is_verified, config")
+        .select("id, type, name, is_active, is_verified")
         .eq("user_id", user.id)
         .eq("is_active", true);
       setChannelStatus(channels ?? []);
     } catch {
       setChannelStatus([]);
-    } finally {
-      setChannelsLoading(false);
     }
   }, []);
 
@@ -178,6 +173,11 @@ export default function NotificationsPage() {
       slack: "Slack",
       discord: "Discord",
       webhook: "Webhook",
+      whatsapp: "WhatsApp",
+      sms: "SMS",
+      n8n: "n8n",
+      make: "Make",
+      zapier: "Zapier",
     };
 
     return map[channel] || channel;

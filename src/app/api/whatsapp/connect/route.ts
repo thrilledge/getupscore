@@ -68,53 +68,84 @@ export async function POST(request: Request) {
 
     const admin = createSupabaseAdminClient();
 
-    // Drop any previous WhatsApp channels (re-connect is clean replace).
-    const { data: oldChannels } = await admin
+    // Reconnect must UPDATE the existing WhatsApp channel in place, not
+    // delete + insert: notification_rules.channel_id cascades on channel
+    // delete, so replacing the row would silently wipe the user's rules and
+    // the test-send flow would then report "No matching rules for this
+    // channel".
+    const { data: existingWhatsApp } = await admin
       .from("notification_channels")
-      .select("id")
+      .select("id, created_at")
       .eq("user_id", userId)
-      .eq("type", "whatsapp");
+      .eq("type", "whatsapp")
+      .order("created_at", { ascending: false });
 
-    const oldChannelIds = (oldChannels ?? []).map((c) => c.id);
+    const rows = existingWhatsApp ?? [];
+    const canonicalId = rows[0]?.id ?? null;
+    const staleIds = rows.slice(1).map((row) => row.id);
 
-    await admin
-      .from("notification_channels")
-      .delete()
-      .eq("user_id", userId)
-      .eq("type", "whatsapp");
+    const nextConfig = {
+      phone: phoneDigits,
+      session_id: sessionCheck.session.id,
+    };
 
-    // Remove orphaned rules that referenced the old WhatsApp channel(s).
-    // Otherwise the test-send flow will find rules whose channel_id no longer
-    // matches any active channel and report "No matching rules".
-    if (oldChannelIds.length > 0) {
-      await admin
-        .from("notification_rules")
-        .delete()
-        .eq("user_id", userId)
-        .in("channel_id", oldChannelIds);
+    let channel: { id: string; name: string; type: string } | null = null;
+
+    if (canonicalId) {
+      // Fold duplicate WhatsApp rows into the canonical one so their rules
+      // survive the cleanup instead of being cascade-deleted.
+      if (staleIds.length > 0) {
+        await admin
+          .from("notification_rules")
+          .update({ channel_id: canonicalId })
+          .eq("user_id", userId)
+          .in("channel_id", staleIds);
+
+        await admin
+          .from("notification_channels")
+          .delete()
+          .eq("user_id", userId)
+          .in("id", staleIds);
+      }
+
+      const { data, error } = await admin
+        .from("notification_channels")
+        .update({
+          config: nextConfig,
+          is_active: true,
+          is_verified: sessionConnected,
+        })
+        .eq("id", canonicalId)
+        .select("id, name, type")
+        .single();
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      channel = data;
+    } else {
+      const { data, error } = await admin
+        .from("notification_channels")
+        .insert({
+          user_id: userId,
+          name: "WhatsApp",
+          type: "whatsapp",
+          config: nextConfig,
+          is_active: true,
+          is_verified: sessionConnected,
+        })
+        .select("id, name, type")
+        .single();
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      channel = data;
     }
 
-    const { data, error } = await admin
-      .from("notification_channels")
-      .insert({
-        user_id: userId,
-        name: "WhatsApp",
-        type: "whatsapp",
-        config: {
-          phone: phoneDigits,
-          session_id: sessionCheck.session.id,
-        },
-        is_active: true,
-        is_verified: sessionConnected,
-      })
-      .select("id, name, type")
-      .single();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ channel: data, sessionConnected });
+    return NextResponse.json({ channel, sessionConnected });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "unknown error";
     return NextResponse.json(

@@ -1,0 +1,47 @@
+
+ name                                       value                       environments                created    
+ OPENWA_SESSION_ID                          Encrypted                   Production                  5h ago     
+ OPENWA_API_KEY                             Encrypted                   Production                  5h ago     
+ OPENWA_BASE_URL                            Encrypted                   Production                  5h ago     
+ UPWORK_CLIENT_SECRET                       Encrypted                   Production                  15d ago    
+ UPWORK_REDIRECT_URI                        Encrypted                   Production                  15d ago    
+ UPWORK_CLIENT_ID                           Encrypted                   Production                  15d ago    
+ UPWORK_TOKEN_ENCRYPTION_KEY                Encrypted                   Production                  17d ago    
+ CEREBRAS_API_KEY                           Encrypted                   Production                  21d ago    
+ PADDLE_WEBHOOK_SECRET                      Encrypted                   Production                  23d ago    
+ PADDLE_API_KEY                             Encrypted                   Production                  23d ago    
+ NEXT_PUBLIC_PADDLE_CLIENT_TOKEN            Encrypted                   Production                  23d ago    
+ GEMINI_API_KEY                             Encrypted                   Production                  27d ago    
+ VERCEL_AUTOMATION_BYPASS_SECRET            Encrypted                   Production                  27d ago    
+ NEXT_PUBLIC_PADDLE_YEARLY_PRICE_ID         pri_01m0chcan7r977…         Production                  28d ago    
+ NEXT_PUBLIC_PADDLE_MONTHLY_PRICE_ID        pri_01m0cha16hw0x8…         Production                  28d ago    
+ NEXT_PUBLIC_PADDLE_SELLER_ID               104287                      Production                  28d ago    
+ NEXT_PUBLIC_PADDLE_ENV                     sandbox                     Production                  28d ago    
+ UPSTASH_REDIS_REST_URL                     Encrypted                   Preview, Production         30d ago    
+ UPSTASH_REDIS_REST_TOKEN                   Encrypted                   Preview, Production         30d ago    
+ INNGEST_SIGNING_KEY                        Encrypted                   Preview, Production         30d ago    
+ INNGEST_EVENT_KEY                          Encrypted                   Preview, Production         30d ago    
+ UPWORK_API_URL                             Encrypted                   Production, Preview         36d ago    
+ SUPABASE_SERVICE_ROLE_KEY                  Encrypted                   Production, Preview         36d ago    
+ SMTP_PORT                                  Encrypted                   Production, Preview         36d ago    
+ SMTP_PASSWORD                              Encrypted                   Production, Preview         36d ago    
+ SMTP_HOST                                  Encrypted                   Production, Preview         36d ago    
+ SMTP_FROM                                  Encrypted                   Production, Preview         36d ago    
+ SMTP_EMAIL                                 Encrypted                   Production, Preview         36d ago    
+ SLACK_SIGNING_SECRET                       Encrypted                   Production, Preview         36d ago    
+ SLACK_CLIENT_SECRET                        Encrypted                   Production, Preview         36d ago    
+ SLACK_CLIENT_ID                            Encrypted                   Production, Preview         36d ago    
+ NEXT_PUBLIC_SUPABASE_URL                   Encrypted                   Production, Preview         36d ago    
+ NEXT_PUBLIC_SUPABASE_ANON_KEY              Encrypted                   Production, Preview         36d ago    
+ NEXT_PUBLIC_SITE_URL                       Encrypted                   Production, Preview         36d ago    
+ GROQ_MODEL                                 Encrypted                   Production, Preview         36d ago    
+ GROQ_API_KEYS                              Encrypted                   Production, Preview         36d ago    
+ CRON_SECRET                                Encrypted                   Production, Preview         36d ago    
+
+Vercel CLI 58.5.1 (Node.js 24.17.0)
+(node:17556) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+Retrieving project…
+> Environment Variables found for zeerak-jamshaid-s-projects/getupscore [408ms]
+
+__EXIT_CODE__=0
