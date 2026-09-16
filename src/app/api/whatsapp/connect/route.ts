@@ -69,11 +69,30 @@ export async function POST(request: Request) {
     const admin = createSupabaseAdminClient();
 
     // Drop any previous WhatsApp channels (re-connect is clean replace).
+    const { data: oldChannels } = await admin
+      .from("notification_channels")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("type", "whatsapp");
+
+    const oldChannelIds = (oldChannels ?? []).map((c) => c.id);
+
     await admin
       .from("notification_channels")
       .delete()
       .eq("user_id", userId)
       .eq("type", "whatsapp");
+
+    // Remove orphaned rules that referenced the old WhatsApp channel(s).
+    // Otherwise the test-send flow will find rules whose channel_id no longer
+    // matches any active channel and report "No matching rules".
+    if (oldChannelIds.length > 0) {
+      await admin
+        .from("notification_rules")
+        .delete()
+        .eq("user_id", userId)
+        .in("channel_id", oldChannelIds);
+    }
 
     const { data, error } = await admin
       .from("notification_channels")

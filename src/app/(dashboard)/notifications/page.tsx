@@ -42,6 +42,41 @@ interface ChannelStatus {
   config: Record<string, string>;
 }
 
+function ChannelStatusBadge({
+  channel,
+}: {
+  channel: ChannelStatus;
+}) {
+  const typeColors: Record<string, string> = {
+    whatsapp: "bg-green-100 text-green-800",
+    email: "bg-blue-100 text-blue-800",
+    slack: "bg-purple-100 text-purple-800",
+    telegram: "bg-yellow-100 text-yellow-800",
+  };
+
+  const typeColor = typeColors[channel.type] ?? "bg-gray-100 text-gray-800";
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${typeColor}`}
+    >
+      {channel.type === "whatsapp" ? (
+        <svg
+          className="size-3"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M17.414 11.586a3 3 0 00-4.242 0l-3 3a3 3 0 004.242 4.242l1.5-1.5a.75.75 0 011.06 0l2.5 2.5a.75.75 0 01-1.06 1.06l-1.5-1.5a4.5 4.5 0 00-6.363 6.364l3 3a4.5 4.5 0 006.363-6.363l-2.5-2.5a.75.75 0 01-1.06 0l-1.5 1.5a3 3 0 004.242 4.242l3-3a3 3 0 000-4.242z" />
+        </svg>
+      ) : (
+        <Bell className="size-3" />
+      )}
+      {channel.type}
+    </span>
+  );
+}
+
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<
     NotificationItem[]
@@ -77,15 +112,15 @@ export default function NotificationsPage() {
   const fetchChannelStatus = useCallback(async () => {
     setChannelsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         setChannelStatus([]);
         return;
       }
       const { data: channels } = await supabase
         .from("notification_channels")
         .select("id, type, name, is_active, is_verified, config")
-        .eq("user_id", session.user.id)
+        .eq("user_id", user.id)
         .eq("is_active", true);
       setChannelStatus(channels ?? []);
     } catch {
@@ -243,6 +278,20 @@ export default function NotificationsPage() {
           </div>
         </div>
       </section>
+
+      {/* Active Channels Summary */}
+      {channelStatus.length > 0 && (
+        <section className="animate-in fade-in slide-in-from-bottom-2 overflow-hidden rounded-[18px] border border-[#00C98B]/15 bg-[#00C98B]/5 px-5 py-4 shadow-[0_8px_24px_rgba(0,201,139,0.06)] duration-500">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#00C98B]">
+              Active channels
+            </span>
+            {channelStatus.map((ch) => (
+              <ChannelStatusBadge key={ch.id} channel={ch} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Loading state */}
       {loading && (
