@@ -90,6 +90,11 @@ export const env = {
   PADDLE_MONTHLY_PRICE_ID: getEnv("NEXT_PUBLIC_PADDLE_MONTHLY_PRICE_ID"),
   PADDLE_YEARLY_PRICE_ID: getEnv("NEXT_PUBLIC_PADDLE_YEARLY_PRICE_ID"),
 
+  // OpenWA (WhatsApp)
+  OPENWA_BASE_URL: getEnv("OPENWA_BASE_URL"),
+  OPENWA_API_KEY: getEnv("OPENWA_API_KEY"),
+  OPENWA_SESSION_ID: getEnv("OPENWA_SESSION_ID", "upscore"),
+
   // Notifications
   isNotificationsConfigured:
     (process.env.SMTP_HOST !== "" && process.env.SMTP_HOST !== undefined) ||

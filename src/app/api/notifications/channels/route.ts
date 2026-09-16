@@ -1,5 +1,6 @@
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
+import { isSessionReachable } from "@/lib/whatsapp/openwa-client";
 import crypto from "crypto";
 
 /** Returns the Slack state-signing secret, or null when Slack is not configured. */
@@ -68,7 +69,24 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const sanitizedName = name || `${channel_type} Notifications`;
-    const sanitizedConfig = config || {};
+    let sanitizedConfig = config || {};
+
+    // WhatsApp gateway credentials are server-side config — never ask the
+    // user for them. Resolve the real session UUID (OpenWA only accepts the
+    // id, not the session name); the API key + base URL stay env-only (read
+    // at send time) so the master key never hits the DB.
+    if (channel_type === "whatsapp") {
+      const sessionCheck = await isSessionReachable(
+        env.OPENWA_SESSION_ID || "upscore"
+      );
+      sanitizedConfig = {
+        phone: sanitizedConfig.phone ?? "",
+        session_id:
+          sessionCheck.ok && sessionCheck.session.id
+            ? sessionCheck.session.id
+            : env.OPENWA_SESSION_ID || "upscore",
+      };
+    }
 
     const admin = createSupabaseAdminClient();
     const { data, error: insertError } = await admin

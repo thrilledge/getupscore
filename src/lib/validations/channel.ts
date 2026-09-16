@@ -79,9 +79,6 @@ const configSchemas: Record<ChannelType, z.ZodType> = {
   }),
   whatsapp: z.object({
     phone: z.string().min(1, "Phone number is required"),
-    base_url: z.string().url("Invalid OpenWA URL"),
-    session_id: z.string().min(1, "Session ID is required"),
-    api_key: z.string().min(1, "API key is required"),
   }),
   n8n: z.object({
     url: z.string().url("Invalid URL"),
@@ -140,9 +137,6 @@ export function getConfigFieldPlaceholder(
     sms: { phone: "+1234567890" },
     whatsapp: {
       phone: "+1234567890",
-      base_url: "http://144.91.85.40/openwa",
-      session_id: "upscore",
-      api_key: "openwa-api-key",
     },
     n8n: { url: "https://n8n.example.com/webhook/..." },
     make: { url: "https://hook.make.com/..." },
@@ -167,9 +161,6 @@ export function getConfigFieldLabel(
     sms: { phone: "Phone Number", provider: "Provider (optional)" },
     whatsapp: {
       phone: "Recipient Phone",
-      base_url: "OpenWA Base URL",
-      session_id: "Session ID",
-      api_key: "API Key",
     },
     n8n: { url: "n8n Webhook URL", method: "HTTP Method" },
     make: { url: "Make Webhook URL", method: "HTTP Method" },
@@ -189,7 +180,7 @@ export function getConfigFields(type: ChannelType): string[] {
     discord: ["webhook_url"],
     webhook: ["url", "method"],
     sms: ["phone", "provider"],
-    whatsapp: ["phone", "base_url", "session_id", "api_key"],
+    whatsapp: ["phone"],
     n8n: ["url", "method"],
     make: ["url", "method"],
     zapier: ["url", "method"],
