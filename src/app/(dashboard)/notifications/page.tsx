@@ -10,6 +10,7 @@ import { SubscriptionGate } from "@/components/subscription-gate";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { supabase } from "@/lib/supabase/client";
 import {
   Bell,
   CheckCircle2,
@@ -32,12 +33,23 @@ interface NotificationItem {
   job_title?: string;
 }
 
+interface ChannelStatus {
+  id: string;
+  type: string;
+  name: string;
+  is_active: boolean;
+  is_verified: boolean;
+  config: Record<string, string>;
+}
+
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<
     NotificationItem[]
   >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [channelStatus, setChannelStatus] = useState<ChannelStatus[]>([]);
+  const [channelsLoading, setChannelsLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
@@ -62,9 +74,31 @@ export default function NotificationsPage() {
     }
   }, []);
 
+  const fetchChannelStatus = useCallback(async () => {
+    setChannelsLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getSession();
+      if (!user) {
+        setChannelStatus([]);
+        return;
+      }
+      const { data: channels } = await supabase
+        .from("notification_channels")
+        .select("id, type, name, is_active, is_verified, config")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+      setChannelStatus(channels ?? []);
+    } catch {
+      setChannelStatus([]);
+    } finally {
+      setChannelsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchNotifications();
-  }, [fetchNotifications]);
+    fetchChannelStatus();
+  }, [fetchNotifications, fetchChannelStatus]);
 
   const statusIcon = (status: string) => {
     switch (status) {
