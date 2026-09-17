@@ -151,9 +151,11 @@ def map_get_response(resp):
     ctype = norm(terms.get("contractType") or resp.get("job_type"))
     is_hourly = (ctype or "").lower() in ("hourly",)
 
-    # hourly budget from `get`, else from fixed budget
-    hourly_min = hourly.get("hourlyBudgetMin")
-    hourly_max = hourly.get("hourlyBudgetMax")
+    # hourly budget from `get`, else from fixed budget.
+    # MCP sometimes returns a flat/search-style shape (no marketPlaceJobPosting
+    # nesting) where these live on the top-level response.
+    hourly_min = hourly.get("hourlyBudgetMin") or resp.get("hourly_min")
+    hourly_max = hourly.get("hourlyBudgetMax") or resp.get("hourly_max")
     # MCP fixed-price budget lives under fixedPriceContractTerms.amount as
     # {currency, rawValue, displayValue}; older shapes used .budget/.maxBudget.
     fixed_amount = fixed.get("amount") or {}
@@ -180,7 +182,7 @@ def map_get_response(resp):
     row = {
         "upwork_job_id": str(jid),
         "title": (title or "(untitled)")[:500],
-        "description": norm(_strip_untrusted(content.get("description"))),
+        "description": norm(_strip_untrusted(content.get("description") or resp.get("description"))),
         "url": norm(mjp.get("url") or resp.get("url")),
         "job_type": (ctype or "")[:50],
         "contractor_tier": norm(terms.get("experienceLevel") or resp.get("experience_level") or resp.get("experienceLevel")),
@@ -219,8 +221,8 @@ def map_get_response(resp):
         "client_region": norm(country.get("region")),
         "client_company_size": norm(resp.get("client_company_size") or client_company.get("company_size")),
         "client_member_since": norm(resp.get("client_member_since")),
-        "persons_to_hire": to_int(terms.get("personsToHire")),
-        "engagement_type": norm(hourly.get("engagementType")),
+        "persons_to_hire": to_int(terms.get("personsToHire") or resp.get("persons_to_hire")),
+        "engagement_type": norm(hourly.get("engagementType") or resp.get("engagement_type")),
         "client_hourly_budget_type": norm(hourly.get("hourlyBudgetType")),
         # Keep preferred_qualifications as a real JSON object so the client
         # can read it directly (unlike client_recent_history, which stores the
