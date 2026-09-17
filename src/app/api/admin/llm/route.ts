@@ -260,6 +260,13 @@ export async function GET(req: NextRequest) {
     const keysEnv = process.env.GROQ_API_KEYS;
     const groqKeyCount = keysEnv ? keysEnv.split(",").filter(Boolean).length : (process.env.GROQ_API_KEY ? 1 : 0);
     const model = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
+    const pmKeyPresent = Boolean(process.env.PROFREEMODELS_API_KEY);
+    const pmModel = process.env.PROFREEMODELS_MODEL || "claude-sonnet-5";
+
+    const providers = [];
+    if (pmKeyPresent) providers.push({ name: "ProfreeModels", keys: 1, model: pmModel });
+    providers.push({ name: "Groq", keys: groqKeyCount, model });
+    providers.push({ name: "Pollinations AI", keys: 1, model: "openai" });
 
     return NextResponse.json({
       ok: true,
@@ -274,10 +281,7 @@ export async function GET(req: NextRequest) {
         errors: errorCount ?? 0,
       },
       chain: {
-        providers: [
-          { name: "Groq", keys: groqKeyCount, model },
-          { name: "Pollinations AI", keys: 1, model: "openai" },
-        ],
+        providers,
       },
       byProvider: Object.entries(byProvider).map(([provider, data]) => ({
         provider,

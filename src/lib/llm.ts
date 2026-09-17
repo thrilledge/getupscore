@@ -7,7 +7,7 @@ export interface LLMProvider {
   extraHeaders?: Record<string, string>;
 }
 
-export type ProviderName = "groq";
+export type ProviderName = "profreemodels" | "groq";
 
 export interface LLMChainOptions {
   /** Force a specific provider, skipping the default chain order. */
@@ -38,7 +38,8 @@ export class LlmError extends Error {
 }
 
 /**
- * Provider chain: multiple Groq API keys + Pollinations AI fallback.
+ * Provider chain: ProfreeModels (free pro-tier models) preferred, then
+ * multiple Groq API keys, then Pollinations AI fallback.
  *
  * IMPORTANT: Groq enforces its token-per-day (TPD) limit per *organization*,
  * not per API key. Multiple keys created inside a single Groq account all draw
@@ -49,6 +50,8 @@ export class LlmError extends Error {
  * Pollinations AI is appended as a free fallback — no auth needed, ~1 req/15s.
  *
  * Supports:
+ * - PROFREEMODELS_API_KEY / PROFREEMODELS_MODEL — preferred analysis provider
+ *   (free pro-tier GPT/Claude/GLM/Kimi models via ProfreeModels gateway).
  * - GROQ_API_KEYS: comma-separated list of API keys (preferred)
  * - GROQ_API_KEY: single API key (backward compatible)
  */
@@ -58,6 +61,18 @@ export function getProviderChain(_opts?: LLMChainOptions): LLMProvider[] {
 
 function buildAllProviders(): LLMProvider[] {
   const chain: LLMProvider[] = [];
+
+  // Preferred: ProfreeModels free pro-tier models
+  const pmKey = process.env.PROFREEMODELS_API_KEY;
+  if (pmKey) {
+    chain.push({
+      name: "profreemodels",
+      baseUrl: process.env.PROFREEMODELS_BASE_URL || "https://profreemodels.vercel.app/api/v1",
+      apiKey: pmKey,
+      model: process.env.PROFREEMODELS_MODEL || "claude-sonnet-5",
+    });
+  }
+
   const model = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
   const baseUrl = "https://api.groq.com/openai/v1";
 

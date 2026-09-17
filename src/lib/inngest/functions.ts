@@ -21,52 +21,28 @@ export const processCronJobs = inngest.createFunction(
     triggers: [{ event: "app/cron.trigger" }],
   },
   async ({ event, step }) => {
-    // Step 1: Fetch + upsert jobs
-    const { newJobIds, totalFetched } = await step.run("fetch-and-upsert", async () => {
-      const { fetchJobs, toJobInserts } = await import("@/lib/jobs/fetcher");
+    // Step 1: Pull recently-synced jobs from DB (VPS MCP sync writes them)
+    // instead of fetching via scraper — the scraper providers are dead.
+    const { newJobIds, jobs } = await step.run("fetch-ids-from-db", async () => {
       const supabase = createSupabaseAdminClient();
 
-      const fetchResult = await fetchJobs();
-      if (!fetchResult.success) {
-        throw new NonRetriableError(`Fetch failed: ${fetchResult.error}`);
-      }
-
-      const rawJobs = fetchResult.jobs;
-      if (rawJobs.length === 0) {
-        return { newJobIds: [], totalFetched: 0 };
-      }
-
-      const inserts = toJobInserts(rawJobs);
-      const jobsJsonb = inserts.map((j: any) => ({
-        ...j,
-        skills: Array.isArray(j.skills) ? j.skills : null,
-        client_recent_history: j.client_recent_history || null,
-      }));
-
-      const { data, error } = await supabase.rpc("bulk_upsert_jobs" as any, {
-        p_jobs: jobsJsonb,
-      } as any);
+      const sinceCutoff = new Date(Date.now() - 25 * 60 * 1000).toISOString();
+      const { data: recentJobs, error } = await supabase
+        .from("jobs")
+        .select("id, upwork_job_id, title, description, skills, budget, hourly_min, hourly_max, job_type, client_country, client_location_country, client_total_spend, proposals_count, category, subcategory, client_payment_verified, payment_verified, client_rating, client_score, client_total_hires, client_total_jobs_with_hires, client_active_assignments, client_hire_rate")
+        .gte("created_at", sinceCutoff)
+        .limit(100);
 
       if (error) {
-        const newIds: string[] = [];
-        for (const insert of inserts) {
-          const { data: inserted, error: insErr } = await supabase
-            .from("jobs")
-            .upsert(insert as any, {
-              onConflict: "upwork_job_id",
-              ignoreDuplicates: false,
-            })
-            .select("id")
-            .single();
-          if (!insErr && inserted) newIds.push(inserted.id);
-        }
-        return { newJobIds: newIds, totalFetched: rawJobs.length };
+        throw new NonRetriableError(`DB query failed: ${error.message}`);
       }
 
-      const result = data as any;
+      // Only jobs that were newly INSERTED (created our side) vs. same-job re-upserts
+      // use a second pass below.
+      const rows = (recentJobs || []) as any[];
       return {
-        newJobIds: result?.new_ids || [],
-        totalFetched: rawJobs.length,
+        newJobIds: rows.map((j) => j.id),
+        jobs: rows,
       };
     });
 
@@ -77,7 +53,7 @@ export const processCronJobs = inngest.createFunction(
       await cacheInvalidate("system:");
     });
 
-    // Step 3: Static pre-filter → only promising jobs go to AI
+    // Step 3: Static pre-filter → only promising jobs go to AI (per user)
     if (newJobIds.length > 0) {
       await step.run("static-prefilter-and-fanout", async () => {
         const supabase = createSupabaseAdminClient();
@@ -102,18 +78,25 @@ export const processCronJobs = inngest.createFunction(
         const userIds = [...userIdSet];
         if (userIds.length === 0) return;
 
-        const jobIds = newJobIds.slice(0, 100);
         const events: { name: "app/jobs.analyze"; data: { jobId: string; userId: string } }[] = [];
         let passed = 0;
         let skipped = 0;
+        let alreadyAnalyzed = 0;
 
-        const { data: jobRows } = await supabase
-          .from("jobs")
-          .select("id, title, description, skills, budget, hourly_min, hourly_max, job_type, client_country, client_location_country, client_total_spend, proposals_count, category, subcategory")
-          .in("id", jobIds);
+        const { data: analyzedRows } = await supabase
+          .from("job_analyses")
+          .select("job_id, user_id")
+          .in("job_id", newJobIds)
+          .in("user_id", userIds);
 
-        for (const job of jobRows || []) {
+        const analyzedSet = new Set((analyzedRows || []).map((a: any) => `${a.job_id}:${a.user_id}`));
+
+        for (const job of jobs) {
           for (const userId of userIds) {
+            if (analyzedSet.has(`${job.id}:${userId}`)) {
+              alreadyAnalyzed++;
+              continue;
+            }
             const userFilters = filters.filter((f: any) => f.user_id === userId);
             const result = staticScore(
               {
@@ -146,7 +129,7 @@ export const processCronJobs = inngest.createFunction(
           }
         }
 
-        console.log(`[StaticFilter] ${passed} passed, ${skipped} skipped out of ${jobRows?.length || 0} jobs × ${userIds.length} users`);
+        console.log(`[StaticFilter] ${passed} passed, ${skipped} skipped, ${alreadyAnalyzed} already analyzed out of ${jobs.length} jobs × ${userIds.length} users`);
 
         for (let i = 0; i < events.length; i += 50) {
           await inngest.send(events.slice(i, i + 50));
@@ -156,7 +139,6 @@ export const processCronJobs = inngest.createFunction(
 
     return {
       ok: true,
-      totalFetched,
       newJobs: newJobIds.length,
     };
   }

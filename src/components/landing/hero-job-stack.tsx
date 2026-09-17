@@ -16,7 +16,7 @@ import {
 function heroScore(id: string): number {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
-    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+    hash = (hash * 31 + i + id.charCodeAt(i)) >>> 0;
   }
   return 70 + (hash % 29);
 }
@@ -47,35 +47,35 @@ function getCardStyle(diff: number) {
   if (diff === 0) {
     return {
       zIndex: 5,
-      transform: "translateX(0) translateY(0) scale(1)",
+      transform: "translateX(0) translateY(0) scale(1) rotateY(0deg)",
       opacity: 1,
     };
   }
   if (diff === 1) {
     return {
       zIndex: 4,
-      transform: "translateX(10%) translateY(7%) scale(0.95)",
-      opacity: 0.9,
+      transform: "translateX(8%) translateY(5%) scale(0.97) rotateY(-5deg)",
+      opacity: 0.92,
     };
   }
   if (diff === 2) {
     return {
       zIndex: 3,
-      transform: "translateX(16%) translateY(13%) scale(0.9)",
-      opacity: 0.8,
+      transform: "translateX(14%) translateY(10%) scale(0.92) rotateY(-10deg)",
+      opacity: 0.82,
     };
   }
   if (diff === 3) {
     return {
       zIndex: 2,
-      transform: "translateX(20%) translateY(18%) scale(0.86)",
+      transform: "translateX(18%) translateY(14%) scale(0.88) rotateY(-15deg)",
       opacity: 0.7,
     };
   }
   return {
     zIndex: 1,
-    transform: "translateX(23%) translateY(22%) scale(0.83)",
-    opacity: 0.6,
+    transform: "translateX(20%) translateY(18%) scale(0.85) rotateY(-20deg)",
+    opacity: 0.55,
   };
 }
 
@@ -99,7 +99,7 @@ export function HeroJobStack({
   return (
     <div
       className="relative w-full overflow-visible"
-      style={{ perspective: "1200px", minHeight: 420 }}
+      style={{ perspective: "1000px", minHeight: 420 }}
     >
       {jobs.map((job, i) => {
         const diff = ((i - active) + jobs.length) % jobs.length;
@@ -124,16 +124,15 @@ export function HeroJobStack({
               zIndex: style.zIndex,
               transform: style.transform,
               opacity: style.opacity,
-              transition: "all 0.7s cubic-bezier(0.32, 0.72, 0, 1)",
+              transition: "all 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
               willChange: "transform, opacity",
             }}
           >
             <div
-              className={`flex flex-col gap-4 rounded-[24px] border border-[#0A0A0A]/10 p-6 shadow-2xl ${
-                isActive
+              className={`flex flex-col gap-4 rounded-[24px] border border-[#0A0A0A]/10 p-6 shadow-2xl ${isActive
                   ? "bg-white shadow-[0_8px_40px_rgba(0,201,139,0.14)]"
-                  : "bg-white/70 backdrop-blur-2xl"
-              }`}
+                  : "bg-white/80 backdrop-blur-lg dark:(bg-black/30 dark:border-white/10)"
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#00C98B]">
@@ -146,13 +145,13 @@ export function HeroJobStack({
 
                 <span
                   suppressHydrationWarning
-                  className="rounded bg-[#0A0A0A]/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0A0A0A]/50"
+                  className="rounded bg-[#0A0A0A]/5 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#0A0A0A]/50 dark:(text-white/50)"
                 >
                   Posted {timeAgo(job.posted_at)}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-[#0A0A0A]/5 bg-[#F7FFFC] p-4">
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-[#0A0A0A]/5 bg-[#F7FFFC] dark:(bg-black/20) p-4">
                 <div className="flex items-center gap-4">
                   <div className="relative grid size-16 place-items-center">
                     <svg
@@ -161,7 +160,7 @@ export function HeroJobStack({
                       className="size-16 -rotate-90"
                     >
                       <path
-                        className="text-[#0A0A0A]/10"
+                        className="text-[#0A0A0A]/10 dark:(text-white/10)"
                         d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                         fill="none"
                         stroke="currentColor"
@@ -179,10 +178,10 @@ export function HeroJobStack({
                     </svg>
 
                     <div className="absolute flex flex-col items-center justify-center">
-                      <span className="text-lg font-bold leading-none text-[#0A0A0A]">
+                      <span className="text-lg font-bold leading-none text-[#0A0A0A] dark:(text-white)">
                         {score}
                       </span>
-                      <span className="text-[9px] uppercase text-[#0A0A0A]/50">
+                      <span className="text-[9px] uppercase text-[#0A0A0A]/50 dark:(text-white/50)">
                         score
                       </span>
                     </div>
@@ -196,18 +195,18 @@ export function HeroJobStack({
                       FIT SCORE
                     </span>
 
-                    <p className="mt-1 text-sm font-bold text-[#0A0A0A]">
+                    <p className="mt-1 text-sm font-bold text-[#0A0A0A] dark:(text-white)">
                       High Conversion Probability
                     </p>
 
-                    <p className="text-xs text-[#0A0A0A]/55">
+                    <p className="text-xs text-[#0A0A0A]/55 dark:(text-white/50)">
                       {proposalsLine}
                     </p>
                   </div>
                 </div>
 
-<div className="hidden flex-col items-end text-right sm:flex">
-                  <span className="text-xs text-[#0A0A0A]/50">
+                <div className="hidden flex-col items-end text-right sm:flex">
+                  <span className="text-xs text-[#0A0A0A]/50 dark:(text-white/50)">
                     {rangeLabel(job)}
                   </span>
                   <span className="text-lg font-bold text-[#00C98B]">
@@ -217,14 +216,14 @@ export function HeroJobStack({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <h3 className="font-heading cursor-pointer text-base font-bold leading-snug text-[#0A0A0A] transition-colors hover:text-[#00A975]">
+                <h3 className="font-heading cursor-pointer text-base font-bold leading-snug text-[#0A0A0A] dark:(text-white) transition-colors hover:text-[#00A975]">
                   {job.title}
                 </h3>
 
-                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-[#0A0A0A]/55">
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-[#0A0A0A]/55 dark:(text-white/50)">
                   {verified && (
                     <>
-                      <span className="inline-flex items-center gap-1 text-[#0A0A0A]">
+                      <span className="inline-flex items-center gap-1 text-[#0A0A0A] dark:(text-white)">
                         <CircleCheck className="size-3.5 shrink-0 text-[#00C98B]" />
                         Payment Verified
                       </span>
@@ -244,7 +243,7 @@ export function HeroJobStack({
 
                   {spend && (
                     <>
-                      <span className="inline-flex items-center gap-1 text-[#0A0A0A]">
+                      <span className="inline-flex items-center gap-1 text-[#0A0A0A] dark:(text-white)">
                         <DollarSign className="size-3.5 shrink-0 text-[#00C98B]" />
                         {spend}
                       </span>
@@ -253,17 +252,17 @@ export function HeroJobStack({
                   )}
 
                   <span className="inline-flex items-center gap-1">
-                    <Globe className="size-3.5 shrink-0 text-[#0A0A0A]/45" />
+                    <Globe className="size-3.5 shrink-0 text-[#0A0A0A]/45 dark:(text-white/45)" />
                     {country}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-start gap-2.5 rounded-lg border border-[#0A0A0A]/5 bg-[#0A0A0A]/5 p-3 text-sm leading-6 text-[#0A0A0A]/60">
-                <BrainCircuit className="mt-0.5 size-5 shrink-0 text-[#00A975]" />
+              <div className="flex items-start gap-2.5 rounded-lg border border-[#0A0A0A]/5 bg-[#0A0A0A]/5 p-3 text-sm leading-6 text-[#0A0A0A]/60 dark:(border-white/5 dark:bg-white/5 dark:text-white/60)">
+                <BrainCircuit className="mt-0.5 size-5 shrink-0 text-[#00A975] dark:(text-white)" />
 
                 <p className="line-clamp-3">
-                  <span className="font-semibold text-[#0A0A0A]">
+                  <span className="font-semibold text-[#0A0A0A] dark:(text-white)">
                     Job Brief:
                   </span>{" "}
                   {job.description?.trim() ||
@@ -271,13 +270,13 @@ export function HeroJobStack({
                 </p>
               </div>
 
-              <div className="flex items-center justify-between rounded-lg border border-[#0A0A0A]/5 bg-[#F7FFFC] p-3">
-                <span className="inline-flex items-center gap-2 text-sm font-bold text-[#0A0A0A]">
+              <div className="flex items-center justify-between rounded-lg border border-[#0A0A0A]/5 bg-[#F7FFFC] dark:(bg-black/20) p-3">
+                <span className="inline-flex items-center gap-2 text-sm font-bold text-[#0A0A0A] dark:(text-white)">
                   <Send className="size-4 text-[#00C98B]" />
                   Pushed to Telegram &amp; Slack
                 </span>
 
-                <span className="animate-pulse text-xs font-bold text-[#00C98B] motion-reduce:animate-none">
+                <span className="animate-pulse text-xs font-bold text-[#00C98B] dark:(text-[#00C98B]) motion-reduce:animate-none">
                   0.8s latency
                 </span>
               </div>

@@ -51,7 +51,7 @@ export async function analyzeJob(
       reasoning: analysisData.reasoning || "",
       proposal_tips: Array.isArray(analysisData.proposal_tips) ? analysisData.proposal_tips.slice(0, 10) : [],
       red_flags: Array.isArray(analysisData.red_flags) ? analysisData.red_flags.slice(0, 10) : [],
-      model_used: "groq-multikey",
+      model_used: analysisData.model_used || "unknown",
     },
     { onConflict: "job_id, user_id", ignoreDuplicates: false }
   );
@@ -155,7 +155,10 @@ JSON schema:
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new Error("Empty LLM response");
 
-  return parseLlmJson(content);
+  return {
+    ...parseLlmJson(content),
+    model_used: response.provider.model || response.provider.name,
+  };
 }
 
 function serverSideKeywordFallback(job: any): Record<string, any> {
@@ -165,6 +168,7 @@ function serverSideKeywordFallback(job: any): Record<string, any> {
     match_score: 40,
     opportunity_score: 40,
     win_probability: 40,
+    model_used: "keyword-fallback",
     skills_match: {
       matched_skills: [],
       missing_skills: [],
