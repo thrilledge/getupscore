@@ -25,7 +25,7 @@ export interface WhatsAppPayload {
   text: string;
 }
 
-const REQUEST_TIMEOUT_MS = 10_000;
+const REQUEST_TIMEOUT_MS = 30_000;
 
 export async function sendWhatsApp(
   config: WhatsAppConfig,

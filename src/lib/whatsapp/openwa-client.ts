@@ -20,7 +20,7 @@ export interface OpenWASession {
   engineLoaded: boolean;
 }
 
-const TIMEOUT_MS = 15_000;
+const TIMEOUT_MS = 30_000;
 
 function headers(): Record<string, string> {
   return {
