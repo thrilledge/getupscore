@@ -68,22 +68,22 @@ const configSchemas: Record<ChannelType, z.ZodType> = {
   }),
   webhook: z.object({
     url: z.string().url("Invalid URL"),
-    method: z.enum(["GET", "POST", "PUT"]).optional().default("POST"),
+    secret: z.string().optional(),
   }),
   whatsapp: z.object({
     phone: z.string().min(1, "Phone number is required"),
   }),
   n8n: z.object({
     url: z.string().url("Invalid URL"),
-    method: z.enum(["GET", "POST", "PUT"]).optional().default("POST"),
+    secret: z.string().optional(),
   }),
   make: z.object({
     url: z.string().url("Invalid URL"),
-    method: z.enum(["GET", "POST", "PUT"]).optional().default("POST"),
+    secret: z.string().optional(),
   }),
   zapier: z.object({
     url: z.string().url("Invalid URL"),
-    method: z.enum(["GET", "POST", "PUT"]).optional().default("POST"),
+    secret: z.string().optional(),
   }),
 };
 
@@ -149,13 +149,13 @@ export function getConfigFieldLabel(
     telegram: { bot_token: "Bot Token", chat_id: "Chat ID" },
     slack: { webhook_url: "Webhook URL" },
     discord: { webhook_url: "Webhook URL" },
-    webhook: { url: "Webhook URL", method: "HTTP Method" },
+    webhook: { url: "Webhook URL", secret: "Webhook secret (optional)" },
     whatsapp: {
       phone: "Recipient Phone",
     },
-    n8n: { url: "n8n Webhook URL", method: "HTTP Method" },
-    make: { url: "Make Webhook URL", method: "HTTP Method" },
-    zapier: { url: "Zapier Webhook URL", method: "HTTP Method" },
+    n8n: { url: "n8n Webhook URL", secret: "Webhook secret (optional)" },
+    make: { url: "Make Webhook URL", secret: "Webhook secret (optional)" },
+    zapier: { url: "Zapier Webhook URL", secret: "Webhook secret (optional)" },
   };
   return labels[type]?.[field] ?? field;
 }
@@ -169,11 +169,11 @@ export function getConfigFields(type: ChannelType): string[] {
     telegram: ["bot_token", "chat_id"],
     slack: ["webhook_url"],
     discord: ["webhook_url"],
-    webhook: ["url", "method"],
+    webhook: ["url", "secret"],
     whatsapp: ["phone"],
-    n8n: ["url", "method"],
-    make: ["url", "method"],
-    zapier: ["url", "method"],
+    n8n: ["url", "secret"],
+    make: ["url", "secret"],
+    zapier: ["url", "secret"],
   };
   return fields[type] ?? [];
 }

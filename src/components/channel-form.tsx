@@ -553,71 +553,8 @@ export function ChannelFormDialog({
 
                   <div className="space-y-3.5">
                     {configFields.map((field) => {
-                      const isSelectField =
-                        field === "method";
-
                       const currentConfig =
                         watch("config") ?? {};
-
-                      if (isSelectField) {
-                        return (
-                          <div
-                            key={field}
-                            className="space-y-1.5"
-                          >
-                            <Label
-                              htmlFor={`config_${field}`}
-                              className="text-[12px] font-semibold text-[#0A0A0A]"
-                            >
-                              {getConfigFieldLabel(
-                                selectedType,
-                                field
-                              )}
-                            </Label>
-
-                            <Select
-                              value={String(
-                                currentConfig[field] ??
-                                "POST"
-                              )}
-                              onValueChange={(
-                                value: string | null
-                              ) =>
-                                setConfigField(
-                                  field,
-                                  value ?? "POST"
-                                )
-                              }
-                            >
-                              <SelectTrigger
-                                className={
-                                  selectTriggerClassName
-                                }
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-
-                              <SelectContent className="rounded-xl border-black/10 bg-white p-1 shadow-xl">
-                                <SelectGroup>
-                                  {[
-                                    "GET",
-                                    "POST",
-                                    "PUT",
-                                  ].map((method) => (
-                                    <SelectItem
-                                      key={method}
-                                      value={method}
-                                      className="rounded-lg text-xs focus:bg-[#00C98B]/10"
-                                    >
-                                      {method}
-                                    </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        );
-                      }
 
                       return (
                         <div
@@ -637,7 +574,7 @@ export function ChannelFormDialog({
                           <Input
                             id={`config_${field}`}
                             type={
-                              field === "phone"
+                              ["phone"].includes(field)
                                 ? "tel"
                                 : "text"
                             }

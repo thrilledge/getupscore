@@ -11,7 +11,7 @@ import { lookup } from "node:dns/promises";
 
 export interface WebhookConfig {
   url: string;
-  method?: "GET" | "POST" | "PUT";
+  secret?: string;
 }
 
 export interface WebhookPayload {
@@ -112,18 +112,22 @@ export async function sendWebhook(
     return { ok: false, error: "Could not resolve webhook host" };
   }
 
-  const method = config.method || "POST";
-
   try {
     const fetchOptions: RequestInit = {
-      method,
-      headers: { "Content-Type": "application/json" },
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(config.secret
+          ? { "X-UpScore-Secret": config.secret }
+          : {}),
+      },
       signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     };
 
-    if (method !== "GET") {
-      fetchOptions.body = JSON.stringify(payload);
-    }
+    fetchOptions.body = JSON.stringify({
+      ...payload,
+      ...(config.secret ? { webhook_secret: config.secret } : {}),
+    });
 
     const response = await fetch(parsed.toString(), fetchOptions);
 

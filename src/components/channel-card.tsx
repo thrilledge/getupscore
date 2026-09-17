@@ -41,6 +41,7 @@ import {
 import {
   Bell,
   CheckCircle2,
+  KeyRound,
   Loader2,
   Mail,
   MessageCircle,
@@ -450,6 +451,25 @@ export function ChannelCard({
               </p>
             </div>
           </div>
+
+          {["webhook", "n8n", "make", "zapier"].includes(channel.type) &&
+            (channel.config as Record<string, string>)?.secret && (
+              <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-[#00C98B]/10 bg-[#F0FDF8] px-3 py-2.5 min-[420px]:gap-3 min-[420px]:px-3.5 min-[420px]:py-3">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white text-[#008F64] shadow-sm">
+                  <KeyRound className="size-4" />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="mb-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#008F64]/60 min-[420px]:text-[10px]">
+                    Webhook secret
+                  </p>
+
+                  <p className="truncate font-mono text-[11px] font-medium text-black/65 min-[420px]:text-xs" title={`X-UpScore-Secret: ${(channel.config as Record<string, string>).secret}`}>
+                    {(channel.config as Record<string, string>).secret}
+                  </p>
+                </div>
+              </div>
+            )}
         </CardContent>
 
         <CardFooter className="mt-auto flex min-w-0 items-center justify-between gap-2 border-t border-black/5 px-4 py-3 min-[480px]:gap-3 min-[480px]:px-5 min-[480px]:py-3.5">

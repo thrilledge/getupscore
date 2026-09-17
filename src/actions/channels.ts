@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { channelFormSchema } from "@/lib/validations/channel";
 import type { Json, NotificationChannel } from "@/lib/supabase/database-types";
+import crypto from "crypto";
 
 export type ChannelActionResult = {
   success: boolean;
@@ -51,6 +52,16 @@ export async function createChannel(
   }
 
   const { name, type, config } = parsed.data;
+
+  // Webhook-based channels (webhook, n8n, make, zapier) get an auto-generated
+  // secret when the user doesn't provide one — the receiving side uses it to
+  // verify the alert is genuinely from UpScore (header X-UpScore-Secret).
+  if (
+    ["webhook", "n8n", "make", "zapier"].includes(type) &&
+    (!config.secret || String(config.secret).trim() === "")
+  ) {
+    config.secret = crypto.randomBytes(24).toString("hex");
+  }
 
   const { data: channel, error } = await supabase
     .from("notification_channels")
@@ -110,6 +121,26 @@ export async function updateChannel(
   }
 
   const { name, type, config } = parsed.data;
+
+  // Preserve the existing webhook secret if the form left it blank, so an
+  // edit that only changes the URL doesn't silently rotate the secret the
+  // receiver is configured to verify.
+  const isWebhookType = ["webhook", "n8n", "make", "zapier"].includes(type);
+  if (isWebhookType && (!config.secret || String(config.secret).trim() === "")) {
+    const { data: existing } = await supabase
+      .from("notification_channels")
+      .select("config")
+      .eq("id", channelId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const oldSecret = (existing?.config as Record<string, unknown> | null)?.secret;
+    if (oldSecret) {
+      config.secret = String(oldSecret);
+    }
+  } else if (isWebhookType) {
+    config.secret = String(config.secret);
+  }
 
   const { data: channel, error } = await supabase
     .from("notification_channels")
