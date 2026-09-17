@@ -9,7 +9,6 @@ const channelTypes = [
   "slack",
   "discord",
   "webhook",
-  "sms",
   "whatsapp",
   "n8n",
   "make",
@@ -24,7 +23,6 @@ export const channelTypeLabels: Record<ChannelType, string> = {
   slack: "Slack",
   discord: "Discord",
   webhook: "Webhook",
-  sms: "SMS",
   whatsapp: "WhatsApp",
   n8n: "n8n",
   make: "Make",
@@ -37,7 +35,6 @@ export const channelTypeIcons: Record<ChannelType, string> = {
   slack: "MessageSquare",
   discord: "MessageCircle",
   webhook: "Webhook",
-  sms: "Smartphone",
   whatsapp: "Phone",
   n8n: "Network",
   make: "Route",
@@ -72,10 +69,6 @@ const configSchemas: Record<ChannelType, z.ZodType> = {
   webhook: z.object({
     url: z.string().url("Invalid URL"),
     method: z.enum(["GET", "POST", "PUT"]).optional().default("POST"),
-  }),
-  sms: z.object({
-    phone: z.string().min(1, "Phone number is required"),
-    provider: z.string().optional(),
   }),
   whatsapp: z.object({
     phone: z.string().min(1, "Phone number is required"),
@@ -134,7 +127,6 @@ export function getConfigFieldPlaceholder(
     slack: { webhook_url: "https://hooks.slack.com/services/..." },
     discord: { webhook_url: "https://discord.com/api/webhooks/..." },
     webhook: { url: "https://example.com/webhook" },
-    sms: { phone: "+1234567890" },
     whatsapp: {
       phone: "+1234567890",
     },
@@ -158,7 +150,6 @@ export function getConfigFieldLabel(
     slack: { webhook_url: "Webhook URL" },
     discord: { webhook_url: "Webhook URL" },
     webhook: { url: "Webhook URL", method: "HTTP Method" },
-    sms: { phone: "Phone Number", provider: "Provider (optional)" },
     whatsapp: {
       phone: "Recipient Phone",
     },
@@ -179,7 +170,6 @@ export function getConfigFields(type: ChannelType): string[] {
     slack: ["webhook_url"],
     discord: ["webhook_url"],
     webhook: ["url", "method"],
-    sms: ["phone", "provider"],
     whatsapp: ["phone"],
     n8n: ["url", "method"],
     make: ["url", "method"],
