@@ -181,6 +181,11 @@ export function CtaFooter() {
                     Contact Us
                   </a>
                 </li>
+                <li>
+                  <Link href="/affiliate" className="text-sm text-white/55 transition-colors hover:text-white">
+                    Affiliate Program
+                  </Link>
+                </li>
               </ul>
             </div>
 
@@ -190,10 +195,26 @@ export function CtaFooter() {
                 Legal
               </h3>
               <ul className="mt-4 space-y-3">
-                <li className="text-sm text-white/40">Terms of Service</li>
-                <li className="text-sm text-white/40">Privacy Policy</li>
-                <li className="text-sm text-white/40">Security Architecture</li>
-                <li className="text-sm text-white/40">Status Telemetry</li>
+                <li>
+                  <Link href="/terms" className="text-sm text-white/55 transition-colors hover:text-white">
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/privacy" className="text-sm text-white/55 transition-colors hover:text-white">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/security" className="text-sm text-white/55 transition-colors hover:text-white">
+                    Security Architecture
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/status" className="text-sm text-white/55 transition-colors hover:text-white">
+                    Status Telemetry
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>

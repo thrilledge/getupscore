@@ -325,7 +325,7 @@ export default function SignupPage() {
             <CardHeader className="space-y-1 px-6 pb-4 pt-5 text-center sm:px-7 sm:pt-6">
               <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-2xl bg-[#0A0A0A] shadow-[0_10px_25px_rgba(0,0,0,0.16)]">
                 <img
-                  src="/getgetupscore-logo-icon.png"
+                  src="/getupscore-logo-icon.png"
                   alt={env.APP_NAME}
                   width={40}
                   height={40}

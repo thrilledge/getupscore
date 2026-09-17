@@ -947,7 +947,7 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        <ChatLauncher label="Job Assistant">
+        <ChatLauncher label="Job Assistant" contextKey={job.id} defaultSessionId={job.id}>
           <JobChat
             key={job.id}
             jobId={job.id}

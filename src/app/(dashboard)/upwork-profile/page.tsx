@@ -581,7 +581,7 @@ export default function UpworkProfilePage() {
         </div>
       </div>
 
-      <ChatLauncher label="Profile Auditor">
+      <ChatLauncher label="Profile Auditor" contextKey="profile-audit" defaultSessionId="profile-audit">
         <ProfileAuditChat className="h-full rounded-none border-0 shadow-none min-h-0" />
       </ChatLauncher>
     </div>

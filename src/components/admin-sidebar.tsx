@@ -35,6 +35,7 @@ import {
   MessageSquare,
   FlaskConical,
   Tag,
+  Star,
 } from "lucide-react";
 import {
   Avatar,
@@ -56,6 +57,7 @@ const adminNavItems = [
   { title: "LLM Usage", href: "/admin/llm", icon: "Brain" },
   { title: "Errors", href: "/admin/errors", icon: "AlertTriangle" },
   { title: "Feedback", href: "/admin/feedback", icon: "MessageSquare" },
+  { title: "Reviews", href: "/admin/reviews", icon: "Star" },
   { title: "Bulk Email", href: "/admin/bulk-email", icon: "Mail" },
   { title: "A/B Tests", href: "/admin/ab-tests", icon: "FlaskConical" },
   { title: "Coupons", href: "/admin/coupons", icon: "Tag" },
@@ -76,6 +78,7 @@ const iconMap: Record<string, React.ElementType> = {
   MessageSquare,
   FlaskConical,
   Tag,
+  Star,
   Shield,
 };
 

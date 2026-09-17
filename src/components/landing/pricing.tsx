@@ -3,9 +3,24 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { parse } from "node:path";
 
 type BillingPeriod = "monthly" | "yearly";
+
+type CurrencyCode = "USD" | "EUR" | "PKR" | "INR";
+
+const CURRENCIES: CurrencyCode[] = ["USD", "EUR", "PKR", "INR"];
+
+// Static fallback rates (≈ real world values) used until the live
+// exchange-rate fetch resolves or when the API call fails.
+const FALLBACK_RATES: Record<CurrencyCode, number> = {
+  USD: 1,
+  EUR: 0.92,
+  PKR: 279.5,
+  INR: 83.9,
+};
+
+const FX_CACHE_KEY = "upscore-fx-rates";
+const FX_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 const freeFeatures = [
   "Up to 10 filtered jobs per refresh",
@@ -22,27 +37,109 @@ const proFeatures = [
   "Unlimited negative keywords & budget filters",
 ];
 
-const proPrices: Record<BillingPeriod, { amount: string; sub: string }> = {
-  monthly: { amount: "$12", sub: "/ month billed monthly" },
-  yearly: { amount: "$10.83", sub: "/ month billed yearly" },
+// Base prices in USD, converted at display time using live rates.
+const basePrices: Record<BillingPeriod, number> = {
+  monthly: 12,
+  yearly: 10.83,
 };
 
-// get save ammount if purchased yearly
+function formatPrice(
+  usd: number,
+  currency: CurrencyCode,
+  rates: Record<CurrencyCode, number>
+): string {
+  const value = usd * (rates[currency] ?? 1);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: currency === "PKR" ? 0 : 2,
+    minimumFractionDigits: currency === "PKR" ? 0 : 2,
+  }).format(value);
+}
 
-let getNumber = (priceStr: string) => parseFloat(priceStr.replace(/[^0-9.]/g, ''));
+function useExchangeRates() {
+  const [rates, setRates] =
+    useState<Record<CurrencyCode, number>>(FALLBACK_RATES);
 
-const monthlyPrice = getNumber(proPrices.monthly.amount);
-const yearlyPrice = getNumber(proPrices.yearly.amount);
+  useEffect(() => {
+    let cancelled = false;
 
+    try {
+      const cachedRaw = localStorage.getItem(FX_CACHE_KEY);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw) as {
+          ts: number;
+          rates: Record<string, number>;
+        };
+        if (
+          cached &&
+          cached.rates &&
+          typeof cached.ts === "number" &&
+          Date.now() - cached.ts < FX_CACHE_TTL
+        ) {
+          const merged = { ...FALLBACK_RATES };
+          for (const c of CURRENCIES) {
+            if (typeof cached.rates[c] === "number") {
+              merged[c] = cached.rates[c];
+            }
+          }
+          if (!cancelled) setRates(merged);
+          return;
+        }
+      }
+    } catch {
+      // ignore malformed cache, fall through to fetch
+    }
 
+    async function load() {
+      try {
+        const res = await fetch(
+          "https://open.er-api.com/v6/latest/USD",
+          { signal: AbortSignal.timeout(8000) }
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          result?: string;
+          rates?: Record<string, number>;
+        };
+        if (data.result !== "success" || !data.rates) return;
 
-let savedAmount = (monthlyPrice * 12) - (yearlyPrice * 12)
+        const merged = { ...FALLBACK_RATES };
+        for (const c of CURRENCIES) {
+          if (typeof data.rates[c] === "number") {
+            merged[c] = data.rates[c];
+          }
+        }
+        if (cancelled) return;
+        setRates(merged);
+        try {
+          localStorage.setItem(
+            FX_CACHE_KEY,
+            JSON.stringify({ ts: Date.now(), rates: merged })
+          );
+        } catch {
+          // storage full/blocked — non-fatal
+        }
+      } catch {
+        // offline or blocked — fallback rates already in state
+      }
+    }
 
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return rates;
+}
 
 export function Pricing() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [period, setPeriod] = useState<BillingPeriod>("monthly");
+  const [currency, setCurrency] = useState<CurrencyCode>("USD");
+  const rates = useExchangeRates();
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -59,6 +156,10 @@ export function Pricing() {
     observer.observe(section);
     return () => observer.disconnect();
   }, []);
+
+  const monthlyUsd = basePrices.monthly * 12;
+  const yearlyUsd = basePrices.yearly * 12;
+  const savedUsd = monthlyUsd - yearlyUsd;
 
   return (
     <section
@@ -94,31 +195,49 @@ export function Pricing() {
             proposal.
           </p>
 
-          {/* Billing toggle */}
-          <div className="mt-6 inline-flex items-center rounded-xl bg-white p-1.5 shadow-sm">
-            <button
-              type="button"
-              onClick={() => setPeriod("monthly")}
-              className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${period === "monthly"
-                ? "bg-[#0A0A0A]/10 text-[#0A0A0A]"
-                : "text-[#0A0A0A]/50 hover:text-[#0A0A0A]"
-                }`}
-            >
-              Monthly
-            </button>
-            <button
-              type="button"
-              onClick={() => setPeriod("yearly")}
-              className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${period === "yearly"
-                ? "bg-[#0A0A0A]/10 text-[#0A0A0A]"
-                : "text-[#0A0A0A]/50 hover:text-[#0A0A0A]"
-                }`}
-            >
-              Yearly
-              <span className="rounded bg-[#00C98B]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#00A975]">
-                SAVE 10%
-              </span>
-            </button>
+          {/* Billing + currency toggles */}
+          <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <div className="inline-flex items-center rounded-xl bg-white p-1.5 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setPeriod("monthly")}
+                className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${period === "monthly"
+                  ? "bg-[#0A0A0A]/10 text-[#0A0A0A]"
+                  : "text-[#0A0A0A]/50 hover:text-[#0A0A0A]"
+                  }`}
+              >
+                Monthly
+              </button>
+              <button
+                type="button"
+                onClick={() => setPeriod("yearly")}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${period === "yearly"
+                  ? "bg-[#0A0A0A]/10 text-[#0A0A0A]"
+                  : "text-[#0A0A0A]/50 hover:text-[#0A0A0A]"
+                  }`}
+              >
+                Yearly
+                <span className="rounded bg-[#00C98B]/20 px-1.5 py-0.5 text-[10px] font-bold text-[#00A975]">
+                  SAVE 10%
+                </span>
+              </button>
+            </div>
+
+            <div className="inline-flex items-center gap-1 rounded-xl bg-white p-1.5 shadow-sm">
+              {CURRENCIES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCurrency(c)}
+className={`rounded-lg px-2.5 py-1.5 text-xs font-bold tabular-nums transition-all ${currency === c
+                    ? "bg-[#00C98B]/15 text-[#0A0A0A]"
+                    : "text-[#0A0A0A]/45 hover:text-[#0A0A0A]"
+                    }`}
+                  >
+                    {c}
+                  </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -140,7 +259,7 @@ export function Pricing() {
 
               <div className="flex items-baseline gap-1">
                 <span className="font-heading text-4xl font-bold text-[#0A0A0A]">
-                  $0
+                  {formatPrice(0, currency, rates)}
                 </span>
                 <span className="text-sm text-[#0A0A0A]/50">forever</span>
               </div>
@@ -187,10 +306,10 @@ export function Pricing() {
 
               <div className="flex items-baseline gap-1">
                 <span className="font-heading text-4xl font-bold text-[#00C98B]">
-                  {proPrices[period].amount}
+                  {formatPrice(basePrices[period], currency, rates)}
                 </span>
                 <span className="text-sm text-[#0A0A0A]/50">
-                  {proPrices[period].sub}
+                  / month billed {period === "yearly" ? "yearly" : "monthly"}
                 </span>
               </div>
 
@@ -220,7 +339,7 @@ export function Pricing() {
 
         <p className="mt-6 text-center text-xs font-medium text-[#0A0A0A]/45">
           UpScore Pro is billed via secure Stripe checkout —
-          yearly billing saves ${savedAmount.toFixed(0)} compared to monthly payments.
+          yearly billing saves {formatPrice(savedUsd, currency, rates)} compared to monthly payments.
         </p>
       </div>
     </section>

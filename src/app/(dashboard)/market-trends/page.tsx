@@ -275,6 +275,12 @@ export default function MarketTrendsPage() {
                 value={scopeValue}
                 onChange={setScopeValue}
                 filters={filters}
+                onFilterCreated={(filter) =>
+                  setFilters((current) => [
+                    filter,
+                    ...current.filter((f) => f.id !== filter.id),
+                  ])
+                }
               />
 
               <button

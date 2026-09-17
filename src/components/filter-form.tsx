@@ -74,7 +74,7 @@ interface FilterFormDialogProps {
   /** Called when open state changes (when used without a trigger) */
   onOpenChange?: (open: boolean) => void;
   /** Called after a successful save (useful for closing a parent dialog) */
-  onSuccess?: () => void;
+  onSuccess?: (filter?: JobFilter) => void;
 }
 
 // ─── Component ──────────────────────────────────────────
@@ -150,7 +150,7 @@ export function FilterFormDialog({
             : "Filter created successfully."
         );
         setOpen(false);
-        onSuccess?.();
+        onSuccess?.(result.filter);
       } finally {
         setSubmitting(false);
       }

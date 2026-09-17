@@ -32,6 +32,7 @@ interface Props {
   value: ScopeValue;
   onChange: (v: ScopeValue) => void;
   filters: JobFilter[];
+  onFilterCreated?: (filter: JobFilter) => void;
 }
 
 const SCOPE_ITEMS: Array<{ value: MarketScope; label: string; hint: string }> = [
@@ -40,7 +41,7 @@ const SCOPE_ITEMS: Array<{ value: MarketScope; label: string; hint: string }> = 
   { value: "custom", label: "Custom filters…", hint: "Pick specific filters" },
 ];
 
-export function MarketScopeSelect({ value, onChange, filters }: Props) {
+export function MarketScopeSelect({ value, onChange, filters, onFilterCreated }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState<string[]>([]);
@@ -137,6 +138,15 @@ export function MarketScopeSelect({ value, onChange, filters }: Props) {
       )}
 
       <FilterFormDialog
+        onSuccess={(filter) => {
+          if (filter) {
+            onFilterCreated?.(filter);
+            onChange({
+              scope: "custom",
+              filterIds: [...value.filterIds, filter.id],
+            });
+          }
+        }}
         trigger={
           <button
             type="button"
@@ -178,6 +188,15 @@ export function MarketScopeSelect({ value, onChange, filters }: Props) {
                 </p>
                 {activeFilters.length === 0 && (
                   <FilterFormDialog
+                    onSuccess={(filter) => {
+                      if (filter) {
+                        onFilterCreated?.(filter);
+                        onChange({
+                          scope: "custom",
+                          filterIds: [...value.filterIds, filter.id],
+                        });
+                      }
+                    }}
                     trigger={
                       <span className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-[#00C98B] transition-colors hover:underline">
                         <Plus className="size-3" />

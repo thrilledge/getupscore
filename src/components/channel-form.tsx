@@ -36,9 +36,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  AlertTriangle,
   Check,
   CheckCircle2,
+  Copy,
   ExternalLink,
+  KeyRound,
   Loader2,
   Mail,
   MessageCircle,
@@ -111,6 +114,10 @@ export function ChannelFormDialog({
   const [submitting, setSubmitting] = useState(false);
   const [connectingSlack, setConnectingSlack] =
     useState(false);
+  const [createdChannel, setCreatedChannel] =
+    useState<NotificationChannel | null>(null);
+  const [copiedSecret, setCopiedSecret] =
+    useState(false);
 
   const open = controlledOpen ?? internalOpen;
   const setOpen =
@@ -180,6 +187,8 @@ export function ChannelFormDialog({
 
       if (nextOpen) {
         reset(channelToFormValues(channel));
+        setCreatedChannel(null);
+        setCopiedSecret(false);
       }
     },
     [channel, reset, setOpen]
@@ -223,14 +232,28 @@ export function ChannelFormDialog({
           return;
         }
 
-        toast.success(
-          isEditing
-            ? "Channel updated successfully."
-            : "Channel created successfully."
-        );
+        const isWebhookType = [
+          "webhook",
+          "n8n",
+          "make",
+          "zapier",
+        ].includes(values.type);
 
-        setOpen(false);
-        onSuccess?.();
+        // Webhook-based channels get an auto-generated secret. Show it in the
+        // dialog (copyable) before closing, so the user can grab it while it's
+        // fresh instead of digging it out of the channel card later.
+        if (!isEditing && isWebhookType) {
+          setCreatedChannel(result.channel ?? null);
+          setCopiedSecret(false);
+        } else {
+          toast.success(
+            isEditing
+              ? "Channel updated successfully."
+              : "Channel created successfully."
+          );
+          setOpen(false);
+          onSuccess?.();
+        }
       } finally {
         setSubmitting(false);
       }
@@ -256,6 +279,25 @@ export function ChannelFormDialog({
     [watch, setValue]
   );
 
+  const handleCopySecret = useCallback(async () => {
+    const secret = (createdChannel?.config as Record<string, unknown> | null)?.secret;
+    if (typeof secret !== "string" || !secret) return;
+
+    try {
+      await navigator.clipboard.writeText(secret);
+      setCopiedSecret(true);
+      window.setTimeout(() => setCopiedSecret(false), 2000);
+    } catch {
+      toast.error("Failed to copy secret.");
+    }
+  }, [createdChannel]);
+
+  const handleFinish = useCallback(() => {
+    toast.success("Channel created successfully.");
+    setOpen(false);
+    onSuccess?.();
+  }, [onSuccess, setOpen]);
+
   const inputClassName =
     "h-10 rounded-lg border-black/10 bg-white px-3 text-[13px] text-[#0A0A0A] shadow-none placeholder:text-black/30 transition-colors hover:border-black/20 focus-visible:border-[#00C98B] focus-visible:ring-2 focus-visible:ring-[#00C98B]/15";
 
@@ -278,6 +320,119 @@ export function ChannelFormDialog({
       )}
 
       <DialogContent className="max-h-[calc(100dvh-1.5rem)] w-[calc(100%-1.25rem)] overflow-hidden rounded-2xl border border-black/10 bg-white p-0 shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:max-h-[calc(100dvh-3rem)] sm:max-w-[520px] [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:top-4 [&_[data-slot=dialog-close]]:rounded-lg [&_[data-slot=dialog-close]]:text-white/60 [&_[data-slot=dialog-close]]:hover:bg-white/10 [&_[data-slot=dialog-close]]:hover:text-white">
+        {createdChannel ? (
+          <div className="relative overflow-hidden bg-[#0A0A0A]">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-14 -top-16 size-44 rounded-full bg-[#00C98B]/15 blur-3xl"
+            />
+
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -bottom-20 -left-16 size-44 rounded-full bg-[#00C98B]/10 blur-3xl"
+            />
+
+            <div className="relative px-5 py-6 sm:px-6 sm:py-7">
+              <div className="flex items-start gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-2xl border border-[#00C98B]/30 bg-[#00C98B]/10 text-[#00C98B]">
+                  <CheckCircle2 className="size-5" />
+                </span>
+
+                <div className="min-w-0">
+                  <h2 className="font-heading text-lg font-bold leading-tight tracking-tight text-white">
+                    Channel created
+                  </h2>
+
+                  <p className="mt-1 text-xs leading-relaxed text-white/50">
+                    Copy your webhook secret now — it&apos;s used to
+                    verify alerts are genuinely from UpScore
+                    (<code className="rounded bg-white/10 px-1 py-0.5 font-mono text-[11px] text-[#00C98B]">
+                      X-UpScore-Secret
+                    </code>{" "}
+                    header).
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                <div className="rounded-xl border border-white/10 bg-white/[0.045] p-3.5">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/40">
+                    Channel
+                  </p>
+
+                  <p className="mt-1 flex items-center gap-2 truncate text-sm font-bold text-white">
+                    <TypeIcon className="size-3.5 text-[#00C98B]" />
+
+                    {createdChannel.name}
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-[#00C98B]/25 bg-[#00C98B]/10 p-3.5">
+                  <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#00C98B]">
+                    <KeyRound className="size-3" />
+                    Webhook secret
+                  </p>
+
+                  <div className="mt-2 flex items-center gap-2">
+                    <code className="min-w-0 flex-1 truncate rounded-lg bg-[#0A0A0A] px-3 py-2 font-mono text-xs text-[#00C98B]">
+                      {String((createdChannel.config as Record<string, unknown> | null)?.secret ?? "")}
+                    </code>
+
+                    <Button
+                      type="button"
+                      onClick={handleCopySecret}
+                      className="h-9 shrink-0 gap-1.5 rounded-lg bg-[#00C98B] px-3 text-xs font-bold text-[#0A0A0A] hover:bg-[#00C98B]/90"
+                    >
+                      {copiedSecret ? (
+                        <>
+                          <Check className="size-3.5" />
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="size-3.5" />
+                          Copy
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  <p className="mt-2 text-[11px] leading-relaxed text-[#00C98B]/70">
+                    Send it to your webhook receiver&apos;s{" "}
+                    <code className="rounded bg-[#0A0A0A]/40 px-1 py-0.5 font-mono text-[10px]">
+                      X-UpScore-Secret
+                    </code>{" "}
+                    header (or the{" "}
+                    <code className="rounded bg-[#0A0A0A]/40 px-1 py-0.5 font-mono text-[10px]">
+                      webhook_secret
+                    </code>{" "}
+                    field of the JSON body) to verify requests.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2.5">
+                  <AlertTriangle className="size-3.5 shrink-0 text-amber-400" />
+
+                  <p className="text-[11px] leading-relaxed text-amber-200/80">
+                    This secret is shown only once — save it before
+                    closing this dialog.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <Button
+                  type="button"
+                  onClick={handleFinish}
+                  className="h-10 rounded-lg bg-white px-5 text-sm font-bold text-[#0A0A0A] hover:bg-[#00C98B]"
+                >
+                  <Check className="size-4" />
+                  Done
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
         <form
           onSubmit={handleSubmit(
             onSubmit as (
@@ -646,6 +801,7 @@ export function ChannelFormDialog({
               )}
           </div>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   );

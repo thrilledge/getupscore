@@ -23,6 +23,7 @@ const pageTitles: Record<string, string> = {
   "/admin/errors": "Error Logs",
   "/admin/bulk-email": "Bulk Email",
   "/admin/feedback": "User Feedback",
+  "/admin/reviews": "Reviews",
   "/admin/ab-tests": "A/B Tests",
   "/admin/coupons": "Coupons",
   "/admin/affiliates": "Affiliates",

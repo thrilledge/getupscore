@@ -480,6 +480,38 @@ export default function JobsPage() {
     });
   }
 
+  // Show the best available price: fixed budget, hourly range
+  // (including one-sided "From $X/hr" / "Up to $X/hr" posts), or the
+  // weekly retainer for retainer-based jobs that have no hourly rate.
+  function formatBudget(job: JobItem): string {
+    if (job.budget != null) return `$${job.budget}`;
+    if (job.hourly_min != null && job.hourly_max != null)
+      return `$${job.hourly_min}–${job.hourly_max}/hr`;
+    if (job.hourly_min != null) return `From $${job.hourly_min}/hr`;
+    if (job.hourly_max != null) return `Up to $${job.hourly_max}/hr`;
+    if (job.weekly_retainer != null)
+      return `$${job.weekly_retainer}/wk`;
+    return "—";
+  }
+
+  // Combine workload + duration into one readable line. These are
+  // independent fields ("More than 30 hrs/week" and "More than 6
+  // months") so both must render even when only one is present.
+  function formatWorkload(job: JobItem): string {
+    const parts: string[] = [];
+    if (job.hours_per_week) parts.push(job.hours_per_week);
+    if (job.duration_label) parts.push(job.duration_label);
+    if (
+      job.weekly_retainer != null &&
+      job.budget == null &&
+      job.hourly_min == null &&
+      job.hourly_max == null
+    ) {
+      parts.push(`$${job.weekly_retainer}/wk`);
+    }
+    return parts.join(" · ");
+  }
+
   function clearFilters() {
     setSearchQuery("");
     setJobTypeFilter("");
@@ -1387,11 +1419,7 @@ export default function JobsPage() {
                             </p>
 
                             <p className="mt-1 truncate text-xs font-bold tabular-nums text-[#0A0A0A]">
-                              {job.budget != null
-                                ? `$${job.budget}`
-                                : job.hourly_min != null
-                                  ? `$${job.hourly_min}–${job.hourly_max}/hr`
-                                  : "—"}
+                              {formatBudget(job)}
                             </p>
                           </div>
 
@@ -1402,9 +1430,14 @@ export default function JobsPage() {
 
                             <p className="mt-1 truncate text-xs font-medium text-[#0A0A0A]/60">
                               {job.hours_per_week ||
-                                job.duration_label ||
                                 "Not specified"}
                             </p>
+
+                            {job.duration_label && (
+                              <p className="mt-1 truncate text-xs font-medium text-[#0A0A0A]/60">
+                                {job.duration_label}
+                              </p>
+                            )}
                           </div>
                         </div>
 
@@ -1578,27 +1611,15 @@ export default function JobsPage() {
                                   <DollarSign className="size-3.5 shrink-0 text-[#00A975]" />
 
                                   <span className="text-sm font-bold tabular-nums text-[#0A0A0A]">
-                                    {job.budget != null
-                                      ? `$${job.budget}`
-                                      : job.hourly_min !=
-                                        null
-                                        ? `$${job.hourly_min}–${job.hourly_max}/hr`
-                                        : "—"}
+                                    {formatBudget(job)}
                                   </span>
                                 </div>
 
-                                {job.hours_per_week && (
+                                {formatWorkload(job) && (
                                   <div className="flex items-center gap-1.5">
                                     <Clock className="size-3 shrink-0 text-[#0A0A0A]/35" />
-
                                     <span className="text-xs text-[#0A0A0A]/45">
-                                      {
-                                        job.hours_per_week
-                                      }
-
-                                      {job.duration_label
-                                        ? ` · ${job.duration_label}`
-                                        : ""}
+                                      {formatWorkload(job)}
                                     </span>
                                   </div>
                                 )}
