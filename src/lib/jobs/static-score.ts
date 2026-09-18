@@ -77,9 +77,14 @@ function scoreJobVsFilter(
     job.subcategory || "",
   ].join("\n").toLowerCase();
 
-  // ── Keywords (30 pts) ──
+  // ── Keywords (30 pts) — HARD GATE ──
+  // If the filter defines keywords and NONE match, the job is irrelevant for
+  // this filter regardless of other signals. Return 0 so the job cannot pass
+  // (MIN_STATIC_SCORE) on empty-bonus points alone — otherwise every job
+  // floods the AI queue and matching jobs starve in the backlog.
   if (filter.keywords.length > 0) {
     const matched = filter.keywords.filter((k) => contains(k, haystack));
+    if (matched.length === 0) return 0;
     const ratio = matched.length / filter.keywords.length;
     score += Math.round(30 * ratio);
   } else {

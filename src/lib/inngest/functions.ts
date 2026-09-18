@@ -40,6 +40,12 @@ export const processCronJobs = inngest.createFunction(
       // Only jobs that were newly INSERTED (created our side) vs. same-job re-upserts
       // use a second pass below.
       const rows = (recentJobs || []) as any[];
+      // Newest jobs first — the queue is FIFO, so junk that slipped past the
+      // static filter would otherwise starve fresh, matching jobs forever.
+      rows.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
       return {
         newJobIds: rows.map((j) => j.id),
         jobs: rows,
@@ -150,7 +156,7 @@ export const analyzeJobFunction = inngest.createFunction(
   {
     id: "analyze-job",
     retries: 3,
-    concurrency: { limit: 5 },
+    concurrency: { limit: 15 },
     triggers: [{ event: "app/jobs.analyze" }],
   },
   async ({ event, step }) => {
