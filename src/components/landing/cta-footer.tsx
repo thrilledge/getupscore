@@ -29,68 +29,9 @@ export function CtaFooter() {
       ref={sectionRef}
       className="relative overflow-hidden border-t border-[#0A0A0A]/10"
     >
-      {/* CTA Banner */}
-      <div className="relative overflow-hidden bg-[#F7FFFC] py-20 sm:py-24">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: "radial-gradient(circle at center, rgba(0,201,139,0.18) 0%, transparent 70%)",
-          }}
-        />
-
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -left-40 top-0 size-[350px] rounded-full bg-[#00C98B]/10 blur-[120px]"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-40 top-0 size-[350px] rounded-full bg-[#00C98B]/10 blur-[120px]"
-        />
-
-        <div className="relative mx-auto max-w-4xl px-5 text-center sm:px-8 lg:px-12">
-          <div
-            style={{ transitionDelay: isVisible ? "100ms" : "0ms" }}
-            className={`flex flex-col items-center gap-5 transition-all duration-700 ease-out ${isVisible ? "translate-y-0 opacity-100 blur-0" : "translate-y-12 opacity-0 blur-[4px]"}`}
-          >
-            <div className="inline-flex items-center gap-2 rounded-full bg-[#00C98B]/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-[#00C98B]">
-              <span className="size-2 animate-ping rounded-full bg-[#00C98B] motion-reduce:animate-none" />
-              OVER 4,200 FREELANCERS ONBOARDED
-            </div>
-
-            <h2 className="max-w-2xl font-heading text-4xl font-bold leading-[1.1] tracking-[-0.035em] text-[#0A0A0A] sm:text-5xl">
-              Your next high-paying project is posted right now
-            </h2>
-
-            <p className="max-w-xl text-base leading-7 text-[#0A0A0A]/60 sm:text-lg">
-              Join leading independent engineers and agencies who bid before
-              the competition even notices the post.
-            </p>
-
-            <div className="flex flex-col items-center gap-4 pt-2 sm:flex-row">
-              <Link
-                href="/signup"
-                className="inline-flex items-center justify-center rounded-xl bg-[#00C98B] px-7 py-3.5 text-sm font-bold text-[#0A0A0A] shadow-[0_0_32px_rgba(0,201,139,0.4)] transition-all hover:bg-[#00C98B]/90 hover:shadow-[0_0_40px_rgba(0,201,139,0.5)]"
-              >
-                Get started free
-              </Link>
-
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-1 text-sm font-bold text-[#0A0A0A]/55 transition-colors hover:text-[#0A0A0A]"
-              >
-                I already have an account
-                <ArrowRight className="size-4" />
-              </Link>
-            </div>
-
-
-          </div>
-        </div>
-      </div>
 
       {/* Footer */}
-      <footer className="relative overflow-hidden border-t border-white/10 bg-[#0A0A0A]">
+      <footer className="relative overflow-hidden border-t border-[#0A0A0A]/10 bg-[#EFF1F3] dark:border-white/10 dark:bg-[#0A0A0A]">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute bottom-0 left-1/2 h-48 w-[560px] -translate-x-1/2 rounded-full bg-[#00C98B]/10 blur-[100px]"
@@ -112,7 +53,7 @@ export function CtaFooter() {
                   className="h-[70px] w-auto object-contain"
                 />
               </Link>
-              <p className="mt-4 max-w-xs text-sm leading-6 text-white/45">
+              <p className="mt-4 max-w-xs text-sm leading-6 text-[#0A0A0A]/45 dark:text-white/45">
                 AI-powered Upwork opportunity finder — job alerts, opportunity
                 scoring, and AI proposal drafts.
               </p>
@@ -120,18 +61,18 @@ export function CtaFooter() {
 
             {/* Product */}
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
+              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0A0A0A]/40 dark:text-white/40">
                 Product
               </h3>
               <ul className="mt-4 space-y-3">
                 {[
-                  { label: "Features", href: "#features" },
-                  { label: "How It Works", href: "#how-it-works" },
-                  { label: "Pricing", href: "#pricing" },
-                  { label: "Live Feed", href: "#live-jobs" },
+                  { label: "Features", href: "/#features" },
+                  { label: "How It Works", href: "/#how-it-works" },
+                  { label: "Pricing", href: "/#pricing" },
+                  { label: "Live Feed", href: "/#live-jobs" },
                 ].map((item) => (
                   <li key={item.href}>
-                    <Link href={item.href} className="text-sm text-white/55 transition-colors hover:text-white">
+                    <Link href={item.href} className="text-sm text-[#0A0A0A]/55 transition-colors hover:text-[#0A0A0A] dark:text-white/55 dark:hover:text-white">
                       {item.label}
                     </Link>
                   </li>
@@ -141,18 +82,20 @@ export function CtaFooter() {
 
             {/* Tools */}
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
+              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0A0A0A]/40 dark:text-white/40">
                 Tools
               </h3>
               <ul className="mt-4 space-y-3">
                 {[
-                  { label: "AI Proposal Studio", href: "#" },
-                  { label: "Market Benchmarks", href: "#" },
-                  { label: "Custom Webhooks", href: "#" },
-                  { label: "Chrome Extension", href: "#" },
+                  { label: "All Free Tools", href: "/tools" },
+                  { label: "Upwork Rate Calculator", href: "/tools/rate-calculator" },
+                  { label: "Upwork Fee Calculator", href: "/tools/fee-calculator" },
+                  { label: "Hourly to Salary Converter", href: "/tools/salary-converter" },
+                  { label: "Freelance Rate Planner", href: "/tools/budget-planner" },
+                  { label: "Proposal Character Counter", href: "/tools/proposal-counter" },
                 ].map((item) => (
                   <li key={item.label}>
-                    <Link href={item.href} className="text-sm text-white/55 transition-colors hover:text-white">
+                    <Link href={item.href} className="text-sm text-[#0A0A0A]/55 transition-colors hover:text-[#0A0A0A] dark:text-white/55 dark:hover:text-white">
                       {item.label}
                     </Link>
                   </li>
@@ -162,27 +105,27 @@ export function CtaFooter() {
 
             {/* Resources */}
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
+              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0A0A0A]/40 dark:text-white/40">
                 Resources
               </h3>
               <ul className="mt-4 space-y-3">
                 <li>
-                  <Link href="#faq" className="text-sm text-white/55 transition-colors hover:text-white">
+                  <Link href="/#faq" className="text-sm text-[#0A0A0A]/55 transition-colors hover:text-[#0A0A0A] dark:text-white/55 dark:hover:text-white">
                     FAQ
                   </Link>
                 </li>
                 <li>
-                  <a href="mailto:hello@getupscore.com" className="text-sm text-white/55 transition-colors hover:text-white">
+                  <a href="mailto:hello@getupscore.com" className="text-sm text-[#0A0A0A]/55 transition-colors hover:text-[#0A0A0A] dark:text-white/55 dark:hover:text-white">
                     Help &amp; Support
                   </a>
                 </li>
                 <li>
-                  <a href="mailto:hello@getupscore.com" className="text-sm text-white/55 transition-colors hover:text-white">
+                  <a href="mailto:hello@getupscore.com" className="text-sm text-[#0A0A0A]/55 transition-colors hover:text-[#0A0A0A] dark:text-white/55 dark:hover:text-white">
                     Contact Us
                   </a>
                 </li>
                 <li>
-                  <Link href="/affiliate" className="text-sm text-white/55 transition-colors hover:text-white">
+                  <Link href="/affiliate" className="text-sm text-[#0A0A0A]/55 transition-colors hover:text-[#0A0A0A] dark:text-white/55 dark:hover:text-white">
                     Affiliate Program
                   </Link>
                 </li>
@@ -191,27 +134,27 @@ export function CtaFooter() {
 
             {/* Legal */}
             <div>
-              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
+              <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-[#0A0A0A]/40 dark:text-white/40">
                 Legal
               </h3>
               <ul className="mt-4 space-y-3">
                 <li>
-                  <Link href="/terms" className="text-sm text-white/55 transition-colors hover:text-white">
+                  <Link href="/terms" className="text-sm text-[#0A0A0A]/55 transition-colors hover:text-[#0A0A0A] dark:text-white/55 dark:hover:text-white">
                     Terms of Service
                   </Link>
                 </li>
                 <li>
-                  <Link href="/privacy" className="text-sm text-white/55 transition-colors hover:text-white">
+                  <Link href="/privacy" className="text-sm text-[#0A0A0A]/55 transition-colors hover:text-[#0A0A0A] dark:text-white/55 dark:hover:text-white">
                     Privacy Policy
                   </Link>
                 </li>
                 <li>
-                  <Link href="/security" className="text-sm text-white/55 transition-colors hover:text-white">
+                  <Link href="/security" className="text-sm text-[#0A0A0A]/55 transition-colors hover:text-[#0A0A0A] dark:text-white/55 dark:hover:text-white">
                     Security Architecture
                   </Link>
                 </li>
                 <li>
-                  <Link href="/status" className="text-sm text-white/55 transition-colors hover:text-white">
+                  <Link href="/status" className="text-sm text-[#0A0A0A]/55 transition-colors hover:text-[#0A0A0A] dark:text-white/55 dark:hover:text-white">
                     Status Telemetry
                   </Link>
                 </li>
@@ -220,7 +163,7 @@ export function CtaFooter() {
           </div>
 
           {/* Copyright */}
-          <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs leading-5 text-white/45 sm:flex-row">
+          <div className="mt-12 flex flex-col items-center justify-between gap-3 border-t border-[#0A0A0A]/10 pt-6 text-xs leading-5 text-[#0A0A0A]/45 sm:flex-row dark:border-white/10 dark:text-white/45">
             <span>© 2026 UpScore. AI-powered Upwork opportunity finder. Built for contractors.</span>
             <span>Upwork® is a registered trademark of Upwork Inc.</span>
           </div>

@@ -45,7 +45,14 @@ export async function updateSession(request: NextRequest) {
     request.nextUrl.pathname.startsWith("/auth");
 
   // Public marketing pages — visible without authentication
-  const isPublicPage = request.nextUrl.pathname === "/";
+  const isPublicPage =
+    request.nextUrl.pathname === "/" ||
+    request.nextUrl.pathname.startsWith("/privacy") ||
+    request.nextUrl.pathname.startsWith("/terms") ||
+    request.nextUrl.pathname.startsWith("/security") ||
+    request.nextUrl.pathname.startsWith("/status") ||
+    request.nextUrl.pathname.startsWith("/affiliate") ||
+    request.nextUrl.pathname.startsWith("/tools");
 
   const isApiRoute = request.nextUrl.pathname.startsWith("/api/");
 

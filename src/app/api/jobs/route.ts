@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { cached, TTL } from "@/lib/cache";
+import { cacheGetStale, cached, TTL } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -72,6 +72,22 @@ export async function GET(request: Request) {
     });
   } catch (err: any) {
     console.error("[Jobs API] Query error:", err.message);
+    const stale = await cacheGetStale<{
+      jobs: any[];
+      pagination?: { page: number; limit: number; total: number; totalPages: number };
+    }>(cacheKey);
+    if (stale && Array.isArray(stale.jobs)) {
+      return NextResponse.json({
+        ...stale,
+        stale: true,
+        pagination: {
+          page,
+          limit,
+          total: stale.pagination?.total ?? stale.jobs.length,
+          totalPages: stale.pagination?.totalPages ?? Math.ceil((stale.pagination?.total ?? stale.jobs.length) / limit),
+        },
+      });
+    }
     return NextResponse.json({ error: "Failed to fetch jobs" }, { status: 500 });
   }
 }

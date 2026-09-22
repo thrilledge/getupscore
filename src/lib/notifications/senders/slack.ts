@@ -31,10 +31,14 @@ export async function sendSlack(
       }),
     });
 
-    // Slack returns 200 OK with "ok: true" on success
-    if (!response.ok) {
-      const text = await response.text().catch(() => "Unknown error");
-      return { ok: false, error: `Slack returned ${response.status}: ${text}` };
+    // Slack returns HTTP 200 with {"ok":true} on success, and 200 with
+    // {"ok":false,"error":"..."} for invalid/expired webhooks. Checking the
+    // HTTP status alone would report a dead webhook as "working".
+    const body = await response.json().catch(() => null);
+    if (!response.ok || !body || body.ok !== true) {
+      const reason =
+        body?.error || (response.ok ? "Slack returned ok:false" : `Slack returned ${response.status}`);
+      return { ok: false, error: reason };
     }
 
     return { ok: true };

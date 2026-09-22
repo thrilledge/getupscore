@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -34,8 +34,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Plus,
-  Pencil,
   Loader2,
   Asterisk,
   XIcon,
@@ -118,6 +116,14 @@ export function FilterFormDialog({
     [filter, reset]
   );
 
+  // Re-sync the form whenever the dialog opens or the target filter changes
+  // (controlled mode does not fire onOpenChange, so defaultValues alone are stale).
+  useEffect(() => {
+    if (open) {
+      reset(filterToFormValues(filter));
+    }
+  }, [open, filter, reset]);
+
   const onSubmit = useCallback(
     async (values: FilterFormValues) => {
       setSubmitting(true);
@@ -163,10 +169,7 @@ export function FilterFormDialog({
       <DialogTrigger
         render={
           trigger ?? (
-            <Button>
-              <Plus className="size-4 mr-2" />
-              Add Filter
-            </Button>
+            <span className="hidden" />
           )
         }
       />

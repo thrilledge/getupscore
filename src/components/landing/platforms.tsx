@@ -56,36 +56,6 @@ const platforms = [
   },
 ];
 
-const stats = [
-  {
-    key: "tracked",
-    label: "Total Scanned",
-    value: (p: PlatformProps) => p.totalJobs.toLocaleString(),
-    sublabel: "Jobs tracked daily",
-    color: "text-[#00C98B]",
-  },
-  {
-    key: "today",
-    label: "Today's Inflow",
-    value: (p: PlatformProps) => p.jobs24h.toLocaleString(),
-    sublabel: "Qualified matches",
-    color: "text-[#00A975]",
-  },
-  {
-    key: "channels",
-    label: "Integrations",
-    value: () => "6",
-    sublabel: "Active alert channels",
-    color: "text-[#0A0A0A]",
-  },
-  {
-    key: "countries",
-    label: "Global Reach",
-    value: (p: PlatformProps) => p.countryCount,
-    sublabel: "Client countries indexed",
-    color: "text-[#00C98B]",
-  },
-];
 
 export function Platforms({ totalJobs, jobs24h, countryCount }: PlatformProps) {
   const sectionRef = useRef<HTMLElement | null>(null);
@@ -190,7 +160,7 @@ export function Platforms({ totalJobs, jobs24h, countryCount }: PlatformProps) {
           })}
         </div>
 
-        <div
+        {/* <div
           style={{ transitionDelay: isVisible ? "600ms" : "0ms" }}
           className={`mt-16 grid grid-cols-2 gap-6 rounded-2xl border border-[#0A0A0A]/10 bg-white p-6 shadow-xl transition-all duration-700 ease-out md:grid-cols-4 ${isVisible ? "translate-y-0 opacity-100 blur-0" : "translate-y-10 opacity-0 blur-[4px]"}`}
         >
@@ -207,7 +177,7 @@ export function Platforms({ totalJobs, jobs24h, countryCount }: PlatformProps) {
               </span>
             </div>
           ))}
-        </div>
+        </div> */}
       </div>
     </section>
   );

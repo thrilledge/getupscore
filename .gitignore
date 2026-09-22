@@ -50,3 +50,9 @@ next-env.d.ts
 
 # MCP static client secrets (OAuth tokens, dynamic client registration)
 /scripts/.mcp/
+
+# local tooling / scratch
+.codegraph/
+src/sds
+scripts/diag-*.js
+scripts/grep-inngest.js

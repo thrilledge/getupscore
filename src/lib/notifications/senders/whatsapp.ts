@@ -14,10 +14,12 @@
  * Config may also carry overridden base_url/api_key for legacy channels, but
  * the env always wins for new ones.
  */
+import { findSessionByName } from "@/lib/whatsapp/openwa-client";
+
 export interface WhatsAppConfig {
   phone: string;
   base_url?: string;
-  session_id: string;
+  session_id?: string;
   api_key?: string;
 }
 
@@ -27,12 +29,50 @@ export interface WhatsAppPayload {
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
+const UUID_RE =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
 export async function sendWhatsApp(
   config: WhatsAppConfig,
   payload: WhatsAppPayload
 ): Promise<{ ok: boolean; error?: string }> {
-  if (!config.phone || !config.session_id) {
-    return { ok: false, error: "WhatsApp channel is missing phone/session" };
+  if (!config.phone) {
+    return { ok: false, error: "WhatsApp channel is missing phone" };
+  }
+
+  // Legacy channels saved before session_id existed only carry the recipient
+  // phone. Resolve the real session UUID by name on the fly so those rows (and
+  // rows that fell back to the session *name* while the gateway was down) keep
+  // working without the user having to re-edit the channel.
+  let sessionId = (config.session_id || "").trim();
+  if (sessionId && !UUID_RE.test(sessionId) && !sessionId.endsWith("@c.us")) {
+    try {
+      const resolved = await findSessionByName(
+        sessionId || process.env.OPENWA_SESSION_ID || "upscore"
+      );
+      if (resolved.ok && resolved.session?.id) {
+        sessionId = resolved.session.id;
+      }
+    } catch {
+      // fall through — the send below will surface the real error
+    }
+  }
+  if (
+    !sessionId &&
+    process.env.OPENWA_SESSION_ID &&
+    !UUID_RE.test(process.env.OPENWA_SESSION_ID)
+  ) {
+    try {
+      const resolved = await findSessionByName(process.env.OPENWA_SESSION_ID);
+      if (resolved.ok && resolved.session?.id) {
+        sessionId = resolved.session.id;
+      }
+    } catch {
+      // ignore — the send below will surface the real error
+    }
+  }
+  if (!sessionId) {
+    return { ok: false, error: "WhatsApp channel is missing session" };
   }
 
   // Gateway connection always comes from server env; optional per-channel
@@ -62,7 +102,7 @@ export async function sendWhatsApp(
   // path would discard it. Append a relative path to the base pathname instead.
   const basePath = base.pathname.endsWith("/") ? base.pathname : `${base.pathname}/`;
   const endpoint = new URL(
-    `${basePath}api/sessions/${encodeURIComponent(config.session_id)}/messages/send-text`,
+    `${basePath}api/sessions/${encodeURIComponent(sessionId)}/messages/send-text`,
     base
   );
 

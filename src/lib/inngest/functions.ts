@@ -156,7 +156,7 @@ export const analyzeJobFunction = inngest.createFunction(
   {
     id: "analyze-job",
     retries: 3,
-    concurrency: { limit: 15 },
+    concurrency: { limit: 5 },
     triggers: [{ event: "app/jobs.analyze" }],
   },
   async ({ event, step }) => {

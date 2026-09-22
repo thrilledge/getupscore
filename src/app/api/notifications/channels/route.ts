@@ -60,7 +60,7 @@ export async function POST(request: Request): Promise<Response> {
         );
       }
 
-      const redirectUri = `${env.SITE_URL}/api/notifications/channels/callback`;
+      const redirectUri = `${env.SITE_URL.replace(/\/+$/, "")}/api/notifications/channels/callback`;
 
       const scope = "incoming-webhook,chat:write,channels:read,users:read";
       const slackAuthUrl = `https://slack.com/oauth/v2/authorize?client_id=${env.SLACK_CLIENT_ID}&scope=${scope}&state=${state}&redirect_uri=${encodeURIComponent(redirectUri)}`;

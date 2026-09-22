@@ -47,7 +47,7 @@ export default function ExtensionPage() {
     <SubscriptionGate feature="Extension">
     <div className="mx-auto max-w-4xl space-y-5 pb-6">
       {/* Header */}
-      <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-[24px] border border-white/10 bg-[#0A0A0A] px-5 py-8 text-white shadow-[0_18px_48px_rgba(0,0,0,0.15)] duration-500 sm:px-8 sm:py-10">
+      <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-[24px] border border-[#0A0A0A]/10 bg-[#EFF1F3] px-5 py-8 text-[#0A0A0A] shadow-[0_14px_35px_rgba(0,0,0,0.06)] duration-500 sm:px-8 sm:py-10 dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_18px_48px_rgba(0,0,0,0.15)]">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 opacity-35"
@@ -92,7 +92,7 @@ export default function ExtensionPage() {
             UpScore Extension
           </h1>
 
-          <p className="mt-3 max-w-xl text-sm leading-6 text-white/50 sm:text-base">
+          <p className="mt-3 max-w-xl text-sm leading-6 text-[#0A0A0A]/55 sm:text-base dark:text-white/50">
             Install the browser extension so UpScore can sync
             your Upwork jobs and freelancer profile
             automatically.

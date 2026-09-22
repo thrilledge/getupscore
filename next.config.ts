@@ -14,7 +14,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline' https://sandbox-cdn.paddle.com https://cdn.paddle.com",
       "img-src 'self' data: blob: https://www.getupscore.com https://lh3.googleusercontent.com https://sandbox-cdn.paddle.com https://cdn.paddle.com",
       "font-src 'self'",
-      "connect-src 'self' https://kjfqtenfmxdoyjxxnhnm.supabase.co wss://kjfqtenfmxdoyjxxnhnm.supabase.co https://optimum-raven-68827.upstash.io https://sandbox.paddle.com https://api.paddle.com https://sandbox-cdn.paddle.com https://cdn.paddle.com",
+      "connect-src 'self' https://db.getupscore.com wss://db.getupscore.com https://optimum-raven-68827.upstash.io https://sandbox.paddle.com https://api.paddle.com https://sandbox-cdn.paddle.com https://cdn.paddle.com",
       "frame-src 'self' https://sandbox-buy.paddle.com https://buy.paddle.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",

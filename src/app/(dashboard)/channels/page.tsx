@@ -193,7 +193,7 @@ function ChannelsContent() {
     <SubscriptionGate feature="Channels">
     <div className="mx-auto w-full max-w-[1500px] min-w-0 space-y-4 overflow-x-clip pb-6 sm:space-y-5 lg:space-y-6">
       {/* Header */}
-      <section className="animate-in fade-in slide-in-from-bottom-3 relative min-w-0 overflow-hidden rounded-[20px] bg-[#0A0A0A] px-4 py-5 duration-500 min-[480px]:px-5 sm:rounded-[24px] sm:px-6 sm:py-6 lg:rounded-[28px] lg:px-7 lg:py-7">
+      <section className="animate-in fade-in slide-in-from-bottom-3 relative min-w-0 overflow-hidden rounded-[20px] border border-[#0A0A0A]/10 bg-[#EFF1F3] px-4 py-5 text-[#0A0A0A] shadow-[0_12px_30px_rgba(0,0,0,0.06)] duration-500 min-[480px]:px-5 sm:rounded-[24px] sm:px-6 sm:py-6 lg:rounded-[28px] lg:px-7 lg:py-7 dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_16px_40px_rgba(0,0,0,0.13)]">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -right-16 -top-20 size-56 rounded-full bg-[#00C98B]/15 blur-3xl"
@@ -226,11 +226,11 @@ function ChannelsContent() {
             </div>
 
             <div className="min-w-0 flex-1">
-              <h1 className="max-w-full break-words font-heading text-xl font-bold leading-tight tracking-tight text-white min-[420px]:text-2xl sm:text-3xl">
+              <h1 className="max-w-full break-words font-heading text-xl font-bold leading-tight tracking-tight text-[#0A0A0A] min-[420px]:text-2xl sm:text-3xl dark:text-white">
                 Notification Channels
               </h1>
 
-              <p className="mt-1.5 max-w-2xl text-xs leading-5 text-white/60 min-[420px]:text-sm min-[420px]:leading-6">
+              <p className="mt-1.5 max-w-2xl text-xs leading-5 text-[#0A0A0A]/55 min-[420px]:text-sm min-[420px]:leading-6 dark:text-white/60">
                 Connect and manage the channels where
                 you want to receive real-time job
                 alerts.
@@ -248,7 +248,7 @@ function ChannelsContent() {
               disabled={isRefetching}
               aria-label="Refresh notification channels"
               title="Refresh channels"
-              className="size-10 shrink-0 rounded-xl border-white/15 bg-white/5 text-white hover:border-[#00C98B]/50 hover:bg-[#00C98B]/10 hover:text-[#00C98B]"
+              className="size-10 shrink-0 rounded-xl border-[#0A0A0A]/15 bg-white/70 text-[#0A0A0A]/70 hover:border-[#00C98B]/50 hover:bg-[#00C98B]/10 hover:text-[#00C98B] dark:border-white/15 dark:bg-white/5 dark:text-white"
             >
               <RefreshCw
                 className={`size-4 ${isRefetching

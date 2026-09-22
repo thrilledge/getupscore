@@ -77,7 +77,7 @@ export default function UpworkProfilePage() {
 
   if (loading) {
     return (
-      <div className="relative flex min-h-[60vh] items-center justify-center overflow-hidden rounded-[24px] bg-[#0A0A0A]">
+      <div className="relative flex min-h-[60vh] items-center justify-center overflow-hidden rounded-[24px] border border-[#0A0A0A]/10 bg-[#EFF1F3] dark:border-white/10 dark:bg-[#0A0A0A]">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-1/2 top-1/2 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#00C98B]/15 blur-[110px]"
@@ -102,11 +102,11 @@ export default function UpworkProfilePage() {
             <Loader2 className="size-6 animate-spin text-[#00C98B]" />
           </span>
 
-          <p className="mt-4 font-heading text-sm font-semibold text-white">
+          <p className="mt-4 font-heading text-sm font-semibold text-[#0A0A0A] dark:text-white">
             Loading your profile
           </p>
 
-          <p className="mt-1 text-xs text-white/35">
+          <p className="mt-1 text-xs text-[#0A0A0A]/40 dark:text-white/35">
             Syncing your Upwork information...
           </p>
         </div>
@@ -117,7 +117,7 @@ export default function UpworkProfilePage() {
   return (
     <div className="space-y-5 pb-6">
       {/* Header */}
-      <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-[22px] border border-white/10 bg-[#0A0A0A] px-5 py-5 text-white shadow-[0_16px_40px_rgba(0,0,0,0.13)] duration-500 sm:px-6">
+      <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-[#EFF1F3] px-5 py-5 text-[#0A0A0A] shadow-[0_12px_30px_rgba(0,0,0,0.06)] duration-500 sm:px-6 dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_16px_40px_rgba(0,0,0,0.13)]">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 opacity-35"
@@ -158,7 +158,7 @@ export default function UpworkProfilePage() {
                 Upwork Profile
               </h1>
 
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-white/50">
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-[#0A0A0A]/55 dark:text-white/50">
                 Your freelancer profile synced from Upwork
                 through the extension.
               </p>
@@ -169,7 +169,7 @@ export default function UpworkProfilePage() {
             <span
               className={`inline-flex h-9 items-center gap-2 rounded-xl border px-3 text-xs font-semibold ${profile
                 ? "border-[#00C98B]/25 bg-[#00C98B]/10 text-[#00C98B]"
-                : "border-white/10 bg-white/[0.045] text-white/45"
+                : "border-[#0A0A0A]/10 bg-white/70 text-[#0A0A0A]/45 dark:border-white/10 dark:bg-white/[0.045] dark:text-white/45"
                 }`}
             >
               <span
@@ -206,7 +206,7 @@ export default function UpworkProfilePage() {
         <div className="min-w-0 space-y-5">
           {!profile ? (
             /* No profile state */
-            <Card className="animate-in fade-in slide-in-from-bottom-3 relative gap-0 overflow-hidden rounded-[22px] border border-white/10 bg-[#0A0A0A] py-0 text-white shadow-[0_16px_45px_rgba(0,0,0,0.13)] duration-500">
+            <Card className="animate-in fade-in slide-in-from-bottom-3 relative gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-[#EFF1F3] py-0 text-[#0A0A0A] shadow-[0_12px_32px_rgba(0,0,0,0.06)] duration-500 dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_16px_45px_rgba(0,0,0,0.13)]">
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 opacity-30"
@@ -233,13 +233,13 @@ export default function UpworkProfilePage() {
                   <span className="absolute -right-1 -top-1 size-3 rounded-full border-2 border-[#0A0A0A] bg-[#00C98B]" />
                 </span>
 
-                <CardTitle className="mt-4 font-heading text-xl font-bold text-white">
+                <CardTitle className="mt-4 font-heading text-xl font-bold text-[#0A0A0A] dark:text-white">
                   No profile synced
                 </CardTitle>
               </CardHeader>
 
               <CardContent className="relative z-10 px-5 pb-11 pt-4 text-center">
-                <p className="mx-auto max-w-lg text-sm leading-6 text-white/45">
+                <p className="mx-auto max-w-lg text-sm leading-6 text-[#0A0A0A]/50 dark:text-white/45">
                   The UpScore extension automatically syncs
                   your freelancer profile when you visit your
                   profile page on Upwork.

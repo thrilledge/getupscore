@@ -121,6 +121,11 @@ export default function FiltersPage() {
             </Button>
 
             <FilterFormDialog
+              onSuccess={() =>
+                queryClient.invalidateQueries({
+                  queryKey: ["job_filters", user?.id],
+                })
+              }
               trigger={
                 <Button className="group h-10 min-w-0 flex-1 rounded-xl bg-[#0A0A0A] px-4 text-xs font-semibold text-white shadow-[0_8px_22px_rgba(0,0,0,0.13)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#00C98B] hover:text-[#0A0A0A] md:flex-none sm:text-sm">
                   <Plus className="size-4 shrink-0 transition-transform duration-300 group-hover:rotate-90" />
@@ -229,7 +234,7 @@ export default function FiltersPage() {
       {!isLoading &&
         !isError &&
         filters?.length === 0 && (
-          <Card className="animate-in fade-in slide-in-from-bottom-3 relative min-w-0 gap-0 overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] py-0 text-white shadow-[0_18px_50px_rgba(0,0,0,0.15)] duration-500 sm:rounded-[24px]">
+          <Card className="animate-in fade-in slide-in-from-bottom-3 relative min-w-0 gap-0 overflow-hidden rounded-2xl border border-[#0A0A0A]/10 bg-[#EFF1F3] py-0 text-[#0A0A0A] shadow-[0_14px_38px_rgba(0,0,0,0.07)] duration-500 sm:rounded-[24px] dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_18px_50px_rgba(0,0,0,0.15)]">
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 hidden opacity-35 sm:block"
@@ -265,11 +270,11 @@ export default function FiltersPage() {
                 </span>
               </div>
 
-              <CardTitle className="font-heading text-xl font-bold text-white min-[480px]:text-2xl">
+              <CardTitle className="font-heading text-xl font-bold text-[#0A0A0A] min-[480px]:text-2xl dark:text-white">
                 No filters yet
               </CardTitle>
 
-              <CardDescription className="mt-2 max-w-lg text-xs leading-5 text-white/50 min-[480px]:text-sm min-[480px]:leading-6">
+              <CardDescription className="mt-2 max-w-lg text-xs leading-5 text-[#0A0A0A]/55 min-[480px]:text-sm min-[480px]:leading-6 dark:text-white/50">
                 Create your first filter to start
                 monitoring Upwork for relevant jobs.
               </CardDescription>
@@ -282,7 +287,7 @@ export default function FiltersPage() {
                 ].map((item, index) => (
                   <div
                     key={item}
-                    className={`group flex min-w-0 items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/30 hover:bg-[#00C98B]/10 sm:rounded-2xl sm:p-4 ${
+                    className={`group flex min-w-0 items-start gap-3 rounded-xl border border-[#0A0A0A]/10 bg-white/70 p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/30 hover:bg-[#00C98B]/10 sm:rounded-2xl sm:p-4 dark:border-white/10 dark:bg-white/5 ${
                       index === 2
                         ? "min-[520px]:col-span-2 lg:col-span-1"
                         : ""
@@ -292,7 +297,7 @@ export default function FiltersPage() {
                       {index + 1}
                     </span>
 
-                    <p className="min-w-0 text-[11px] leading-5 text-white/55 sm:text-xs">
+                    <p className="min-w-0 text-[11px] leading-5 text-[#0A0A0A]/60 sm:text-xs dark:text-white/55">
                       {item}
                     </p>
                   </div>
@@ -300,6 +305,11 @@ export default function FiltersPage() {
               </div>
 
               <FilterFormDialog
+                onSuccess={() =>
+                  queryClient.invalidateQueries({
+                    queryKey: ["job_filters", user?.id],
+                  })
+                }
                 trigger={
                   <Button
                     size="lg"

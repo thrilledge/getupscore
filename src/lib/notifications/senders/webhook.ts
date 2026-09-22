@@ -101,13 +101,11 @@ export async function sendWebhook(
     if (addresses.length === 0 || addresses.some((a) => isPrivateAddress(a.address))) {
       return { ok: false, error: "Webhook target is not a public address" };
     }
-
-    // Re-resolve by IP to defeat DNS rebinding between lookup and fetch.
-    const primary = addresses[0].address;
-    parsed.hostname = primary;
-    if (looksLikeIp(parsed.hostname)) {
-      parsed.host = primary;
-    }
+    // NOTE: we deliberately do NOT rewrite the URL to the resolved IP. Doing so
+    // breaks TLS (empty SNI / cert-mismatch) and CDN routing (Host header of an
+    // IP), which made https webhooks fail with "fetch failed". The DNS check
+    // above is the guard; the fetch below keeps the original hostname so certs
+    // and CDN backends resolve correctly.
   } catch {
     return { ok: false, error: "Could not resolve webhook host" };
   }
@@ -129,7 +127,7 @@ export async function sendWebhook(
       ...(config.secret ? { webhook_secret: config.secret } : {}),
     });
 
-    const response = await fetch(parsed.toString(), fetchOptions);
+    const response = await fetch(config.url, fetchOptions);
 
     if (!response.ok) {
       // Never echo the remote response body — it could contain internal data.

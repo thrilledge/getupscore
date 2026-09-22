@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { channelFormSchema } from "@/lib/validations/channel";
 import type { Json, NotificationChannel } from "@/lib/supabase/database-types";
 import crypto from "crypto";
+import { isSessionReachable } from "@/lib/whatsapp/openwa-client";
 
 export type ChannelActionResult = {
   success: boolean;
@@ -61,6 +62,20 @@ export async function createChannel(
     (!config.secret || String(config.secret).trim() === "")
   ) {
     config.secret = crypto.randomBytes(24).toString("hex");
+  }
+
+  // WhatsApp channels need the real OpenWA session ID (OpenWA only accepts
+  // the session UUID on message routes) + digits-only phone. Resolve both
+  // server-side so the senders never hit "missing phone/session".
+  if (type === "whatsapp") {
+    config.phone = String(config.phone ?? "").replace(/\D/g, "");
+    const sessionCheck = await isSessionReachable(
+      process.env.OPENWA_SESSION_ID || "upscore"
+    );
+    config.session_id =
+      sessionCheck.ok && sessionCheck.session.id
+        ? sessionCheck.session.id
+        : process.env.OPENWA_SESSION_ID || "upscore";
   }
 
   const { data: channel, error } = await supabase
@@ -140,6 +155,18 @@ export async function updateChannel(
     }
   } else if (isWebhookType) {
     config.secret = String(config.secret);
+  }
+
+  // See createChannel — WhatsApp must always carry phone + session_id.
+  if (type === "whatsapp") {
+    config.phone = String(config.phone ?? "").replace(/\D/g, "");
+    const sessionCheck = await isSessionReachable(
+      process.env.OPENWA_SESSION_ID || "upscore"
+    );
+    config.session_id =
+      sessionCheck.ok && sessionCheck.session.id
+        ? sessionCheck.session.id
+        : process.env.OPENWA_SESSION_ID || "upscore";
   }
 
   const { data: channel, error } = await supabase

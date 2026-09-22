@@ -175,12 +175,58 @@ export async function sendPasswordReset(): Promise<SettingsActionResult> {
     return { success: false, error: "You must be signed in." };
   }
 
-  const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-    redirectTo: `${env.APP_URL}/login`,
-  });
+  // Build a valid post-reset redirect. APP_URL defaults to localhost in prod,
+  // so fall back to the public SITE_URL when APP_URL is unset/local.
+  const base =
+    env.APP_URL && env.APP_URL !== "http://localhost:3000"
+      ? env.APP_URL
+      : env.SITE_URL;
+  const redirectTo = base
+    ? `${base.replace(/\/+$/, "")}/login`
+    : undefined;
+
+  // Network flaps to the self-hosted DB (db.getupscore.com:443) are transient —
+  // retry once after a short pause so a single dropped connection isn't fatal.
+  const email = user.email;
+  const attemptReset = async () =>
+    supabase.auth.resetPasswordForEmail(email, {
+      ...(redirectTo ? { redirectTo } : {}),
+    });
+
+  let { error } = await attemptReset();
+  if (error) {
+    const status = (error as any)?.status ?? 0;
+    const retryable =
+      status >= 500 ||
+      status === 0 ||
+      error.name === "AuthRetryableFetchError" ||
+      error.name === "FetchError";
+    if (retryable) {
+      await new Promise((r) => setTimeout(r, 2500));
+      ({ error } = await attemptReset());
+    }
+  }
 
   if (error) {
-    return { success: false, error: error.message };
+    console.error("[settings] resetPasswordForEmail failed", JSON.stringify({
+      email: user.email,
+      redirectTo,
+      name: error.name,
+      message: error.message,
+      status: (error as any)?.status,
+      code: (error as any)?.code,
+      __all: error,
+    }, null, 2));
+    // GoTrue can return an empty/opaque error — never surface "{}".
+    const raw =
+      typeof error.message === "string" ? error.message.trim() : "";
+    const isOpaque =
+      !raw || raw === "{}" || /^\{.+\}$/.test(raw);
+    const message = isOpaque
+      ? "Could not send the reset email. Please try again."
+      : raw;
+
+    return { success: false, error: message };
   }
 
   return { success: true };

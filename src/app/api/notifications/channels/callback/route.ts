@@ -3,7 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import { verifySignedState } from "../route";
 
-const SITE = () => env.SITE_URL || "http://localhost:3000";
+const SITE = () => (env.SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
 
 export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);

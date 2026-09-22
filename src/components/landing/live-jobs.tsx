@@ -41,7 +41,7 @@ function budgetLabel(job: LiveJob): string {
 
   if (job.hourly_min != null) return `$${job.hourly_min}/hr`;
 
-  return "—";
+  return "Price not mention";
 }
 
 function jobTypeLabel(job: LiveJob): string {
@@ -50,7 +50,7 @@ function jobTypeLabel(job: LiveJob): string {
   if (type.includes("hourly")) return "Hourly";
   if (type.includes("fixed")) return "Fixed";
 
-  return "—";
+  return "Price not mention";
 }
 
 function flagBadge(countryName: string | null): ReactElement {
@@ -237,16 +237,16 @@ export function LiveJobs({ jobs }: { jobs: LiveJob[] }) {
             : "translate-y-12 opacity-0 blur-[5px]"
             }`}
         >
-          <div className="hidden grid-cols-12 items-center gap-5 border-b border-white/10 bg-[#0A0A0A] px-6 py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-white/60 sm:grid">
+          <div className="hidden grid-cols-12 items-center gap-5 border-b border-[#0A0A0A]/10 bg-[#EFF1F3] px-6 py-4 text-[11px] font-bold uppercase tracking-[0.16em] text-[#0A0A0A]/60 sm:grid dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white/60">
             <div className="col-span-4">Lead / Project</div>
-            <div className="col-span-3 border-l border-white/15 pl-5">
+            <div className="col-span-3 border-l border-[#0A0A0A]/15 pl-5 dark:border-white/15">
               Age &amp; Client Country
             </div>
-            <div className="col-span-2 border-l border-white/15 pl-5">
+            <div className="col-span-2 border-l border-[#0A0A0A]/15 pl-5 dark:border-white/15">
               Compensation
             </div>
 
-            <div className="col-span-1 border-l border-white/15 pl-3 text-right">
+            <div className="col-span-1 border-l border-[#0A0A0A]/15 pl-3 text-right dark:border-white/15">
               UpScore
             </div>
           </div>

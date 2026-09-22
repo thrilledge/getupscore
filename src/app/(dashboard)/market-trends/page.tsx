@@ -90,6 +90,7 @@ export default function MarketTrendsPage() {
     scope: "all",
     filterIds: [],
   });
+  const scopeTouchedRef = useRef(false);
   const [filters, setFilters] = useState<JobFilter[]>([]);
   const [activeTab, setActiveTab] =
     useState<TabValue>("overview");
@@ -111,7 +112,19 @@ export default function MarketTrendsPage() {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .then(({ data }) => {
-        if (!cancelled) setFilters((data as JobFilter[]) ?? []);
+        if (cancelled) return;
+        const list = (data as JobFilter[]) ?? [];
+        setFilters(list);
+        // Default to "All my filters" when the user has active filters and
+        // hasn't manually changed scope — trends should follow their filters.
+        const hasActive = list.some((f) => f.is_active);
+        if (!scopeTouchedRef.current && hasActive) {
+          setScopeValue((prev) =>
+            prev.scope === "all"
+              ? { scope: "filters", filterIds: [] }
+              : prev
+          );
+        }
       });
     return () => { cancelled = true; };
   }, [user]);
@@ -220,7 +233,7 @@ export default function MarketTrendsPage() {
         }
       >
         {/* Header */}
-        <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-[22px] border border-white/10 bg-[#0A0A0A] px-5 py-5 text-white shadow-[0_16px_40px_rgba(0,0,0,0.13)] duration-500 sm:px-6">
+        <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-[#EFF1F3] px-5 py-5 text-[#0A0A0A] shadow-[0_12px_30px_rgba(0,0,0,0.06)] duration-500 sm:px-6 dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_16px_40px_rgba(0,0,0,0.13)]">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 opacity-35"
@@ -261,7 +274,7 @@ export default function MarketTrendsPage() {
                   Market Trends
                 </h1>
 
-                <p className="mt-1 max-w-2xl text-sm leading-6 text-white/50">
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-[#0A0A0A]/55 dark:text-white/50">
                   Live demand signals from the jobs we track —
                   skills, budgets, timing and client quality, so
                   you can position your proposals where the
@@ -273,7 +286,10 @@ export default function MarketTrendsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <MarketScopeSelect
                 value={scopeValue}
-                onChange={setScopeValue}
+                onChange={(next) => {
+                  scopeTouchedRef.current = true;
+                  setScopeValue(next);
+                }}
                 filters={filters}
                 onFilterCreated={(filter) =>
                   setFilters((current) => [
@@ -287,7 +303,7 @@ export default function MarketTrendsPage() {
                 type="button"
                 onClick={handleRefresh}
                 disabled={loading || refreshing}
-                className="grid size-9 shrink-0 place-items-center rounded-xl border border-white/15 bg-white/[0.045] text-white/55 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B] disabled:pointer-events-none disabled:opacity-40"
+                className="grid size-9 shrink-0 place-items-center rounded-xl border-[#0A0A0A]/15 bg-white/70 text-[#0A0A0A]/60 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B] disabled:pointer-events-none disabled:opacity-40 dark:border-white/15 dark:bg-white/[0.045] dark:text-white/55"
                 aria-label="Refresh data"
               >
                 <RefreshCw
@@ -308,13 +324,13 @@ export default function MarketTrendsPage() {
                   }
                 }}
                 size="sm"
-                className="rounded-xl border border-white/10 bg-white/[0.045] p-1"
+                className="rounded-xl border-[#0A0A0A]/10 bg-white/70 p-1 dark:border-white/10 dark:bg-white/[0.045]"
               >
                 {RANGES.map((range) => (
                   <ToggleGroupItem
                     key={range.value}
                     value={String(range.value)}
-                    className="h-8 rounded-lg border-0 px-3 text-xs font-semibold text-white/45 transition-all duration-200 hover:bg-[#00C98B]/10 hover:text-[#00C98B] data-[state=on]:bg-[#00C98B] data-[state=on]:text-[#0A0A0A] data-[pressed]:bg-[#00C98B] data-[pressed]:text-[#0A0A0A]"
+                    className="h-8 rounded-lg border-0 px-3 text-xs font-semibold text-[#0A0A0A]/45 transition-all duration-200 hover:bg-[#00C98B]/10 hover:text-[#00C98B] data-[state=on]:bg-[#00C98B] data-[state=on]:text-[#0A0A0A] data-[pressed]:bg-[#00C98B] data-[pressed]:text-[#0A0A0A] dark:text-white/45"
                   >
                     {range.label}
                   </ToggleGroupItem>

@@ -71,7 +71,6 @@ function scoreJobVsFilter(
 
   const haystack = [
     job.title || "",
-    job.description || "",
     job.skills.join(" "),
     job.category || "",
     job.subcategory || "",
@@ -82,6 +81,11 @@ function scoreJobVsFilter(
   // this filter regardless of other signals. Return 0 so the job cannot pass
   // (MIN_STATIC_SCORE) on empty-bonus points alone — otherwise every job
   // floods the AI queue and matching jobs starve in the backlog.
+  //
+  // Keywords are matched against STRUCTURED fields only (title, skills,
+  // category, subcategory) — NOT the free-text description, which is prose and
+  // produced false positives (e.g. an "editing" keyword matching any job whose
+  // description merely mentioned editing once).
   if (filter.keywords.length > 0) {
     const matched = filter.keywords.filter((k) => contains(k, haystack));
     if (matched.length === 0) return 0;

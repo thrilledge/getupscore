@@ -110,7 +110,7 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 overflow-x-clip pb-6 sm:space-y-5 sm:pb-8 2xl:space-y-6">
       {/* Welcome Banner */}
-      <section className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] text-white shadow-[0_16px_38px_rgba(0,0,0,0.14)] sm:rounded-[22px]">
+      <section className="group relative overflow-hidden rounded-2xl border border-[#0A0A0A]/10 bg-[#EFF1F3] text-[#0A0A0A] shadow-[0_12px_30px_rgba(0,0,0,0.06)] sm:rounded-[22px] dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_16px_38px_rgba(0,0,0,0.14)]">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 hidden opacity-40 sm:block"
@@ -148,7 +148,7 @@ export default function DashboardPage() {
                 Hey, {displayName}!
               </h1>
 
-              <p className="mt-2 max-w-xl text-xs leading-5 text-white/55 sm:text-sm sm:leading-6">
+              <p className="mt-2 max-w-xl text-xs leading-5 text-[#0A0A0A]/60 sm:text-sm sm:leading-6 dark:text-white/55">
                 Your AI-powered Upwork command center.
                 Track opportunities, manage filters, and
                 generate winning proposals.

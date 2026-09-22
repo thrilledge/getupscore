@@ -11,6 +11,7 @@ import { Testimonials } from "@/components/landing/testimonials";
 import { Pricing } from "@/components/landing/pricing";
 import { FAQ } from "@/components/landing/faq";
 import { CtaFooter } from "@/components/landing/cta-footer";
+import CtaBanner from "@/components/landing/cta-banner";
 
 export const dynamic = "force-dynamic";
 
@@ -113,6 +114,7 @@ export default async function Home() {
         <Testimonials />
         <Pricing />
         <FAQ />
+        <CtaBanner />
       </main>
       <CtaFooter />
     </div>

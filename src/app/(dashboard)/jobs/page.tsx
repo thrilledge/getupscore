@@ -491,8 +491,9 @@ export default function JobsPage() {
     if (job.hourly_max != null) return `Up to $${job.hourly_max}/hr`;
     if (job.weekly_retainer != null)
       return `$${job.weekly_retainer}/wk`;
-    return "—";
+    return "Price not mention";
   }
+  // 
 
   // Combine workload + duration into one readable line. These are
   // independent fields ("More than 30 hrs/week" and "More than 6
@@ -509,6 +510,7 @@ export default function JobsPage() {
     ) {
       parts.push(`$${job.weekly_retainer}/wk`);
     }
+    if (parts.length === 0) return "Duration not mention";
     return parts.join(" · ");
   }
 
@@ -649,7 +651,7 @@ export default function JobsPage() {
     <SubscriptionGate feature="Access the full jobs dashboard with AI-powered scoring, filters, and real-time job feeds">
       <div className="mx-auto w-full min-w-0 max-w-[1600px] space-y-4 overflow-x-clip pb-6 sm:space-y-5 sm:pb-8 xl:space-y-6">
         {/* Header */}
-        <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] p-4 text-white shadow-[0_16px_40px_rgba(0,0,0,0.13)] duration-500 min-[480px]:p-5 sm:rounded-[22px] md:p-6">
+        <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-2xl border border-[#0A0A0A]/10 bg-[#EFF1F3] p-4 text-[#0A0A0A] shadow-[0_12px_30px_rgba(0,0,0,0.06)] duration-500 min-[480px]:p-5 sm:rounded-[22px] md:p-6 dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_16px_40px_rgba(0,0,0,0.13)]">
           <div
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 hidden opacity-35 sm:block"
@@ -683,7 +685,7 @@ export default function JobsPage() {
                   Jobs
                 </h1>
 
-                <p className="mt-1 text-xs text-white/50 min-[480px]:text-sm">
+                <p className="mt-1 text-xs text-[#0A0A0A]/55 min-[480px]:text-sm dark:text-white/50">
                   {hasActiveFilters
                     ? "Filtered"
                     : "Latest"}{" "}
@@ -704,7 +706,7 @@ export default function JobsPage() {
                 size="sm"
                 onClick={downloadCSV}
                 disabled={jobs.length === 0}
-                className="h-9 shrink-0 rounded-xl border-white/15 bg-white/5 px-2.5 text-white/70 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B] min-[420px]:px-3"
+                className="h-9 shrink-0 rounded-xl border-[#0A0A0A]/15 bg-white/70 px-2.5 text-[#0A0A0A]/75 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B] min-[420px]:px-3 dark:border-white/15 dark:bg-white/5 dark:text-white/70"
               >
                 <Download className="size-3.5 min-[420px]:size-4" />
 
@@ -1276,12 +1278,12 @@ export default function JobsPage() {
 
             {/* Desktop Loading Table */}
             <div className="hidden overflow-hidden rounded-[20px] border border-[#0A0A0A]/10 bg-white shadow-[0_7px_24px_rgba(0,0,0,0.035)] lg:block">
-              <div className="grid grid-cols-[minmax(200px,1fr)_80px_160px_160px_100px_40px] gap-4 bg-[#0A0A0A] px-5 py-3">
+              <div className="grid grid-cols-[minmax(200px,1fr)_80px_160px_160px_100px_40px] gap-4 bg-[#EFF1F3] px-5 py-3 dark:bg-[#0A0A0A]">
                 {[1, 2, 3, 4, 5, 6].map(
                   (item) => (
                     <Skeleton
                       key={item}
-                      className="h-3 bg-white/10"
+                      className="h-3 bg-[#0A0A0A]/10 dark:bg-white/10"
                     />
                   )
                 )}
@@ -1312,7 +1314,7 @@ export default function JobsPage() {
         {!loading &&
           !error &&
           jobs.length === 0 && (
-            <Card className="relative min-w-0 gap-0 overflow-hidden rounded-2xl border border-white/10 bg-[#0A0A0A] py-0 text-white shadow-[0_16px_45px_rgba(0,0,0,0.13)] sm:rounded-[22px]">
+            <Card className="relative min-w-0 gap-0 overflow-hidden rounded-2xl border border-[#0A0A0A]/10 bg-[#EFF1F3] py-0 text-[#0A0A0A] shadow-[0_12px_32px_rgba(0,0,0,0.06)] sm:rounded-[22px] dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_16px_45px_rgba(0,0,0,0.13)]">
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute left-1/2 top-1/2 size-56 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#00C98B]/15 blur-[100px] sm:size-64"
@@ -1323,11 +1325,11 @@ export default function JobsPage() {
                   <Briefcase className="size-5 min-[480px]:size-6" />
                 </span>
 
-                <h2 className="mt-4 font-heading text-lg font-bold text-white min-[480px]:text-xl">
+                <h2 className="mt-4 font-heading text-lg font-bold text-[#0A0A0A] min-[480px]:text-xl dark:text-white">
                   No jobs found
                 </h2>
 
-                <p className="mt-2 max-w-lg text-xs leading-5 text-white/50 min-[480px]:text-sm min-[480px]:leading-6">
+                <p className="mt-2 max-w-lg text-xs leading-5 text-[#0A0A0A]/55 min-[480px]:text-sm min-[480px]:leading-6 dark:text-white/50">
                   {hasActiveFilters
                     ? "No jobs match your filters. Try different keywords."
                     : "No jobs yet. The system fetches jobs every 5 minutes — check back soon."}
@@ -1433,11 +1435,10 @@ export default function JobsPage() {
                                 "Not specified"}
                             </p>
 
-                            {job.duration_label && (
-                              <p className="mt-1 truncate text-xs font-medium text-[#0A0A0A]/60">
-                                {job.duration_label}
-                              </p>
-                            )}
+                            <p className="mt-1 truncate text-xs font-medium text-[#0A0A0A]/60">
+                              {job.duration_label ||
+                                "Duration not mention"}
+                            </p>
                           </div>
                         </div>
 
@@ -1498,24 +1499,24 @@ export default function JobsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[900px] text-sm">
                     <thead>
-                      <tr className="border-b border-white/10 bg-[#0A0A0A]">
-                        <th className="w-[28%] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
+                      <tr className="border-b border-[#0A0A0A]/10 bg-[#EFF1F3] dark:border-white/10 dark:bg-[#0A0A0A]">
+                        <th className="w-[28%] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A]/55 dark:text-white/50">
                           Job
                         </th>
 
-                        <th className="w-[10%] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
+                        <th className="w-[10%] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A]/55 dark:text-white/50">
                           Type
                         </th>
 
-                        <th className="w-[20%] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
+                        <th className="w-[20%] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A]/55 dark:text-white/50">
                           Budget & Workload
                         </th>
 
-                        <th className="w-[20%] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
+                        <th className="w-[20%] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A]/55 dark:text-white/50">
                           Client
                         </th>
 
-                        <th className="w-[12%] px-5 py-3.5 text-right text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
+                        <th className="w-[12%] px-5 py-3.5 text-right text-[11px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A]/55 dark:text-white/50">
                           Posted
                         </th>
 
@@ -1615,14 +1616,12 @@ export default function JobsPage() {
                                   </span>
                                 </div>
 
-                                {formatWorkload(job) && (
-                                  <div className="flex items-center gap-1.5">
-                                    <Clock className="size-3 shrink-0 text-[#0A0A0A]/35" />
-                                    <span className="text-xs text-[#0A0A0A]/45">
-                                      {formatWorkload(job)}
-                                    </span>
-                                  </div>
-                                )}
+                                <div className="flex items-center gap-1.5">
+                                  <Clock className="size-3 shrink-0 text-[#0A0A0A]/35" />
+                                  <span className="text-xs text-[#0A0A0A]/45">
+                                    {formatWorkload(job)}
+                                  </span>
+                                </div>
                               </div>
                             </td>
 

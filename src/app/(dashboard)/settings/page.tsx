@@ -8,17 +8,12 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
-import { useSubscription } from "@/hooks/use-subscription";
 import { useTheme, type Theme } from "@/components/theme-provider";
 import {
   updateDisplayName,
   sendPasswordReset,
-  generateApiToken,
-  revokeApiToken,
-  getApiTokens,
   getPreferences,
   savePreferences,
-  type ApiTokenData,
 } from "@/actions/settings";
 import type { UserPreferenceInsert } from "@/lib/supabase/database-types";
 import { DEFAULT_PROPOSAL_SYSTEM_PROMPT } from "@/lib/proposals/system-prompt";
@@ -46,17 +41,9 @@ import {
   CheckCircle2,
   Palette,
   Clock,
-  Plus,
-  Copy,
-  Trash2,
-  KeyRound,
-  Eye,
-  EyeOff,
   Sparkles,
   RotateCcw,
   Settings,
-  Lock,
-  Crown,
   Sun,
   Moon,
   Monitor,
@@ -70,7 +57,6 @@ const THEME_OPTIONS: { value: Theme; label: string; icon: typeof Sun }[] = [
 
 export default function SettingsPage() {
   const { user, loading } = useUser();
-  const { subscription } = useSubscription();
   const { theme, setTheme } = useTheme();
 
   // A stable identity for the signed-in user. `user` itself is a fresh object on
@@ -90,15 +76,6 @@ export default function SettingsPage() {
 
   const [systemPrompt, setSystemPrompt] = useState("");
   const [savingPrompt, setSavingPrompt] = useState(false);
-
-  const [tokens, setTokens] = useState<ApiTokenData[]>([]);
-  const [tokensLoading, setTokensLoading] = useState(true);
-  const [showNewToken, setShowNewToken] = useState(false);
-  const [newTokenValue, setNewTokenValue] = useState("");
-  const [newTokenName, setNewTokenName] = useState("");
-  const [generatingToken, setGeneratingToken] =
-    useState(false);
-  const [tokenVisible, setTokenVisible] = useState(false);
 
   const [profileSynced, setProfileSynced] = useState(false);
   const [profileSyncLoading, setProfileSyncLoading] = useState(true);
@@ -230,24 +207,6 @@ export default function SettingsPage() {
     setSystemPrompt(DEFAULT_PROPOSAL_SYSTEM_PROMPT);
   }, []);
 
-  useEffect(() => {
-    if (!loading && userId) {
-      loadTokens();
-    }
-  }, [loading, userId]);
-
-  async function loadTokens() {
-    setTokensLoading(true);
-
-    const result = await getApiTokens();
-
-    if (result.success && result.tokens) {
-      setTokens(result.tokens);
-    }
-
-    setTokensLoading(false);
-  }
-
   const handleSaveName = useCallback(async () => {
     setSavingName(true);
 
@@ -289,84 +248,9 @@ export default function SettingsPage() {
     window.location.href = "/login";
   }, []);
 
-  const handleGenerateToken = useCallback(async () => {
-    setGeneratingToken(true);
-
-    const result = await generateApiToken(newTokenName);
-
-    setGeneratingToken(false);
-
-    if (!result.success) {
-      toast.error(
-        result.error ?? "Failed to generate token."
-      );
-      return;
-    }
-
-    setNewTokenValue(result.token ?? "");
-    setShowNewToken(true);
-    setTokenVisible(true);
-    setNewTokenName("");
-
-    await loadTokens();
-  }, [newTokenName]);
-
-  const handleRevokeToken = useCallback(
-    async (tokenId: string) => {
-      if (
-        !confirm(
-          "Revoke this token? The extension using it will stop working."
-        )
-      ) {
-        return;
-      }
-
-      const result = await revokeApiToken(tokenId);
-
-      if (!result.success) {
-        toast.error(
-          result.error ?? "Failed to revoke token."
-        );
-        return;
-      }
-
-      toast.success("Token revoked.");
-
-      if (newTokenValue) {
-        setShowNewToken(false);
-        setNewTokenValue("");
-      }
-
-      await loadTokens();
-    },
-    [newTokenValue]
-  );
-
-  const copyToken = useCallback(() => {
-    if (newTokenValue) {
-      navigator.clipboard.writeText(newTokenValue);
-      toast.success("Token copied to clipboard.");
-    }
-  }, [newTokenValue]);
-
-  const formatDate = (dateString: string | null) => {
-    if (!dateString) return "Never";
-
-    return new Date(dateString).toLocaleDateString(
-      "en-US",
-      {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }
-    );
-  };
-
   if (loading) {
     return (
-      <div className="relative flex min-h-[60vh] items-center justify-center overflow-hidden rounded-[24px] bg-[#0A0A0A]">
+      <div className="relative flex min-h-[60vh] items-center justify-center overflow-hidden rounded-[24px] border border-[#0A0A0A]/10 bg-[#EFF1F3] dark:border-white/10 dark:bg-[#0A0A0A]">
         <div className="pointer-events-none absolute left-1/2 top-1/2 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#00C98B]/15 blur-[110px]" />
 
         <div className="relative z-10 flex flex-col items-center">
@@ -374,11 +258,11 @@ export default function SettingsPage() {
             <Loader2 className="size-6 animate-spin text-[#00C98B]" />
           </span>
 
-          <p className="mt-4 font-heading text-sm font-semibold text-white">
+          <p className="mt-4 font-heading text-sm font-semibold text-[#0A0A0A] dark:text-white">
             Loading settings
           </p>
 
-          <p className="mt-1 text-xs text-white/35">
+          <p className="mt-1 text-xs text-[#0A0A0A]/40 dark:text-white/35">
             Preparing your preferences...
           </p>
         </div>
@@ -389,7 +273,7 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto max-w-4xl space-y-5 pb-6">
       {/* Header */}
-      <section className="relative overflow-hidden rounded-[22px] border border-white/10 bg-[#0A0A0A] px-5 py-6 text-white shadow-[0_16px_40px_rgba(0,0,0,0.13)] sm:px-6">
+      <section className="relative overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-[#EFF1F3] px-5 py-6 text-[#0A0A0A] shadow-[0_12px_30px_rgba(0,0,0,0.06)] sm:px-6 dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_16px_40px_rgba(0,0,0,0.13)]">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 opacity-35"
@@ -426,7 +310,7 @@ export default function SettingsPage() {
               Settings
             </h1>
 
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-white/50">
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-[#0A0A0A]/55 dark:text-white/50">
               Manage your account, profile, application
               preferences and extension access.
             </p>
@@ -795,210 +679,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* API Tokens — Pro only */}
-      {subscription?.is_paid ? (
-        <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
-          <CardHeader className="border-b border-[#0A0A0A]/10 px-5 py-5 sm:px-6">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#00C98B]/10 text-[#00A975]">
-                <KeyRound className="size-5" />
-              </span>
-
-              <div>
-                <CardTitle className="font-heading text-lg font-bold text-[#0A0A0A]">
-                  Extension API Tokens
-                </CardTitle>
-
-                <CardDescription className="mt-0.5 text-sm text-[#0A0A0A]/45">
-                  Connect the Chrome Extension to your account
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-
-          <CardContent className="space-y-5 px-5 py-5 sm:px-6">
-            <div className="space-y-2">
-              <Label
-                htmlFor="tokenName"
-                className="text-sm font-semibold text-[#0A0A0A]"
-              >
-                New Token
-              </Label>
-
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  id="tokenName"
-                  value={newTokenName}
-                  onChange={(event) =>
-                    setNewTokenName(event.target.value)
-                  }
-                  placeholder="Chrome Extension"
-                  className="h-10 flex-1 rounded-xl border-[#0A0A0A]/10 focus-visible:border-[#00C98B] focus-visible:ring-[#00C98B]/20"
-                  maxLength={50}
-                />
-
-                <Button
-                  onClick={handleGenerateToken}
-                  disabled={generatingToken}
-                  className="h-10 rounded-xl bg-[#0A0A0A] px-4 font-semibold text-white hover:bg-[#0A0A0A]/90"
-                >
-                  {generatingToken ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Plus className="size-4" />
-                  )}
-
-                  Generate
-                </Button>
-              </div>
-            </div>
-
-            {showNewToken && newTokenValue && (
-              <div className="space-y-3 rounded-2xl border border-[#00C98B]/25 bg-[#00C98B]/5 p-4">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-[#00A975]" />
-
-                  <div>
-                    <p className="text-sm font-semibold text-[#008F64]">
-                      Token generated successfully
-                    </p>
-
-                    <p className="mt-1 text-xs text-[#0A0A0A]/45">
-                      Copy this token now. You won&apos;t be
-                      able to see it again.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <code className="block min-w-0 flex-1 break-all rounded-xl border border-[#0A0A0A]/10 bg-white p-3 font-mono text-xs text-[#0A0A0A]/65">
-                    {tokenVisible
-                      ? newTokenValue
-                      : `${newTokenValue.slice(
-                        0,
-                        16
-                      )}${"•".repeat(32)}`}
-                  </code>
-
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="size-10 rounded-xl border-[#0A0A0A]/10 text-[#0A0A0A]/50 hover:border-[#00C98B]/30 hover:bg-[#00C98B]/5 hover:text-[#00A975]"
-                      onClick={() =>
-                        setTokenVisible(!tokenVisible)
-                      }
-                      title={
-                        tokenVisible ? "Hide" : "Show"
-                      }
-                    >
-                      {tokenVisible ? (
-                        <EyeOff className="size-4" />
-                      ) : (
-                        <Eye className="size-4" />
-                      )}
-                    </Button>
-
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="size-10 rounded-xl border-[#0A0A0A]/10 text-[#0A0A0A]/50 hover:border-[#00C98B]/30 hover:bg-[#00C98B]/5 hover:text-[#00A975]"
-                      onClick={copyToken}
-                      title="Copy"
-                    >
-                      <Copy className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <Separator className="bg-[#0A0A0A]/10" />
-
-            <div className="space-y-3">
-              <Label className="text-sm font-semibold text-[#0A0A0A]">
-                Active Tokens
-              </Label>
-
-              {tokensLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="size-5 animate-spin text-[#00A975]" />
-                </div>
-              ) : tokens.length === 0 ? (
-                <div className="rounded-2xl border border-[#0A0A0A]/10 bg-[#F8F9F9] px-4 py-8 text-center">
-                  <KeyRound className="mx-auto size-8 text-[#00A975]/50" />
-
-                  <p className="mx-auto mt-2 max-w-md text-sm text-[#0A0A0A]/45">
-                    No API tokens yet. Generate one above for
-                    the Chrome Extension.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {tokens.map((token) => (
-                    <div
-                      key={token.id}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-[#0A0A0A]/10 bg-[#F8F9F9] p-3 transition-all hover:border-[#00C98B]/30 hover:bg-[#00C98B]/5"
-                    >
-                      <div className="min-w-0 space-y-1">
-                        <p className="truncate text-sm font-semibold text-[#0A0A0A]">
-                          {token.name ||
-                            "Chrome Extension"}
-                        </p>
-
-                        <p className="font-mono text-xs text-[#00A975]">
-                          {token.token_preview}
-                        </p>
-
-                        <p className="text-[10px] leading-4 text-[#0A0A0A]/40">
-                          Last used:{" "}
-                          {formatDate(token.last_used_at)}
-                          <span className="mx-1.5">•</span>
-                          Created:{" "}
-                          {formatDate(token.created_at)}
-                        </p>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-9 shrink-0 rounded-xl text-[#0A0A0A]/35 hover:bg-[#0A0A0A]/5 hover:text-[#0A0A0A]"
-                        onClick={() =>
-                          handleRevokeToken(token.id)
-                        }
-                        title="Revoke"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
-          <CardContent className="flex flex-col items-center px-5 py-8 text-center sm:px-6">
-            <span className="grid size-12 place-items-center rounded-2xl bg-[#0A0A0A]">
-              <Lock className="size-5 text-white/60" />
-            </span>
-            <h3 className="mt-3 font-heading text-sm font-bold text-[#0A0A0A]">
-              Extension API — Pro Only
-            </h3>
-            <p className="mt-1 max-w-sm text-xs text-[#0A0A0A]/45">
-              Upgrade to Pro to generate API tokens and connect the Chrome Extension.
-            </p>
-            <Button
-              onClick={() => window.location.href = "/billing"}
-              className="mt-4 h-9 rounded-xl bg-[#0A0A0A] px-4 text-xs font-semibold text-white hover:bg-[#0A0A0A]/90"
-            >
-              <Crown className="size-3.5" />
-              Upgrade to Pro
-            </Button>
-          </CardContent>
-        </Card>
-      )}
       <Card className="gap-0 overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-white py-0 shadow-[0_8px_28px_rgba(0,0,0,0.04)]">
         <CardHeader className="border-b border-[#0A0A0A]/10 px-5 py-5 sm:px-6">
           <div className="flex items-center gap-3">

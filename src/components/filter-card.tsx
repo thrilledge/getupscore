@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { JobFilter } from "@/lib/supabase/database-types";
 import { toggleFilter, deleteFilter } from "@/actions/filters";
@@ -53,10 +54,15 @@ interface FilterCardProps {
 }
 
 export function FilterCard({ filter }: FilterCardProps) {
+  const queryClient = useQueryClient();
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [toggling, setToggling] = useState(false);
+
+  function invalidateFilters() {
+    queryClient.invalidateQueries({ queryKey: ["job_filters"] });
+  }
 
   async function handleToggle() {
     setToggling(true);
@@ -71,6 +77,7 @@ export function FilterCard({ filter }: FilterCardProps) {
     toast.success(
       filter.is_active ? "Filter paused." : "Filter activated."
     );
+    invalidateFilters();
   }
 
   async function handleDelete() {
@@ -85,6 +92,7 @@ export function FilterCard({ filter }: FilterCardProps) {
 
     toast.success("Filter deleted.");
     setShowDeleteDialog(false);
+    invalidateFilters();
   }
 
   const hasBudget = filter.min_budget != null || filter.max_budget != null;
@@ -95,17 +103,15 @@ export function FilterCard({ filter }: FilterCardProps) {
   return (
     <>
       <Card
-        className={`group relative overflow-hidden border-border/60 bg-card transition-all duration-300 hover:shadow-lg hover:border-border/100 hover:-translate-y-0.5 ${
-          !filter.is_active ? "opacity-60" : ""
-        }`}
+        className={`group relative overflow-hidden border-border/60 bg-card transition-all duration-300 hover:shadow-lg hover:border-border/100 hover:-translate-y-0.5 ${!filter.is_active ? "opacity-60" : ""
+          }`}
       >
         {/* Accent bar */}
         <div
-          className={`absolute top-0 left-0 h-1 w-full transition-colors duration-300 ${
-            filter.is_active
-              ? "bg-gradient-to-r from-accent-blue via-accent-blue/80 to-accent-blue/60"
-              : "bg-muted-foreground/20"
-          }`}
+          className={`absolute top-0 left-0 h-1 w-full transition-colors duration-300 ${filter.is_active
+            ? "bg-gradient-to-r from-accent-blue via-accent-blue/80 to-accent-blue/60"
+            : "bg-muted-foreground/20"
+            }`}
         />
 
         <CardHeader className="pb-3">
@@ -113,11 +119,10 @@ export function FilterCard({ filter }: FilterCardProps) {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <div
-                  className={`rounded-lg p-1.5 transition-colors ${
-                    filter.is_active
-                      ? "bg-accent-blue/10 text-accent-blue"
-                      : "bg-muted/50 text-muted-foreground/50"
-                  }`}
+                  className={`rounded-lg p-1.5 transition-colors ${filter.is_active
+                    ? "bg-accent-blue/10 text-accent-blue"
+                    : "bg-muted/50 text-muted-foreground/50"
+                    }`}
                 >
                   <Filter className="size-4" />
                 </div>
@@ -302,12 +307,6 @@ export function FilterCard({ filter }: FilterCardProps) {
         </CardFooter>
       </Card>
 
-      {/* Edit Dialog */}
-      <FilterFormDialog
-        filter={filter}
-        open={showEditDialog}
-        onOpenChange={setShowEditDialog}
-      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -338,6 +337,14 @@ export function FilterCard({ filter }: FilterCardProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Filter Dialog */}
+      <FilterFormDialog
+        filter={filter}
+        open={showEditDialog}
+        onOpenChange={setShowEditDialog}
+        onSuccess={invalidateFilters}
+      />
     </>
   );
 }

@@ -120,6 +120,24 @@ export async function cacheInvalidate(prefix: string): Promise<number> {
 }
 
 /**
+ * Best-effort stale read: return the cached value even if expired.
+ * Used to serve the last-good snapshot when the live DB fetch fails.
+ */
+export async function cacheGetStale<T>(key: string): Promise<T | null> {
+  if (redis) {
+    try {
+      const raw = await redis.get<string>(key);
+      if (raw) return JSON.parse(raw) as T;
+    } catch {
+      // ignore
+    }
+  }
+  const entry = memStore.get(key) as CacheEntry<T> | undefined;
+  if (!entry) return null;
+  return entry.value;
+}
+
+/**
  * Cache-aside helper: return cached value or call fn, cache the result, return it.
  */
 export async function cached<T>(

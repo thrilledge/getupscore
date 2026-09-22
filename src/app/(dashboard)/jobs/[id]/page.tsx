@@ -159,7 +159,7 @@ function formatBudget(job: Job): string {
     return `$${job.hourly_min}–${job.hourly_max}/hr`;
   if (job.hourly_min != null) return `From $${job.hourly_min}/hr`;
   if (job.hourly_max != null) return `Up to $${job.hourly_max}/hr`;
-  return "—";
+  return "Price not mention";
 }
 
 function scoreColor(score: number): string {
@@ -428,7 +428,7 @@ export default function JobDetailPage() {
                 </div>
                 <span className="text-xs font-medium text-muted-foreground">Duration</span>
               </div>
-              <p className="text-lg font-bold">{job.duration_label || "—"}</p>
+              <p className="text-lg font-bold">{job.duration_label || "Duration not mention"}</p>
               {job.duration_weeks != null && (
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {job.duration_weeks} weeks

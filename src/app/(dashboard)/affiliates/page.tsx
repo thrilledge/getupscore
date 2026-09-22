@@ -223,7 +223,7 @@ export default function AffiliateDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="size-8 animate-spin rounded-full border-2 border-white/10 border-t-[#00C98B]" />
+        <div className="size-8 animate-spin rounded-full border-2 border-[#0A0A0A]/10 border-t-[#00C98B] dark:border-white/10" />
       </div>
     );
   }

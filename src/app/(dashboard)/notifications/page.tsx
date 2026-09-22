@@ -187,7 +187,7 @@ export default function NotificationsPage() {
     <SubscriptionGate feature="Notifications">
     <div className="space-y-5 pb-6">
       {/* Header */}
-      <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-[22px] border border-white/10 bg-[#0A0A0A] px-5 py-5 text-white shadow-[0_16px_40px_rgba(0,0,0,0.13)] duration-500 sm:px-6">
+      <section className="animate-in fade-in slide-in-from-bottom-2 relative overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-[#EFF1F3] px-5 py-5 text-[#0A0A0A] shadow-[0_12px_30px_rgba(0,0,0,0.06)] duration-500 sm:px-6 dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_16px_40px_rgba(0,0,0,0.13)]">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 opacity-35"
@@ -228,7 +228,7 @@ export default function NotificationsPage() {
                 Notifications
               </h1>
 
-              <p className="mt-1 max-w-xl text-sm leading-6 text-white/50">
+              <p className="mt-1 max-w-xl text-sm leading-6 text-[#0A0A0A]/55 dark:text-white/50">
                 Recent alerts sent through your configured
                 notification channels.
               </p>
@@ -246,7 +246,7 @@ export default function NotificationsPage() {
               render={<Link href="/channels" />}
               variant="outline"
               size="sm"
-              className="h-9 rounded-xl border-white/15 bg-white/[0.045] px-3 text-white/65 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B]"
+              className="h-9 rounded-xl border-[#0A0A0A]/15 bg-white/70 px-3 text-[#0A0A0A]/75 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B] dark:border-white/15 dark:bg-white/[0.045] dark:text-white/65"
             >
               <Settings className="size-4" />
               Channels
@@ -256,7 +256,7 @@ export default function NotificationsPage() {
               render={<Link href="/rules" />}
               variant="outline"
               size="sm"
-              className="h-9 rounded-xl border-white/15 bg-white/[0.045] px-3 text-white/65 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B]"
+              className="h-9 rounded-xl border-[#0A0A0A]/15 bg-white/70 px-3 text-[#0A0A0A]/75 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B] dark:border-white/15 dark:bg-white/[0.045] dark:text-white/65"
             >
               <Shield className="size-4" />
               Rules
@@ -359,7 +359,7 @@ export default function NotificationsPage() {
       {!loading &&
         !error &&
         notifications.length === 0 && (
-          <section className="animate-in fade-in slide-in-from-bottom-3 relative overflow-hidden rounded-[22px] border border-white/10 bg-[#0A0A0A] text-white shadow-[0_16px_45px_rgba(0,0,0,0.13)] duration-500">
+          <section className="animate-in fade-in slide-in-from-bottom-3 relative overflow-hidden rounded-[22px] border border-[#0A0A0A]/10 bg-[#EFF1F3] text-[#0A0A0A] shadow-[0_12px_32px_rgba(0,0,0,0.06)] duration-500 dark:border-white/10 dark:bg-[#0A0A0A] dark:text-white dark:shadow-[0_16px_45px_rgba(0,0,0,0.13)]">
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 opacity-30"
@@ -390,7 +390,7 @@ export default function NotificationsPage() {
                 No notifications yet
               </h2>
 
-              <p className="mt-2 max-w-md text-sm leading-6 text-white/50">
+              <p className="mt-2 max-w-md text-sm leading-6 text-[#0A0A0A]/55 dark:text-white/50">
                 Notifications will appear here when your
                 rules trigger alerts through connected
                 channels.
@@ -408,7 +408,7 @@ export default function NotificationsPage() {
                 <Button
                   render={<Link href="/rules" />}
                   variant="outline"
-                  className="h-10 rounded-full border-white/15 bg-white/[0.045] px-5 font-semibold text-white/70 transition-all duration-300 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B]"
+                  className="h-10 rounded-full border-[#0A0A0A]/15 bg-white/70 px-5 font-semibold text-[#0A0A0A]/65 transition-all duration-300 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B] dark:border-white/15 dark:bg-white/[0.045] dark:text-white/70"
                 >
                   <Shield className="size-4" />
                   Configure rules
@@ -426,20 +426,20 @@ export default function NotificationsPage() {
             <div className="overflow-x-auto">
               <table className="min-w-[680px] w-full text-sm">
                 <thead>
-                  <tr className="border-b border-white/10 bg-[#0A0A0A]">
-                    <th className="w-[150px] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
+                  <tr className="border-b border-[#0A0A0A]/10 bg-[#EFF1F3] dark:border-white/10 dark:bg-[#0A0A0A]">
+                    <th className="w-[150px] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A]/55 dark:text-white/50">
                       Status
                     </th>
 
-                    <th className="w-[140px] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
+                    <th className="w-[140px] px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A]/55 dark:text-white/50">
                       Channel
                     </th>
 
-                    <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
+                    <th className="px-5 py-3.5 text-left text-[11px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A]/55 dark:text-white/50">
                       Job
                     </th>
 
-                    <th className="w-[210px] px-5 py-3.5 text-right text-[11px] font-bold uppercase tracking-[0.12em] text-white/50">
+                    <th className="w-[210px] px-5 py-3.5 text-right text-[11px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A]/55 dark:text-white/50">
                       Sent
                     </th>
                   </tr>

@@ -229,11 +229,18 @@ export function ChannelCard({
 
       const results = data.results ?? [];
 
-      const sent = results.filter(
+      // Only surface results for the channel the user actually tested —
+      // notifyUser dispatches to every matching rule, so a broken WhatsApp
+      // channel used to swallow the Email/Telegram test result.
+      const ownResults = results.filter(
+        (result: any) => result.channelId === channel.id
+      );
+
+      const sent = ownResults.filter(
         (result: any) => result.ok
       ).length;
 
-      const failed = results.filter(
+      const failed = ownResults.filter(
         (result: any) => !result.ok
       ).length;
 
@@ -253,7 +260,7 @@ export function ChannelCard({
 
         onSuccess?.();
       } else if (failed > 0) {
-        const firstError = results.find(
+        const firstError = failed.find(
           (result: any) => !result.ok
         )?.error;
 

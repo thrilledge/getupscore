@@ -52,20 +52,35 @@ function contains(needle: string, haystack: string): boolean {
 }
 
 /**
- * All keywords must appear (case-insensitive substring) somewhere in the
- * job's title, description, skills, category or subcategory.
+ * Word-boundary, case-insensitive keyword match. Unlike plain substring
+ * containment, "react" no longer matches "reaction" or "reactor".
+ */
+function containsKeyword(needle: string, haystack: string): boolean {
+  if (!needle) return false;
+  const escaped = norm(needle).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(
+    `(^|[^a-z0-9])${escaped}($|[^a-z0-9])`,
+    "i"
+  ).test(norm(haystack));
+}
+
+/**
+ * Any keyword must appear (case-insensitive, whole word) somewhere in the
+ * job's STRUCTURED fields: title, skills, category or subcategory. The
+ * free-text description is intentionally excluded — prose matches are weak
+ * signals and caused false positives (e.g. an "editing" keyword matching any
+ * job whose description mentions editing once).
  */
 export function keywordsMatch(job: FilterMatchJob, keywords: string[] | null | undefined): boolean {
   if (!Array.isArray(keywords) || keywords.length === 0) return true;
   const haystack = [
     job.title || "",
-    job.description || "",
     (job.skills || []).join(" "),
     job.category || "",
     job.subcategory || "",
   ].join("\n");
 
-  return keywords.every((k) => contains(k, haystack));
+  return keywords.some((k) => containsKeyword(k, haystack));
 }
 
 function jobCountry(job: FilterMatchJob): string {
