@@ -53,6 +53,9 @@ next-env.d.ts
 
 # local tooling / scratch
 .codegraph/
+/video/
+/k6/__pycache__/
+/extension-build/*.zip
 src/sds
 scripts/diag-*.js
 scripts/grep-inngest.js
