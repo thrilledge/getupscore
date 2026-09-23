@@ -67,7 +67,7 @@ export async function generateProposal(
         ...(p.groqStyle ? { reasoning_format: "hidden" as const } : {}),
         ...(isPaid ? { response_format: { type: "json_object" as const } } : {}),
       }),
-      {}
+      { preferGroq: true }
     );
     console.log("[Proposal] Using provider:", provider.name, "model:", provider.model, "isPaid:", isPaid);
 
@@ -164,7 +164,7 @@ export async function streamProposal(
             temperature: 0.7,
             max_tokens: isPaid ? 4000 : 2000,
           }),
-          {}
+          { preferGroq: true }
         );
         console.log("[Proposal Stream] Using provider:", provider.name, "model:", provider.model, "isPaid:", isPaid);
 

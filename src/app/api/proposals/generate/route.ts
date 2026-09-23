@@ -199,6 +199,7 @@ export async function POST(request: Request) {
       : undefined;
 
     const baseInput = {
+      userId,
       userName: metadata?.display_name || metadata?.full_name || undefined,
       userTitle: profile?.title || undefined,
       userSkills: profile?.skills?.length ? (profile.skills as string[]) : userKeywords,

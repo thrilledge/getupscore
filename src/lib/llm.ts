@@ -12,6 +12,13 @@ export type ProviderName = "profreemodels" | "groq";
 export interface LLMChainOptions {
   /** Force a specific provider, skipping the default chain order. */
   provider?: ProviderName;
+  /**
+   * Prefer Groq keys over profreemodels when ordering available providers.
+   * Used by proposal generation: profreemodels' claude-sonnet-5 has been
+   * observed ignoring the system prompt (generic-freelancer-fluff output),
+   * while gpt-oss-20b follows the 6-move methodology faithfully.
+   */
+  preferGroq?: boolean;
   maxAttemptsPerProvider?: number;
 }
 
@@ -148,7 +155,7 @@ function computeCooldownSeconds(body: string, retryAfterHeader: string | null): 
  * don't always start at the same key. Also reports the soonest cooldown
  * expiry (used to tell the user when to retry if everything is parked).
  */
-function availableProviders(chain: LLMProvider[]): {
+function availableProviders(chain: LLMProvider[], opts?: LLMChainOptions): {
   available: LLMProvider[];
   soonestRetrySeconds: number | null;
 } {
@@ -166,17 +173,22 @@ function availableProviders(chain: LLMProvider[]): {
     available.push(p);
   }
 
-  const preferred = available.filter((p) => p.name === "profreemodels");
-  const fallback = available.filter((p) => p.name !== "profreemodels");
+  // Split by provider family so ordering can be flipped per-callsite. Default:
+  // profreemodels first (cheap, free pro-tier models). Proposal generation
+  // passes preferGroq:true because profreemodels' claude-sonnet-5 streams
+  // generic fluff that ignores the proposal methodology, while gpt-oss-20b
+  // (Groq) follows it. Groq keys are still rotated among themselves.
+  const pm = available.filter((p) => p.name === "profreemodels");
+  const groq = available.filter((p) => p.name !== "profreemodels");
 
-  let rotated = fallback;
-  if (fallback.length > 1) {
-    const start = rotationCursor % fallback.length;
-    rotationCursor = (rotationCursor + 1) % fallback.length;
-    rotated = [...fallback.slice(start), ...fallback.slice(0, start)];
+  let rotated = groq;
+  if (groq.length > 1) {
+    const start = rotationCursor % groq.length;
+    rotationCursor = (rotationCursor + 1) % groq.length;
+    rotated = [...groq.slice(start), ...groq.slice(0, start)];
   }
 
-  const ordered = [...preferred, ...rotated];
+  const ordered = opts?.preferGroq ? [...rotated, ...pm] : [...pm, ...rotated];
 
   return {
     available: ordered,
@@ -234,7 +246,7 @@ export async function chatCompletionWithRetry(
     throw new LlmError("No LLM provider configured (set GROQ_API_KEYS).", "no_providers");
   }
 
-  const { available, soonestRetrySeconds } = availableProviders(chain);
+  const { available, soonestRetrySeconds } = availableProviders(chain, opts);
   if (available.length === 0) {
     // Everything is cooling down from earlier 429s.
     throw new LlmError(
