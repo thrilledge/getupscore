@@ -12,7 +12,7 @@
 
   <!-- ═══ HEADER ═══ -->
   <header class="panel-header">
-    <button id="btnBack" class="btn-icon back-btn" title="Back">
+    <button id="btnBack" class="btn-icon back-btn" title="Back" style="display:none">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
         stroke-linecap="round" stroke-linejoin="round">
         <line x1="19" y1="12" x2="5" y2="12" />
@@ -20,7 +20,7 @@
       </svg>
     </button>
     <div class="brand">
-      <div class="brand-logo">U</div>
+      <img src="../icons/getupscore-logo-icon.png" alt="UpScore" class="brand-logo-img">
       <div>
         <h1 id="appTitle">Get UpScore</h1>
         <div class="tagline">AI-powered Upwork assistant</div>
@@ -197,6 +197,19 @@
           <div>
             <strong>Everything syncs automatically</strong>
             <span>Open any Upwork job or your freelancer profile and Get UpScore captures the details in the background — no buttons needed.</span>
+          </div>
+        </div>
+        <div class="tip-banner" id="profileNotice" style="margin:8px 0 0;display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <div>
+            <strong style="color:#dc2626">You are not logged in</strong>
+            <span>Log in to Upwork first, then sync your profile.</span>
+            <a href="https://www.upwork.com/nx/find-work/" target="_blank" rel="noopener noreferrer" class="notice-link">Log in to Upwork →</a>
           </div>
         </div>
       </div>

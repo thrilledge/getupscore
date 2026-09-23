@@ -1,4 +1,4 @@
-﻿let bridgeReady = false;
+let bridgeReady = false;
 const bridgeQueue = [];
 
 function contextOk() {
@@ -127,13 +127,7 @@ window.addEventListener("message", (event) => {
     }
   }
 
-  if (operation === "getCookies") {
-    if (!contextOk()) return;
-    chrome.runtime.sendMessage({ type: "GET_UPWORK_COOKIES" }, (resp) => {
-      window.postMessage({ type: "__upscore_result", operation: "getCookies", cookies: resp?.cookies || "" }, "*");
-    });
-  }
-});
+  });
 
 function extractJobFromPage() {
   return requestJobDetails("getJobDetailsFromDom", {});
@@ -185,7 +179,7 @@ function showProfileToast(message, type = "info", duration = 3500) {
     document.documentElement.appendChild(toast);
   }
   const colors = {
-    info: "linear-gradient(135deg, #2563eb 0%, #6634c0 100%)",
+    info: "linear-gradient(135deg, #00C98B 0%, #00A975 100%)",
     success: "linear-gradient(135deg, #16a34a 0%, #22c55e 100%)",
     error: "linear-gradient(135deg, #dc2626 0%, #ef4444 100%)",
   };
@@ -308,7 +302,9 @@ function detectProfilePage() {
 }
 
 function detectJobPage() {
-  return window.location.href.match(/\/(?:jobs|job)\/[^/]/) || window.location.href.match(/[~/][a-f0-9]{16,}/i);
+  if (detectProfilePage()) return false;
+  const href = window.location.href;
+  return href.match(/\/(?:jobs|job)\/[^/]/) || href.match(/[~/][a-f0-9]{16,}/i);
 }
 
 function detectApplyPage() {
@@ -415,7 +411,43 @@ function getQuestionText(textarea) {
   }
 }
 
-function getAuthTokenFromBackground() {
+/**
+ * Returns the DOM element that labels the textarea (its <label>, the
+ * aria-labelledby target, or the nearest label/heading). Used to place the
+ * "Write with AI" icon button right after the label instead of inside the
+ * textarea.
+ */
+function findQuestionLabelElement(textarea) {
+  try {
+    const labelledBy = textarea.getAttribute("aria-labelledby");
+    if (labelledBy) {
+      const el = document.getElementById(labelledBy);
+      if (el?.textContent?.trim()) return el;
+    }
+    if (textarea.labels?.length && textarea.labels[0]?.textContent?.trim()) {
+      return textarea.labels[0];
+    }
+    const labelSelectors = "label, .air3-form-label, .label, [class*='label'], h2, h3, .title, strong, legend";
+    let el = textarea;
+    for (let depth = 0; el && depth < 6; depth++) {
+      el = el.parentElement;
+      if (!el) continue;
+      const label = el.querySelector(labelSelectors);
+      if (label?.textContent?.trim()) return label;
+    }
+    let nearest = null;
+    for (const l of document.querySelectorAll(labelSelectors)) {
+      if (l.textContent?.trim() && (l.compareDocumentPosition(textarea) & Node.DOCUMENT_POSITION_FOLLOWING)) {
+        nearest = l;
+      }
+    }
+    if (nearest?.textContent?.trim()) return nearest;
+    return null;
+  } catch {
+    return null;
+  }
+}
+  function getAuthTokenFromBackground() {
   return new Promise((resolve) => {
     try {
       chrome.runtime.sendMessage({ type: "GET_AUTH_TOKEN" }, (res) => {
@@ -450,13 +482,21 @@ function setTextareaValue(textarea, value) {
 }
 
 function setBtnState(btn, label, state) {
-  btn.textContent = label;
+  const span = btn.querySelector("span");
+  if (span) {
+    span.textContent = label;
+    span.style.display = "";
+  }
   btn.dataset.state = state || "idle";
   btn.disabled = state === "loading";
 }
 
 function resetBtnState(btn) {
-  btn.textContent = btn.dataset.idleLabel || "Write with AI";
+  const span = btn.querySelector("span");
+  if (span) {
+    span.textContent = "";
+    span.style.display = "none";
+  }
   delete btn.dataset.state;
   btn.disabled = false;
 }
@@ -606,7 +646,7 @@ function showSignInPopup() {
   const card = document.createElement("div");
   Object.assign(card.style, {
     background: "#ffffff",
-    color: "#0f172a",
+    color: "#0a0a0a",
     width: "360px",
     maxWidth: "calc(100vw - 32px)",
     borderRadius: "16px",
@@ -640,11 +680,11 @@ function showSignInPopup() {
   });
 
   const logo = document.createElement("img");
-  logo.src = chrome.runtime.getURL("icons/getgetupscore-logo-icon.png");
+  logo.src = chrome.runtime.getURL("icons/getupscore-logo-icon.png");
   logo.alt = "Get UpScore";
   Object.assign(logo.style, {
-    width: "48px",
-    height: "48px",
+    width: "52px",
+    height: "52px",
     borderRadius: "14px",
     margin: "0 auto 12px",
     display: "block",
@@ -669,7 +709,7 @@ function showSignInPopup() {
     padding: "12px",
     borderRadius: "10px",
     border: "none",
-    background: "linear-gradient(135deg, #2563eb 0%, #6634c0 100%)",
+    background: "linear-gradient(135deg, #00C98B 0%, #00A975 100%)",
     color: "#fff",
     fontSize: "15px",
     fontWeight: "600",
@@ -685,7 +725,7 @@ function showSignInPopup() {
 
   const register = document.createElement("p");
   Object.assign(register.style, { margin: "14px 0 0", color: "#475569", fontSize: "13px" });
-  register.innerHTML = 'Don&apos;t have an account? <a href="#" style="color:#2563eb;font-weight:600;text-decoration:none">Register</a>';
+  register.innerHTML = 'Don&apos;t have an account? <a href="#" style="color:#00C98B;font-weight:600;text-decoration:none">Register</a>';
   register.querySelector("a").addEventListener("click", (e) => {
     e.preventDefault();
     dashboardUrl("/signup?from=extension").then((u) => window.open(u, "_blank", "noopener,noreferrer"));
@@ -725,24 +765,40 @@ function injectApplyButton() {
     const btn = document.createElement("button");
     btn.id = "upscore-apply-btn-" + applyBtnCounter++;
     btn.type = "button";
-    btn.textContent = "Write with AI";
+
+    // Icon-only button — the UpScore logo, no background.
+    const logo = document.createElement("img");
+    logo.src = chrome.runtime.getURL("icons/getupscore-logo-icon.png");
+    logo.alt = "Get UpScore";
+    Object.assign(logo.style, {
+      width: "20px",
+      height: "20px",
+      borderRadius: "5px",
+      display: "block",
+      pointerEvents: "none",
+      flexShrink: "0",
+    });
+    const labelSpan = document.createElement("span");
+    labelSpan.style.display = "none";
+    btn.appendChild(logo);
+    btn.appendChild(labelSpan);
+
     Object.assign(btn.style, {
       display: "inline-flex",
       alignItems: "center",
       gap: "6px",
       margin: "0 0 8px",
-      padding: "7px 14px",
-      background: "linear-gradient(135deg, #2563eb 0%, #6634c0 100%)",
-      color: "#ffffff",
+      padding: "2px",
+      background: "transparent",
+      color: "#00C98B",
       border: "none",
-      borderRadius: "6px",
+      borderRadius: "5px",
       cursor: "pointer",
-      fontSize: "13px",
+      fontSize: "12px",
       fontWeight: "600",
       fontFamily: "inherit",
       lineHeight: "1.4",
-      boxShadow: "0 1px 3px rgba(37, 99, 235, 0.35)",
-      transition: "opacity 0.15s",
+      transition: "background 0.15s, opacity 0.15s",
     });
 
     const detectedQuestion = getQuestionText(textarea);
@@ -758,7 +814,6 @@ function injectApplyButton() {
     }
     const idleLabel = question ? "Write answer" : "Write with AI";
     btn.dataset.idleLabel = idleLabel;
-    btn.textContent = idleLabel;
     btn.title = question
       ? "Write answer for: " + question
       : isCoverLetter
@@ -814,7 +869,13 @@ function injectApplyButton() {
       await generateProposalIntoTextarea(btn, textarea, jobDetails, question);
     });
 
-    textarea.parentNode?.insertBefore(btn, textarea);
+    // Place the button right after the field's label, not inside the textarea.
+    const labelEl = findQuestionLabelElement(textarea);
+    if (labelEl && labelEl.parentNode) {
+      labelEl.parentNode.insertBefore(btn, labelEl.nextSibling);
+    } else {
+      textarea.parentNode?.insertBefore(btn, textarea);
+    }
   }
 }
 
@@ -823,22 +884,7 @@ function extractAndSend() {
     injectMainWorld("getProfileFromDom");
   }
   if (detectJobPage()) {
-    return extractJobFromPage().then((result) => {
-      if (!result?.success) {
-        const alreadyRetried = sessionStorage.getItem("__upscore_refreshed");
-        if (!alreadyRetried) {
-          sessionStorage.setItem("__upscore_refreshed", "1");
-          setTimeout(() => location.reload(), 500);
-        }
-      }
-      return result;
-    }).catch(() => {
-      const alreadyRetried = sessionStorage.getItem("__upscore_refreshed");
-      if (!alreadyRetried) {
-        sessionStorage.setItem("__upscore_refreshed", "1");
-        setTimeout(() => location.reload(), 500);
-      }
-    });
+    return extractJobFromPage().then((result) => result).catch(() => null);
   }
   return Promise.resolve();
 }
@@ -854,27 +900,53 @@ function onAuthAvailable() {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
-    case "GET_COOKIES":
-      captureCookies();
-      sendResponse({ ok: true });
-      break;
     case "GET_MY_PROFILE_URL": {
-      let url = null;
-      const candidates = [
-        document.querySelector(".nav-user-info-link"),
-        document.querySelector("a[data-testid='my-profile-link']"),
-        document.querySelector("a[href*='/freelancers/~']"),
-        document.querySelector("a[href*='/freelancers/']"),
-        document.querySelector("link[rel='canonical']"),
+      const OWN_LINK_SELECTORS = [
+        ".nav-user-info-link",
+        "a[data-testid='my-profile-link']",
       ];
-      for (const el of candidates) {
+      const LOGGED_IN_SELECTORS = [
+        ".nav-user-info-link",
+        "a[data-testid='my-profile-link']",
+        "[data-testid='user-menu']",
+        ".nav-user-menu",
+        "[data-qa='user-menu']",
+      ];
+      const LOGGED_OUT_SELECTORS = [
+        "a[href*='/ab/account-security/login']",
+        "a[href*='login']",
+        "a[href*='/nx/join']",
+        "[data-qa='log-in']",
+        "[data-testid='log-in']",
+        "[data-qa='join']",
+      ];
+
+      // The logged-in user's OWN profile link lives in the header user-menu.
+      let url = null;
+      for (const sel of OWN_LINK_SELECTORS) {
+        const el = document.querySelector(sel);
         const href = el?.href;
         if (href && /\/freelancers\/(~|me\/)/.test(href) && !/\/proposals\//.test(href)) {
           url = href;
           break;
         }
       }
-      sendResponse({ ok: !!url, url });
+      // On the user's own profile page the canonical URL is their profile.
+      if (!url && detectProfilePage()) {
+        const canonical = document.querySelector("link[rel='canonical']");
+        if (canonical?.href && /\/freelancers\/~/.test(canonical.href)) url = canonical.href;
+      }
+
+      let loggedIn = null;
+      try {
+        if (LOGGED_IN_SELECTORS.some((s) => document.querySelector(s))) {
+          loggedIn = true;
+        } else if (LOGGED_OUT_SELECTORS.some((s) => document.querySelector(s))) {
+          loggedIn = false;
+        }
+      } catch {}
+
+      sendResponse({ ok: !!url, url, loggedIn });
       break;
     }
     case "EXTRACT_PAGE":
@@ -898,25 +970,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
-function captureCookies() {
-  try {
-    chrome.runtime.sendMessage({ type: "GET_UPWORK_COOKIES" });
-  } catch (e) { /* ignore */ }
-}
-
-
-
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => {
-      captureCookies();
       injectApplyButton();
       extractAndSend().catch(() => { });
     }, 2000);
   });
 } else {
   setTimeout(() => {
-    captureCookies();
     injectApplyButton();
     extractAndSend().catch(() => { });
   }, 2000);
@@ -927,9 +989,7 @@ const observer = new MutationObserver(() => {
   const currentUrl = location.href;
   if (currentUrl !== lastUrl) {
     lastUrl = currentUrl;
-    sessionStorage.removeItem("__upscore_refreshed");
     setTimeout(() => {
-      captureCookies();
       injectApplyButton();
       extractAndSend().catch(() => { });
     }, 2000);

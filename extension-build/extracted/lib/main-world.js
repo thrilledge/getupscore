@@ -1454,18 +1454,4 @@
     textarea.value = textarea.value.slice(0, pos) + insertText + textarea.value.slice(pos);
     textarea.dispatchEvent(new Event("input", { bubbles: true }));
   }
-
-  window.__upscore_getCookies = function () {
-    return new Promise(function (resolve) {
-      function handler(e) {
-        if (e.data && e.data.type === "__upscore_result" && e.data.operation === "getCookies") {
-          window.removeEventListener("message", handler);
-          resolve(e.data.cookies || "");
-        }
-      }
-      window.addEventListener("message", handler);
-      window.postMessage({ type: "__upscore_exec", operation: "getCookies" }, "*");
-      setTimeout(function () { window.removeEventListener("message", handler); resolve(""); }, 5000);
-    });
-  };
 })();

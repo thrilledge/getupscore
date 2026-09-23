@@ -38,8 +38,9 @@ function showView(name) {
   if (name !== "loading" && isPaidUser !== null) {
     $("statusBar").style.display = "";
   }
-  // Hide back button — nav tabs are the primary navigation
-  $("btnBack").style.display = "none";
+  // Show back button on sub-views (settings / saved jobs), hide on home views
+  const showBack = name === "settings" || name === "savedjobs";
+  $("btnBack").style.display = showBack ? "" : "none";
   // Update title
   $("appTitle").textContent = VIEW_TITLES[name] || "Get UpScore";
 }
@@ -166,13 +167,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function checkSubscription() {
   try {
     const token = await getAuthToken();
-    if (!token || !apiUrl) return;
+    if (!token || !apiUrl) {
+      showDashboardViews(); // can't verify — don't gate
+      return;
+    }
 
     const resp = await fetch(`${apiUrl}/api/billing/status`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
-    if (!resp.ok) return; // API error — don't gate
+    if (!resp.ok) {
+      showDashboardViews(); // API error — don't gate
+      return;
+    }
 
     const json = await resp.json();
     const sub = json?.data;
@@ -184,7 +191,7 @@ async function checkSubscription() {
       showDashboardViews();
     }
   } catch {
-    // Network error — don't gate, let user use extension
+    showDashboardViews(); // Network error — don't gate, let user use extension
   }
 }
 
@@ -337,9 +344,21 @@ function signIn() {
 
 function syncProfile() {
   chrome.runtime.sendMessage({ type: "OPEN_MY_PROFILE" }, (res) => {
+    const notice = $("profileNotice");
+    if (notice) notice.style.display = "none";
     if (!res?.ok) {
-      statusText.textContent = "Open Upwork and sign in first";
-      statusDot.className = "dot error";
+      if (res?.notLoggedIn) {
+        statusText.textContent = "Not logged in to Upwork";
+        statusDot.className = "dot error";
+        if (notice) {
+          notice.style.display = "";
+          const link = notice.querySelector("a");
+          if (link && res.loginUrl) link.href = res.loginUrl;
+        }
+      } else {
+        statusText.textContent = "Open Upwork and sign in first";
+        statusDot.className = "dot error";
+      }
     }
   });
 }

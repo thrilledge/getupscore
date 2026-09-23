@@ -158,7 +158,7 @@
   // Initial scan + fallback polling: login happens in the same tab, so no
   // storage event fires — the poll picks the freshly written cookies up.
   scan();
-  pollTimer = setInterval(scan, 3000);
+  pollTimer = setInterval(scan, 10000);
   window.addEventListener("pageshow", scan);
   window.addEventListener("focus", scan);
 })();

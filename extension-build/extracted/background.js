@@ -13,7 +13,6 @@ let state = {
   statusMessage: "Initializing...",
   apiToken: null,
   apiUrl: DEFAULT_API_URL,
-  upworkCookies: false,
   user: null,
 };
 
@@ -43,33 +42,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse({ ok: true });
       break;
 
-    case "UPWORK_COOKIES":
-      handleCapturedCookies(msg.cookies);
-      sendResponse({ ok: true });
-      break;
-
-    case "GET_UPWORK_COOKIES":
-      chrome.cookies.getAll({ url: "https://www.upwork.com" }, (cookies) => {
-        if (!chrome.runtime.lastError && cookies && cookies.length > 0) {
-          const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join("; ");
-          handleCapturedCookies(cookieStr);
-          sendResponse({ ok: true, cookies: cookieStr });
-        } else {
-          sendResponse({ ok: false, error: "No cookies found" });
-        }
-      });
-      return true;
-
     case "JOBS_CAPTURED":
       handleCapturedJobs(msg.jobs).then(sendResponse);
       return true;
 
     case "PROFILE_CAPTURED":
       handleCapturedProfile(msg.profile).then(sendResponse);
-      return true;
-
-    case "SYNC_COOKIES_FROM_SERVER":
-      handleSyncCookiesFromServer().then(sendResponse);
       return true;
 
     case "GET_VISITOR_GQL_TOKEN":
@@ -164,6 +142,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const { url, options } = msg;
       (async () => {
         try {
+          let target;
+          try {
+            target = new URL(url);
+          } catch {
+            return sendResponse({ ok: false, error: "Invalid URL" });
+          }
+          if (new URL(state.apiUrl).origin !== target.origin) {
+            return sendResponse({ ok: false, error: "Blocked origin" });
+          }
           const resp = await fetch(url, options);
           if (options && options.method === "GET" || (!options || !options.method || options.method === "GET")) {
             const json = await resp.json();
@@ -299,31 +286,14 @@ function getCookiesForUrl(url) {
   });
 }
 
-function getAllVisibleCookies() {
-  return new Promise((resolve) => {
-    try {
-      chrome.cookies.getAll({}, (cookies) => {
-        const err = chrome.runtime.lastError;
-        if (err) return resolve({ error: err.message, cookies: [] });
-        resolve({ error: null, cookies: cookies || [] });
-      });
-    } catch (e) {
-      resolve({ error: e.message, cookies: [] });
-    }
-  });
-}
-
 const CANDIDATE_URLS = [
   "https://www.getupscore.com/",
-  "https://upscore.app/",
-  "https://www.upscore.app/",
   "https://getupscore.com/",
 ];
 
 async function scanCandidateOrigins() {
   const results = [];
   const seen = new Set();
-  const { error: allErr, cookies: allCookies } = await getAllVisibleCookies();
   for (const url of [state.apiUrl + "/", ...CANDIDATE_URLS]) {
     const norm = url.replace(/\/+$/, "") + "/";
     if (seen.has(norm)) continue;
@@ -331,16 +301,8 @@ async function scanCandidateOrigins() {
     let error = null;
     let cookies = [];
     const { error: urlErr, cookies: urlCookies } = await getCookiesForUrl(norm);
-    if (urlCookies && urlCookies.length > 0) {
-      cookies = urlCookies;
-      error = urlErr;
-    } else {
-      const host = new URL(norm).hostname;
-      cookies = (allCookies || []).filter(
-        (c) => c.domain === host || c.domain === "." + host || c.domain.startsWith("." + host)
-      );
-      if (allErr) error = "getAll: " + allErr;
-    }
+    cookies = urlCookies || [];
+    error = urlErr;
     const sessionCookies = cookies.filter((c) => DASHBOARD_COOKIE_RE.test(c.name));
     results.push({
       url: norm,
@@ -400,30 +362,72 @@ async function applyImportedSession(payload) {
   return true;
 }
 
+const UPWORK_LOGIN_URL = "https://www.upwork.com/nx/find-work/";
+
+async function getStoredUpworkProfileUrl() {
+  try {
+    const token = await resolveAuthToken();
+    if (!token) return null;
+    const response = await fetch(`${state.apiUrl.replace(/\/+$/, "")}/api/extension/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) return null;
+    const json = await response.json();
+    const url = json?.profile?.upwork_url;
+    if (url && /\/freelancers\/~[0-9a-f]/i.test(url)) return url;
+  } catch { /* ignore */ }
+  return null;
+}
+
+async function askUpworkTabsForProfile() {
+  const tabs = await chrome.tabs.query({ url: "https://www.upwork.com/*" });
+  let detectedUrl = null;
+  let seenLoggedIn = false;
+  let seenLoggedOut = false;
+  for (const tab of tabs) {
+    try {
+      const reply = await new Promise((resolve) => {
+        chrome.tabs.sendMessage(tab.id, { type: "GET_MY_PROFILE_URL" }, (res) => {
+          if (chrome.runtime.lastError) return resolve(null);
+          resolve(res || null);
+        });
+      });
+      if (!reply) continue;
+      if (reply.loggedIn === true) seenLoggedIn = true;
+      if (reply.loggedIn === false) seenLoggedOut = true;
+      if (
+        reply.url &&
+        /\/freelancers\/(~|me\/?)/.test(reply.url) &&
+        !/\/proposals\//.test(reply.url) &&
+        !detectedUrl
+      ) {
+        detectedUrl = reply.url;
+      }
+    } catch { /* try next tab */ }
+  }
+  return { tabs, detectedUrl, seenLoggedIn, seenLoggedOut };
+}
+
 async function openMyProfile() {
   const PROFILE_ME = "https://www.upwork.com/freelancers/me/";
   try {
-    const tabs = await chrome.tabs.query({ url: "https://www.upwork.com/*" });
-    for (const tab of tabs) {
-      try {
-        const reply = await new Promise((resolve) => {
-          chrome.tabs.sendMessage(tab.id, { type: "GET_MY_PROFILE_URL" }, (res) => {
-            if (chrome.runtime.lastError) return resolve(null);
-            resolve(res || null);
-          });
-        });
-        if (reply?.url) {
-          await chrome.tabs.update(tab.id, { active: true, url: reply.url });
-          return { ok: true, url: reply.url, tabId: tab.id };
-        }
-      } catch {
-        /* try next tab */
-      }
+    const { tabs, detectedUrl, seenLoggedIn, seenLoggedOut } = await askUpworkTabsForProfile();
+
+    // Open Upwork tabs exist, but none show a signed-in session.
+    if (seenLoggedOut && !seenLoggedIn) {
+      return { ok: false, notLoggedIn: true, loginUrl: UPWORK_LOGIN_URL };
     }
+
+    // Prefer a logged-in tab's own profile link, else the profile stored in the
+    // dashboard (this is the user's real ~profile URL, not /me).
+    const target = detectedUrl || (await getStoredUpworkProfileUrl()) || PROFILE_ME;
+
     if (tabs.length > 0) {
-      await chrome.tabs.update(tabs[0].id, { active: true, url: PROFILE_ME });
-      return { ok: true, url: PROFILE_ME, tabId: tabs[0].id };
+      await chrome.tabs.update(tabs[0].id, { active: true, url: target });
+      return { ok: true, url: target, tabId: tabs[0].id };
     }
+    const tab = await chrome.tabs.create({ url: target });
+    return { ok: true, url: target, tabId: tab?.id ?? null };
   } catch (err) {
     console.warn("[Get UpScore] openMyProfile:", err.message);
   }
@@ -460,14 +464,6 @@ async function postToServer(endpoint, body) {
   }
 }
 
-async function handleCapturedCookies(cookies) {
-  const result = await postToServer("/api/extension/cookies/sync", { cookies });
-  if (result?.ok !== false) {
-    state.upworkCookies = true;
-  }
-  broadcastState();
-}
-
 async function handleCapturedJobs(jobs) {
   const result = await postToServer("/api/extension/jobs/sync", { jobs });
   broadcastState();
@@ -480,36 +476,11 @@ async function handleCapturedProfile(profile) {
   return { ok: result?.ok !== false, created: !!result?.created, changed: result?.changed || [], error: result?.error };
 }
 
-async function handleSyncCookiesFromServer() {
-  const token = await resolveAuthToken();
-  if (!token) return { ok: false, error: "Not signed in" };
-  try {
-    const response = await fetch(`${state.apiUrl}/api/extension/cookies/sync`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: "HTTP " + response.status }));
-      return { ok: false, error: err.error };
-    }
-    const data = await response.json();
-    state.upworkCookies = true;
-    broadcastState();
-    return { ok: true, ...data };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-}
-
 function broadcastState() {
   chrome.runtime.sendMessage({
     type: "STATUS_UPDATE",
     connected: state.connected,
     message: state.statusMessage,
-    upworkCookies: state.upworkCookies,
   }).catch(() => { });
 }
 
@@ -520,7 +491,7 @@ function broadcastAuth() {
   }).catch(() => { });
 }
 
-chrome.alarms.create("upscore-session-import", { periodInMinutes: 0.5 }).catch(() => { });
+chrome.alarms.create("upscore-session-import", { periodInMinutes: 5 }).catch(() => { });
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== "upscore-session-import") return;
   const imported = await importSessionFromCookies();

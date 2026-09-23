@@ -34,6 +34,9 @@ export async function POST(request: Request) {
     const jobsForInngest: any[] = [];
 
     for (const job of jobs) {
+      const url = String(job.url || "");
+      if (looksLikeProfilePage(url)) continue;
+
       const title = String(job.title || "Untitled").slice(0, 500);
       if (!title || title.length < 3) continue;
 
@@ -120,6 +123,13 @@ export async function POST(request: Request) {
     console.error("[Extension Jobs] Error:", err);
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
+}
+
+function looksLikeProfilePage(url: string): boolean {
+  if (!url) return false;
+  if (/\/freelancers\//i.test(url)) return true;
+  if (/\/users\//i.test(url)) return true;
+  return false;
 }
 
 function parseBudget(value: unknown): number | null {

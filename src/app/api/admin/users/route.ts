@@ -39,14 +39,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get subscription data for all users
-    const userIds = users.map((u) => u.id);
+    // Get subscription status for all users.
+    // Fetches the whole (small) subscriptions table instead of filtering with
+    // .in() — PostgREST URIs with hundreds of UUIDs exceed nginx's request-line
+    // limit on the self-hosted DB, silently returning 502 and blanking the map.
     const { data: subs } = await (admin as any)
       .from("subscriptions")
-      .select("user_id, status")
-      .in("user_id", userIds);
+      .select("user_id, status");
 
-    const subMap = new Map(subs?.map((s: any) => [s.user_id, s.status]) ?? []);
+    const subMap = new Map((subs ?? []).map((s: any) => [s.user_id, s.status]));
 
     // Enrich users with subscription status
     const enriched = users.map((u) => ({

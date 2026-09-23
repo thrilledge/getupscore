@@ -101,15 +101,18 @@ export async function generateProposal(
         console.warn("[Proposal] JSON response missing usable 'proposal' field, using fallback.");
         return generateFallbackProposal(input);
       }
+      const enforced = maybeEnsureClosingBlock(input, proposalText);
       return {
-        generated_text: proposalText,
-        score: scoreProposal(proposalText),
+        generated_text: enforced,
+        score: scoreProposal(enforced),
       };
     }
 
+    const cleaned = cleanProposal(content);
+    const enforced = maybeEnsureClosingBlock(input, cleaned);
     return {
-      generated_text: cleanProposal(content),
-      score: scoreProposal(content),
+      generated_text: enforced,
+      score: scoreProposal(enforced),
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -226,7 +229,27 @@ export async function streamProposal(
           return;
         }
 
-        send("done", { score: scoreProposal(finalText) });
+        const enforcedText = maybeEnsureClosingBlock(input, finalText);
+
+        // If the model skipped the mandatory close, stream the appended block
+        // so both the live UI and the DB-saved text carry the sign-off.
+        if (enforcedText !== finalText) {
+          const suffix = enforcedText.slice(finalText.length).trim();
+          if (suffix) send("proposal", { text: `\n\n${suffix}` });
+        }
+
+        logLlmUsage({
+          user_id: input.userId,
+          provider: provider.name,
+          model: provider.model,
+          endpoint: input.answerQuestion ? "answer" : "proposal",
+          prompt_tokens: 0,
+          completion_tokens: 0,
+          total_tokens: 0,
+          success: true,
+        }).catch(() => {});
+
+        send("done", { score: scoreProposal(enforcedText) });
         controller.close();
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Unknown error";
@@ -387,7 +410,7 @@ Write proposal following 5 moves from system prompt:
   4: Day-one (max 3, concrete first actions)
   5: Close + CTA (answer app questions, one-line CTA — direct action if JOB SIZE SIGNAL present)
 
-CHECKS: No "Hi"/name opener | Not a pitch | Reframe from this post | <200 words | Max 2-3 bold opener | "You" > "I" | No invented past work | No filler | One CTA line | Match tone | Plain text paragraphs | JOB SIZE SIGNAL overrides defaults`);
+CHECKS: No "Hi"/name opener | Not a pitch | Proof in opener (portfolio/skill) | No invented fear/risk | No hedging | Reframe from this post | <180 words | Max 1-2 bold opener proofs | "You" > "I" | No invented past work | No filler | Mandatory closing block | One CTA line | Match tone | Plain text paragraphs | JOB SIZE SIGNAL overrides defaults`);
   }
 
   return sections.join("\n\n");
@@ -408,13 +431,23 @@ function scoreProposal(text: string): number {
 
   let score = 50;
 
-  if (/(not pitching|not a pitch|this isn't a pitch|already (done|handled) this|done this exact type)/.test(lower)) score += 15;
-  if (lower.includes("?") && /(confirm|clarify|would|does|is there|do you|are you|what'?s|which)/.test(lower)) score += 10;
+  // Proof opener: real past-work / portfolio reference.
+  if (/(not pitching|not a pitch|already (done|handled) this|done this exact type|i (built|built out|developed|created|designed|shipped|delivered) (a|an|the|this)|just like|for (a|the) (client|company|project)|in my (portfolio|past work))/.test(lower)) score += 15;
+  // Confirm, not question: rewarding "?" pushes the model to invent
+  // ambiguity in straightforward posts. Only reward genuine clarification
+  // words, and even then lightly.
+  if (lower.includes("?") && /(confirm|clarify|would|does|is there|do you|are you|what'?s|which)/.test(lower)) score += 3;
   if (/(here'?s how i'?d start|i'?d start by|how i'?d approach|i'?d begin|i'?d first)/.test(lower)) score += 10;
-  if (/(happy to|ready when|let me know|send me|share|look forward|walk through)/.test(lower)) score += 5;
+  if (/(happy to|ready when|let me know|send me|share|walk through|i'll (build|deliver|start|get))/i.test(lower)) score += 5;
+  // Mandatory closing block.
+  if (/\bbest\s+regards\b/i.test(lower)) score += 10;
+  // FUD / hedging — the exact defects seen in real output. Heavily
+  // penalized so a model that drowns the post in manufactured risk scores
+  // lower than a clean, confident one.
+  if (/(the real risk here|quiet pixel drift|lose fidelity|worth confirming|before you commit|most .*(fail|break|drift|fidelity)|could go wrong)/i.test(lower)) score -= 20;
 
-  if (words <= 200) score += 10;
-  else score -= 10 + Math.ceil((words - 200) / 10);
+  if (words <= 180) score += 10;
+  else score -= 10 + Math.ceil((words - 180) / 10);
 
   return Math.max(1, Math.min(100, score));
 }
@@ -471,6 +504,40 @@ function createThinkScrubber(emit: (chunk: string) => void) {
       process(true);
     },
   };
+}
+
+/**
+ * The mandatory ending for every proposal. Enforced in code (not just the
+ * prompt) so a model that skips it can't silently ship without a sign-off.
+ */
+const MANDATORY_CLOSE = `Let's discuss your project requirements in detail. I'm available for a chat anytime!
+
+Best Regards,`;
+
+/**
+ * Guarantee the proposal ends with the mandatory closing block. If the model
+ * already produced a "Best Regards" (any casing) we trust it and leave the
+ * text untouched; otherwise we append the block + the freelancer's name.
+ */
+function ensureClosingBlock(text: string, userName?: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) return text;
+
+  // A close line means first+last name (or at least two tokens) after it.
+  if (/\bbest\s+regards\b/i.test(trimmed)) return trimmed;
+
+  const name = userName?.trim() || "Your Name";
+  return `${trimmed}\n\n${MANDATORY_CLOSE}\n\n${name}`;
+}
+
+/**
+ * Apply closing-block enforcement only for full proposals. Answer-question
+ * responses (single Upwork application answers) must stay short and direct —
+ * they never get a signature block.
+ */
+function maybeEnsureClosingBlock(input: ProposalInput, text: string): string {
+  if (input.answerQuestion) return text;
+  return ensureClosingBlock(text, input.userName);
 }
 
 /**

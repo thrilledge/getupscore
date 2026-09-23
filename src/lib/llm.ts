@@ -166,15 +166,20 @@ function availableProviders(chain: LLMProvider[]): {
     available.push(p);
   }
 
-  let rotated = available;
-  if (available.length > 1) {
-    const start = rotationCursor % available.length;
-    rotationCursor = (rotationCursor + 1) % available.length;
-    rotated = [...available.slice(start), ...available.slice(0, start)];
+  const preferred = available.filter((p) => p.name === "profreemodels");
+  const fallback = available.filter((p) => p.name !== "profreemodels");
+
+  let rotated = fallback;
+  if (fallback.length > 1) {
+    const start = rotationCursor % fallback.length;
+    rotationCursor = (rotationCursor + 1) % fallback.length;
+    rotated = [...fallback.slice(start), ...fallback.slice(0, start)];
   }
 
+  const ordered = [...preferred, ...rotated];
+
   return {
-    available: rotated,
+    available: ordered,
     soonestRetrySeconds:
       soonestUntil == null ? null : Math.max(1, Math.ceil((soonestUntil - now) / 1000)),
   };

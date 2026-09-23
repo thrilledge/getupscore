@@ -56,16 +56,16 @@ export async function GET(req: NextRequest) {
 
     const userIds = users.map((u) => u.id);
 
-    // user_segments / subscriptions are not in generated types yet
+    // user_segments / subscriptions are not in generated types yet.
+    // Fetch the whole (small) tables without .in() filters: PostgREST URIs with
+    // hundreds of UUIDs exceed nginx's request-line limit on the self-hosted DB
+    // (502), which made the .in() variant fail and throw a 500 here.
     const [segmentsRes, subsRes] = await Promise.all([
       userIds.length
-        ? (admin as any).from("user_segments").select("*").in("user_id", userIds)
+        ? (admin as any).from("user_segments").select("*")
         : Promise.resolve({ data: [], error: null }),
       userIds.length
-        ? (admin as any)
-            .from("subscriptions")
-            .select("user_id, status")
-            .in("user_id", userIds)
+        ? (admin as any).from("subscriptions").select("user_id, status")
         : Promise.resolve({ data: [], error: null }),
     ]);
 
