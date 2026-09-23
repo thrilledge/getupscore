@@ -223,8 +223,19 @@ export async function streamProposal(
 
         const finalText = cleanProposal(proposalText);
         if (!finalText) {
-          console.warn("[Proposal Stream] Model returned no usable proposal text.");
-          send("error", { text: "Model returned no usable proposal text." });
+          console.warn("[Proposal Stream] Model returned no usable proposal text - falling back to non-streaming generation.");
+          // The streaming response produced no content deltas (empty body,
+          // provider-specific SSE shape, or a mid-stream failure). Recover by
+          // generating non-streaming, which has its own JSON-parse + fallback
+          // handling, and emit what we got.
+          const fallback = await generateProposal(input, undefined, undefined, isPaid);
+          const fbText = fallback.generated_text.trim();
+          if (fbText) {
+            send("proposal", { text: fbText });
+            send("done", { score: fallback.score ?? scoreProposal(fbText) });
+          } else {
+            send("error", { text: "Model returned no usable proposal text." });
+          }
           controller.close();
           return;
         }
