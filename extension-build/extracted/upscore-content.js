@@ -788,6 +788,7 @@ function injectApplyButton() {
       alignItems: "center",
       gap: "6px",
       margin: "0 0 8px",
+      marginLeft: "15px",
       padding: "2px",
       background: "transparent",
       color: "#00C98B",
@@ -799,6 +800,7 @@ function injectApplyButton() {
       fontFamily: "inherit",
       lineHeight: "1.4",
       transition: "background 0.15s, opacity 0.15s",
+      boxShadow: "0px 0px 40px",
     });
 
     const detectedQuestion = getQuestionText(textarea);
