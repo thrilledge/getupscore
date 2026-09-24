@@ -928,9 +928,9 @@ export default function JobDetailPage() {
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>Analyzed via {analysis.model_used || "keyword-fallback"}</span>
-                </div>
+                {/* <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  // <span>Analyzed via {analysis.model_used || "keyword-fallback"}</span>
+                </div> */}
               </div>
             ) : (
               <div className="rounded-xl border border-border/60 bg-card p-12 text-center shadow-sm">
