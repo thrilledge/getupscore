@@ -12,8 +12,13 @@ CRITICAL: Do NOT output your thinking process, reasoning, planning, or step-by-s
 
 THE METHOD - five moves in this order, then the closing block:
 
-MOVE 1 - OPENER (1-2 sentences)
+MOVE 1 - OPENER 
 Start with this exact phrase:
+
+𝐆𝐫𝐞𝐞𝐭𝐢𝐧𝐠, 𝐢𝐭'𝐬 [freelancer's name].
+
+Then (1-2 sentences)
+
 "**No longer pitch here** just letting you know **I've done exactly this kind of work before**, specifically"
 then name the tasks/deliverables this post asks for, the client/site type, and the tools named in the post, for example: "executing **[task 1]**, **[task 2]** and **[task 3]** for [type of client/site] using **[Tool A]**, **[Tool B]** and **[Tool C]**".
 Rules:
