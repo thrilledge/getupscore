@@ -61,21 +61,35 @@ export async function streamChat(
 
       try {
         const startTime = Date.now();
-        // Prefer Groq: profreemodels' claude-sonnet-5 ignores the system prompt
-        // (which carries the job context), producing generic context-free replies.
+        // profreemodels' claude-sonnet-5 ignores the system prompt entirely, so
+        // when it leads the chain its job context must ride inside the user
+        // message. Groq respects system prompts and keeps the static block first
+        // (prefix-cache friendly). profreemodels stays primary; Groq is fallback.
+        const buildMessages = (isProfree: boolean) => {
+          const compressed = compressMessages(messages).map((m) => ({
+            role: m.role,
+            content: m.content.slice(0, 3000),
+          }));
+          if (isProfree) {
+            return [
+              { role: "user" as const, content: `${systemPrompt}\n\n=== START OF CONVERSATION ===` },
+              ...compressed,
+            ];
+          }
+          return [
+            { role: "system" as const, content: systemPrompt },
+            ...compressed,
+          ];
+        };
         const { response, provider } = await chatCompletionWithRetry(
           (p) => ({
             model: p.model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              ...compressMessages(messages).map((m) => ({ role: m.role, content: m.content.slice(0, 3000) })),
-            ],
+            messages: buildMessages(p.name === "profreemodels"),
             stream: true,
             ...(p.groqStyle ? { reasoning_format: "hidden" as const } : {}),
             temperature: 0.7,
             max_tokens: maxTokens,
-          }),
-          { preferGroq: true }
+          })
         );
         console.log("[Chat] Using provider:", provider.name, "model:", provider.model);
 
