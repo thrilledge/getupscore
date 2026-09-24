@@ -61,6 +61,8 @@ export async function streamChat(
 
       try {
         const startTime = Date.now();
+        // Prefer Groq: profreemodels' claude-sonnet-5 ignores the system prompt
+        // (which carries the job context), producing generic context-free replies.
         const { response, provider } = await chatCompletionWithRetry(
           (p) => ({
             model: p.model,
@@ -72,7 +74,8 @@ export async function streamChat(
             ...(p.groqStyle ? { reasoning_format: "hidden" as const } : {}),
             temperature: 0.7,
             max_tokens: maxTokens,
-          })
+          }),
+          { preferGroq: true }
         );
         console.log("[Chat] Using provider:", provider.name, "model:", provider.model);
 
