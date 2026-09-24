@@ -200,7 +200,7 @@ export function SiteHeader() {
                 ? "Switch to light mode"
                 : "Switch to dark mode"
             }
-            className="grid size-10 shrink-0 place-items-center rounded-full border border-[#0A0A0A]/15 text-[#0A0A0A] outline-none transition-colors hover:border-[#00C98B]/60 hover:bg-[#0A0A0A]/5 hover:text-[#00C98B] focus-visible:ring-2 focus-visible:ring-[#00C98B] dark:border-white/15 dark:text-white dark:hover:bg-white/10"
+            className="grid items-center justify-center  size-10 shrink-0 place-items-center rounded-full border border-[#0A0A0A]/15 text-[#0A0A0A] outline-none transition-colors hover:border-[#00C98B]/60 hover:bg-[#0A0A0A]/5 hover:text-[#00C98B] focus-visible:ring-2 focus-visible:ring-[#00C98B] dark:border-white/15 dark:text-white dark:hover:bg-white/10 "
           >
             {resolvedTheme === "dark" ? (
               <Sun size={18} />
@@ -334,8 +334,8 @@ export function SiteHeader() {
                       type="button"
                       onClick={() => setTheme(option.value)}
                       aria-pressed={active}
-                      className={`inline - flex h - 9 items - center justify - center gap - 1.5 rounded - full text - xs font - semibold transition - colors ${active
-                        ? "bg-white text-[#0A0A0A] shadow-sm dark:bg-white dark:text-[#0A0A0A]"
+                      className={`inline-flex h-9 items-center justify-center gap-1.5 rounded-full text-xs font-semibold transition-colors ${active
+                        ? "bg-white text-[#0A0A0A] shadow-sm dark:bg-white dark:text-[#0A0A0A] "
                         : "text-[#0A0A0A]/60 hover:text-[#0A0A0A] dark:text-white/60 dark:hover:text-white"
                         } `}
                     >

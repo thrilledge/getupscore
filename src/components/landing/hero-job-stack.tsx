@@ -140,9 +140,9 @@ export function HeroJobStack({
 
   return (
     <div
-      className="relative mx-auto w-full max-w-2xl overflow-visible"
+      className="relative mx-auto w-full max-w-2xl overflow-visible rounded-[28px]"
       style={{
-        minHeight: 455,
+        minHeight: 600,
         perspective: "1200px",
       }}
     >
@@ -200,12 +200,12 @@ export function HeroJobStack({
                   ? [
                     "border-white/[0.12]",
                     "bg-[#111614]",
-                    "shadow-[0_30px_90px_rgba(0,0,0,0.55)]",
+                    // "shadow-[0_30px_90px_rgba(0,0,0,0.55)]",
                   ].join(" ")
                   : [
                     "border-white/[0.07]",
                     "bg-[#0c100f]",
-                    "shadow-[0_20px_50px_rgba(0,0,0,0.35)]",
+                    // "shadow-[0_20px_50px_rgba(0,0,0,0.35)]",
                   ].join(" "),
               ].join(" ")}
             >
