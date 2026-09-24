@@ -110,10 +110,20 @@ export function SiteHeader() {
           className="flex h-full w-fit min-w-0 items-center rounded-md outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-[#00C98B]"
         >
           <Image
-            src={resolvedTheme === "dark" ? "/upscore-logo-white.png" : "/upscore-logo-black.png"}
+            src="/upscore-logo-black.png"
             alt="Logo"
             width={150}
             height={40}
+            className="block dark:hidden"
+          />
+
+          {/* Dark mode */}
+          <Image
+            src="/upscore-logo-white.png"
+            alt="Logo"
+            width={150}
+            height={40}
+            className="hidden dark:block"
           />
         </Link>
 
