@@ -912,13 +912,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         ".nav-user-menu",
         "[data-qa='user-menu']",
       ];
+      // Only a page that is itself Upwork's login/join screen is proof the user
+      // is logged OUT. Stray links matching /login/ or /nx/join/ appear on
+      // logged-in pages too (footers, the upsell "become a client" modal), so
+      // treating them as logged-out is what produced the false "Not logged in
+      // to Upwork" blocking everyone. Upwork serves logged-in content on the
+      // freelancer routes, so the logged-out signal is the URL, not the DOM.
+      const LOGIN_PAGE_RE = /\/\/(www\.)?upwork\.com\/(ab\/account-security\/login|nx\/join|nx\/sign-in|login|join)\/?(\?|#|$)/i;
       const LOGGED_OUT_SELECTORS = [
-        "a[href*='/ab/account-security/login']",
-        "a[href*='login']",
-        "a[href*='/nx/join']",
         "[data-qa='log-in']",
         "[data-testid='log-in']",
         "[data-qa='join']",
+        "[data-testid='join']",
       ];
 
       // The logged-in user's OWN profile link lives in the header user-menu.
@@ -937,12 +942,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (canonical?.href && /\/freelancers\/~/.test(canonical.href)) url = canonical.href;
       }
 
-      let loggedIn = null;
+      // Best login signal: we found the user's own profile link — that only
+      // exists behind an authenticated session.
+      let loggedIn = url ? true : null;
       try {
-        if (LOGGED_IN_SELECTORS.some((s) => document.querySelector(s))) {
-          loggedIn = true;
-        } else if (LOGGED_OUT_SELECTORS.some((s) => document.querySelector(s))) {
-          loggedIn = false;
+        if (loggedIn === null) {
+          if (LOGIN_PAGE_RE.test(window.location.href)) {
+            loggedIn = false;
+          } else if (LOGGED_IN_SELECTORS.some((s) => document.querySelector(s))) {
+            loggedIn = true;
+          } else if (LOGGED_OUT_SELECTORS.some((s) => document.querySelector(s))) {
+            loggedIn = false;
+          }
         }
       } catch {}
 

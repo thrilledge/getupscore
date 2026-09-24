@@ -413,14 +413,17 @@ async function openMyProfile() {
   try {
     const { tabs, detectedUrl, seenLoggedIn, seenLoggedOut } = await askUpworkTabsForProfile();
 
-    // Open Upwork tabs exist, but none show a signed-in session.
-    if (seenLoggedOut && !seenLoggedIn) {
-      return { ok: false, notLoggedIn: true, loginUrl: UPWORK_LOGIN_URL };
-    }
-
     // Prefer a logged-in tab's own profile link, else the profile stored in the
     // dashboard (this is the user's real ~profile URL, not /me).
-    const target = detectedUrl || (await getStoredUpworkProfileUrl()) || PROFILE_ME;
+    const stored = await getStoredUpworkProfileUrl();
+    const target = detectedUrl || stored || PROFILE_ME;
+
+    // Only hard-block when a tab is genuinely On Upwork's login/join page AND
+    // we have no profile URL to fall back on. A stray tab showing a login
+    // prompt must not block a session that is otherwise logged in.
+    if (seenLoggedOut && !seenLoggedIn && !detectedUrl && !stored) {
+      return { ok: false, notLoggedIn: true, loginUrl: UPWORK_LOGIN_URL };
+    }
 
     if (tabs.length > 0) {
       await chrome.tabs.update(tabs[0].id, { active: true, url: target });
