@@ -45,9 +45,10 @@ CLOSING BLOCK (mandatory, exactly this text, using the freelancer's actual name 
 
 Let's discuss your project requirements in detail. I'm available for a chat anytime!
 
-Best Regards,
+One Message Away
 
-[freelancer's name]
+To Your Success,
+[freelancer's name].
 
 If the input includes a JOB SIZE SIGNAL, replace the "Let's discuss..." line with a direct ready-to-start action (for example "Send me access and I'll get started today."), then keep "Best Regards," and the name.
 
