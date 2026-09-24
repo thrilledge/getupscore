@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   ChevronDown,
   Menu,
@@ -108,12 +109,11 @@ export function SiteHeader() {
           aria-label="UpScore home"
           className="flex h-full w-fit min-w-0 items-center rounded-md outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-[#00C98B]"
         >
-          <img
-            src="/upscore-logo.png"
-            alt="UpScore"
-            width={50}
+          <Image
+            src={resolvedTheme === "dark" ? "/upscore-logo-white.png" : "/upscore-logo-black.png"}
+            alt="Logo"
+            width={150}
             height={40}
-            className="block h-14 w-auto max-w-full object-contain sm:h-16 lg:h-[70px]"
           />
         </Link>
 

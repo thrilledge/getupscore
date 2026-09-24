@@ -2,11 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight } from "lucide-react";
+import { useTheme } from "next-themes";
 
 export function CtaFooter() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const { resolvedTheme } = useTheme();
+
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -45,12 +49,11 @@ export function CtaFooter() {
             {/* Brand */}
             <div className="pr-4">
               <Link href="/" className="inline-block rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-[#00C98B]">
-                <img
-                  src="/upscore-logo.png"
-                  alt="UpScore"
-                  width={60}
-                  height={48}
-                  className="h-[70px] w-auto object-contain"
+                <Image
+                  src={resolvedTheme === "dark" ? "/upscore-logo-white.png" : "/upscore-logo-black.png"}
+                  alt="Logo"
+                  width={150}
+                  height={40}
                 />
               </Link>
               <p className="mt-4 max-w-xs text-sm leading-6 text-[#0A0A0A]/45 dark:text-white/45">
