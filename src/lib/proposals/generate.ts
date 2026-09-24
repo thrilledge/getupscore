@@ -41,16 +41,87 @@ export type StreamEvent =
   | { type: "done"; score: number }
   | { type: "error"; text: string };
 
-/**
- * Strip markdown emphasis from text WITHOUT touching URLs. Asterisks and
- * backticks are always removed. Underscores are only treated as italic
- * markers when they wrap a space-delimited word (_like this_), so
- * github.com/usama_adeel/my_repo survives intact.
- */
-function stripMarkdownEmphasis(s: string): string {
+// ── Unicode bold ─────────────────────────────────────────────────────────────
+// Upwork renders plain text only, so "bold" is done with Unicode Mathematical
+// Bold characters. The model wraps key phrases in **double asterisks** and the
+// code converts them. Only A-Z, a-z and 0-9 are converted; punctuation
+// (apostrophes, dashes, URLs' symbols) stays normal.
+
+const BOLD_UPPER = 0x1d400; // 𝐀
+const BOLD_LOWER = 0x1d41a; // 𝐚
+const BOLD_DIGIT = 0x1d7ce; // 𝟎
+
+function toUnicodeBold(s: string): string {
+  let out = "";
+  for (const ch of s) {
+    const c = ch.codePointAt(0)!;
+    if (c >= 65 && c <= 90) out += String.fromCodePoint(BOLD_UPPER + c - 65);
+    else if (c >= 97 && c <= 122) out += String.fromCodePoint(BOLD_LOWER + c - 97);
+    else if (c >= 48 && c <= 57) out += String.fromCodePoint(BOLD_DIGIT + c - 48);
+    else out += ch;
+  }
+  return out;
+}
+
+/** Reverse mapping, used so the scoring regexes can read bolded text. */
+function fromUnicodeBold(s: string): string {
+  let out = "";
+  for (const ch of s) {
+    const c = ch.codePointAt(0)!;
+    if (c >= BOLD_UPPER && c < BOLD_UPPER + 26) out += String.fromCharCode(65 + c - BOLD_UPPER);
+    else if (c >= BOLD_LOWER && c < BOLD_LOWER + 26) out += String.fromCharCode(97 + c - BOLD_LOWER);
+    else if (c >= BOLD_DIGIT && c < BOLD_DIGIT + 10) out += String.fromCharCode(48 + c - BOLD_DIGIT);
+    else out += ch;
+  }
+  return out;
+}
+
+/** Convert **bold** markers in a complete string, then drop stray * and backticks. */
+function convertBoldMarkers(s: string): string {
   return s
-    .replace(/[*`]/g, "")
-    .replace(/(^|\s)_+([^_\s][^_\n]*?)_+(?=\s|$|[.,;:!?])/g, "$1$2");
+    .replace(/\*\*([^*\n]+?)\*\*/g, (_m, inner: string) => toUnicodeBold(inner))
+    .replace(/[*`]/g, "");
+}
+
+/**
+ * Streaming version of the bold conversion. Chunks can split a "**" marker
+ * in half, so this keeps a tiny state machine across chunks: "**" toggles
+ * bold, a lone "*" is dropped, backticks are dropped.
+ */
+function createBoldStream(emit: (text: string) => void) {
+  let bold = false;
+  let pendingStar = false;
+  return {
+    push(chunk: string) {
+      let out = "";
+      for (const ch of chunk) {
+        if (ch === "*") {
+          if (pendingStar) {
+            bold = !bold;
+            pendingStar = false;
+          } else {
+            pendingStar = true;
+          }
+          continue;
+        }
+        if (ch === "`") continue;
+        pendingStar = false;
+        out += bold ? toUnicodeBold(ch) : ch;
+      }
+      if (out) emit(out);
+    },
+    flush() {
+      pendingStar = false;
+    },
+  };
+}
+
+/**
+ * Remove _italic_ markers only when they wrap a space-delimited word, so
+ * underscores inside URLs (github.com/usama_adeel/my_repo) survive intact.
+ */
+function stripItalicMarkers(s: string): string {
+  return s.replace(/(^|\s)_+([^_\s][^_\n]*?)_+(?=\s|$|[.,;:!?])/g, "$1$2");
 }
 
 export async function generateProposal(
@@ -186,17 +257,17 @@ export async function streamProposal(
         let buffer = "";
         let proposalText = "";
 
-        // Upwork proposals must be plain text. Per-chunk stripping only
-        // removes asterisks and backticks: underscore handling needs full
-        // context (chunks can split a URL), so it is left to cleanProposal.
-        // Never strip underscores here - it would corrupt portfolio links.
-        const stripChunk = (s: string): string => s.replace(/[*`]/g, "");
-
+        // Every visible character goes through the bold converter, which
+        // turns **key phrases** into Unicode bold live, even when a "**"
+        // marker is split across two network chunks. Underscores are never
+        // touched here, so portfolio URLs stay intact.
+        const bolder = createBoldStream((converted) => {
+          proposalText += converted;
+          send("proposal", { text: converted });
+        });
         const emit = (chunk: string) => {
           if (!chunk) return;
-          const clean = stripChunk(chunk);
-          proposalText += clean;
-          send("proposal", { text: clean });
+          bolder.push(chunk);
         };
 
         // Groq (reasoning_format: hidden) hides all reasoning tokens.
@@ -233,6 +304,7 @@ export async function streamProposal(
         }
 
         if (cleaner) cleaner.flush();
+        bolder.flush();
 
         const finalText = cleanProposal(proposalText);
         if (!finalText) {
@@ -255,7 +327,7 @@ export async function streamProposal(
 
         const enforcedText = maybeEnsureClosingBlock(input, finalText);
 
-        // If the model skipped the mandatory sign-off, stream the appended
+        // If the model skipped the mandatory closing, stream the appended
         // block so both the live UI and the DB-saved text carry it.
         if (enforcedText !== finalText) {
           const suffix = enforcedText.slice(finalText.length).trim();
@@ -322,10 +394,11 @@ function detectJobSizeSignal(input: ProposalInput): string | null {
   if (isSmall && !lowFixedBudget) reasons.push("client frames this as a small/quick task");
 
   return `This reads as a SMALL, LOW-FRICTION job (${reasons.join("; ")}). Calibrate the proposal accordingly:
-- Do NOT ask clarifying questions unless something is genuinely blocking execution - the client wants speed, not a discovery process.
+- Skip the QUICK QUESTIONS move entirely - the client wants speed, not a discovery process.
 - Explicitly confirm, in plain language, that you can meet the stated budget and/or timeline.
-- Close with a direct, ready-to-start action (e.g. "send me access and I'll get started") - not a question or an invitation to "discuss next steps".
-- Keep the proposal noticeably shorter than the 180-word ceiling; drop any step that isn't essential.`;
+- Use a maximum of 2 day-one suggestions.
+- Replace the "Let's discuss..." line with a direct, ready-to-start action (e.g. "Send me access and I'll get started today."), then keep "Best Regards," and the name.
+- Keep the proposal much shorter than the 320-word ceiling; drop any step that isn't essential.`;
 }
 
 function buildPrompt(input: ProposalInput): string {
@@ -359,7 +432,7 @@ ${input.recommendation ? `AI Recommendation: ${input.recommendation}` : ""}`);
   if (input.postedAt) signalFields.push(`Posted: ${input.postedAt}`);
   sections.push(`\n=== COMPETITION ===
 ${signalFields.length ? signalFields.join("\n") : "No data."}
-If HIGH+: make the first-line proof link as specific as possible.`);
+If HIGH+: make the opener as specific as possible using the post's own tool and task names.`);
 
   // ── CLIENT INTELLIGENCE ───────────────────────────────────────────────────
   const clientFields: string[] = [];
@@ -395,15 +468,12 @@ ${input.proposalTips.map((t) => `- ${t}`).join("\n")}`);
   }
   sections.push(`\n=== PROFILE ===
 ${profileFields.length ? profileFields.join("\n") : "No data."}
-Use only skills/experience relevant to this job. Never list all skills.`);
+Use only skills/experience relevant to this job. Never list all skills. Never claim experience that is not listed here.`);
 
   // ── PORTFOLIO ─────────────────────────────────────────────────────────────
   if (input.portfolioItems) {
-    sections.push(`\n=== PORTFOLIO (use for the first-line proof link; copy URLs exactly, never alter them) ===
+    sections.push(`\n=== PORTFOLIO (reference the most relevant item if it fits; copy URLs exactly, never alter them) ===
 ${input.portfolioItems}`);
-  } else {
-    sections.push(`\n=== PORTFOLIO ===
-None provided. Do NOT include any link or invent past projects. Open with the closest matching skill from the PROFILE.`);
   }
 
   // ── CUSTOM INSTRUCTIONS ───────────────────────────────────────────────────
@@ -428,14 +498,15 @@ Write proposal strictly following system prompt methodology.${jobSizeSignal ? " 
   } else {
     sections.push(`
 === WRITING DIRECTIVE ===
-Write proposal following the 5 moves from system prompt:
-  1: Proof-link opener (first line, max 25 words: matching project + portfolio URL copied exactly + one thing to look at)
-  2: Reframe (1 sentence, real need from THIS post; skip if the post is straightforward)
-  3: Confirm (1 short line: you'll deliver what the post specifies, incl. any process/guidelines it mentions)
-  4: Day-one (max 2, concrete first actions)
-  5: Close (answer app questions, then ONE specific question tied to this job - or a direct action if JOB SIZE SIGNAL present - then Best Regards + name)
+Write the proposal following the 5 moves and closing block from the system prompt:
+  1: Opener - start with "**No longer pitch here** just letting you know **I've done exactly this kind of work before**, specifically" + tasks/deliverables, client type and tools from THIS post
+  2: Reframe - "I understand the challenge: [surface task] isn't the hard part, [real problem from this post] is."
+  3: Quick questions - "To ensure we're on the same track, I have a **few quick questions** about the role:" + max 2 lines starting "-> **Regarding [topic]:** ..." (skip if JOB SIZE SIGNAL)
+  4: Day-one - "I have **3 quick suggestions** on contributing effectively from day one:" + 3 concrete suggestions in one paragraph
+  5: Application Questions - only if the post contains screening questions: label "**Application Questions:**" + numbered answers (max 3); otherwise skip, no label
+  Close: "Let's discuss your project requirements in detail. I'm available for a chat anytime!" + "Best Regards," + name (direct-action line instead if JOB SIZE SIGNAL)
 
-CHECKS: First line = matching project + portfolio URL (verbatim) + what to look at | If no portfolio URL, no link at all | No "Hi"/name opener | No "I've done this exact type of work" cliche | No invented fear/risk | No hedging | Helper tone, never lecturing | Reframe from this post | <180 words | No markdown/bold | "You" > "I" | No invented past work | No filler | No generic "let's discuss / available anytime" close | Sign-off "Best Regards," + name | Match tone | Plain text paragraphs | JOB SIZE SIGNAL overrides defaults`);
+CHECKS: Exact opener phrase | Only claims supported by PROFILE/PORTFOLIO | Reframe built from this post | No invented fear/risk | No hedging | Questions never re-ask what the post answers | ~8-15 **bold** phrases (tools/deliverables), no other markdown, never bold URLs | <320 words | Plain dashes only | No filler | Mandatory closing block | JOB SIZE SIGNAL overrides defaults`);
   }
 
   return sections.join("\n\n");
@@ -443,40 +514,42 @@ CHECKS: First line = matching project + portfolio URL (verbatim) + what to look 
 
 /**
  * Deterministic rubric score shared by both JSON and stream paths so the
- * number means the same thing everywhere. Rewards methodology moves and
- * penalizes verbosity past the 180-word ceiling.
+ * number means the same thing everywhere. Rewards the methodology moves and
+ * penalizes verbosity past the 320-word ceiling.
  *
  * NOTE: this is a heuristic keyword/pattern score, not a real quality
  * assessment - treat/label it in the UI as a rough methodology checklist
  * score, not an objective "quality score".
  */
 function scoreProposal(text: string): number {
-  const words = text.trim().split(/\s+/).filter(Boolean).length;
-  const lower = text.toLowerCase();
-  const firstLine = text.trim().split("\n")[0] || "";
+  // Bolded text uses Unicode math characters; map back to ASCII so the
+  // regexes below can read it.
+  const plain = fromUnicodeBold(text);
+  const words = plain.trim().split(/\s+/).filter(Boolean).length;
+  const lower = plain.toLowerCase();
+  const opening = lower.slice(0, 350);
 
   let score = 50;
 
-  // Proof-link opener: a real URL in the very first line is the strongest
-  // trust signal, so it is rewarded most.
-  if (/https?:\/\/\S+|\b(?:github\.com|gitlab\.com|vercel\.app|netlify\.app)\/?\S*/i.test(firstLine)) score += 15;
-  else if (/(i (built|developed|created|designed|shipped|delivered|converted|migrated|cleaned) (a|an|the|this)|for (a|the) (client|company|project)|in my (portfolio|past work))/.test(firstLine.toLowerCase())) score += 8;
-
-  // Clarifying question: light reward only, so the model isn't pushed to
-  // invent ambiguity in straightforward posts.
-  if (lower.includes("?") && /(confirm|clarify|would|does|is there|do you|are you|what'?s|which)/.test(lower)) score += 3;
-  if (/(here'?s how i'?d start|i'?d start by|how i'?d approach|i'?d begin|i'?d first)/.test(lower)) score += 10;
-  if (/(send me|share|walk through|i'll (build|deliver|start|get))/i.test(lower)) score += 5;
-  // Mandatory sign-off.
-  if (/\bbest\s+regards\b/i.test(lower)) score += 10;
+  // Move 1: opener.
+  if (/(no longer pitch|not pitching|i'?ve done (exactly|this exact)|closest experience)/.test(opening)) score += 15;
+  // Move 2: reframe.
+  if (/(i understand the challenge|isn'?t the hard part|is the hard part)/.test(lower)) score += 8;
+  // Move 3: quick questions ("->" lines).
+  if (/^\s*->/m.test(plain)) score += 8;
+  // Move 4: day-one suggestions.
+  if (/(quick suggestions|from day one|here'?s how i'?d start)/.test(lower)) score += 8;
+  // Move 5: application questions answered.
+  if (/application questions:/.test(lower)) score += 4;
+  // Closing block.
+  if (/\bbest\s+regards\b/.test(lower)) score += 10;
+  if (/(let'?s discuss your project requirements|send me access|i'll (build|deliver|start|get))/.test(lower)) score += 5;
   // FUD / hedging - heavily penalized so a model that drowns the post in
   // manufactured risk scores lower than a clean, confident one.
-  if (/(the real risk here|quiet pixel drift|lose fidelity|worth confirming|before you commit|most .*(fail|break|drift|fidelity)|could go wrong)/i.test(lower)) score -= 20;
-  // Generic passive close.
-  if (/(available for a chat|available anytime|let'?s discuss your project)/i.test(lower)) score -= 10;
+  if (/(the real risk here|quiet pixel drift|lose fidelity|worth confirming|before you commit|most .*(fail|break|drift|fidelity)|could go wrong)/.test(lower)) score -= 20;
 
-  if (words <= 180) score += 10;
-  else score -= 10 + Math.ceil((words - 180) / 10);
+  if (words <= 320) score += 10;
+  else score -= 10 + Math.ceil((words - 320) / 10);
 
   return Math.max(1, Math.min(100, score));
 }
@@ -536,35 +609,47 @@ function createThinkScrubber(emit: (chunk: string) => void) {
 }
 
 /**
- * Guarantee the proposal ends with the sign-off. The closing LINE (a
- * specific question or direct action) is written by the model, because a
- * generic hard-coded line is exactly what hurts reply rates. If the model
- * already produced a "Best Regards" (any casing) we trust it and leave the
- * text untouched; otherwise we append the sign-off + the freelancer's name.
+ * The mandatory ending for every full proposal. Enforced in code (not just
+ * the prompt) so a model that skips it can't silently ship without a CTA
+ * and sign-off.
  */
-function ensureClosingBlock(text: string, userName?: string): string {
+const MANDATORY_CTA = "Let's discuss your project requirements in detail. I'm available for a chat anytime!";
+
+/**
+ * Guarantee the proposal ends with the closing block. If the model already
+ * produced a "Best Regards" (any casing) we trust it and leave the text
+ * untouched. Otherwise we append the CTA (unless the job is small/urgent,
+ * where the model is asked for a direct-action line instead) plus the
+ * sign-off and the freelancer's name.
+ */
+function ensureClosingBlock(text: string, userName: string | undefined, smallJob: boolean): string {
   const trimmed = text.trim();
   if (!trimmed) return text;
 
-  if (/\bbest\s+regards\b/i.test(trimmed)) return trimmed;
+  if (/\bbest\s+regards\b/i.test(fromUnicodeBold(trimmed))) return trimmed;
 
   const name = userName?.trim() || "Your Name";
-  return `${trimmed}\n\nBest Regards,\n\n${name}`;
+  const hasCta = /let'?s discuss your project requirements/i.test(fromUnicodeBold(trimmed));
+  const parts = [trimmed];
+  if (!smallJob && !hasCta) parts.push(MANDATORY_CTA);
+  parts.push(`Best Regards,\n\n${name}`);
+  return parts.join("\n\n");
 }
 
 /**
- * Apply sign-off enforcement only for full proposals. Answer-question
+ * Apply closing-block enforcement only for full proposals. Answer-question
  * responses (single Upwork application answers) must stay short and direct -
  * they never get a signature block.
  */
 function maybeEnsureClosingBlock(input: ProposalInput, text: string): string {
   if (input.answerQuestion) return text;
-  return ensureClosingBlock(text, input.userName);
+  return ensureClosingBlock(text, input.userName, detectJobSizeSignal(input) !== null);
 }
 
 /**
  * Strip any stray reasoning blocks, markdown fences, or leaked labels from a
- * complete (non-streamed, or fully-assembled) proposal string.
+ * complete (non-streamed, or fully-assembled) proposal string, and convert
+ * **bold** markers to Unicode bold.
  */
 function cleanProposal(raw: string): string {
   if (!raw) return "";
@@ -588,9 +673,9 @@ function cleanProposal(raw: string): string {
     .replace(/(\S)\s+(?=\d+[\.\)]\s)/g, "$1\n")
     .replace(/\n{3,}/g, "\n\n");
 
-  // Strip markdown emphasis (bold/italic/backticks) - plain text output only,
-  // without corrupting underscores inside URLs.
-  text = stripMarkdownEmphasis(text).trim();
+  // **bold** -> Unicode bold (no-op if the stream already converted it),
+  // then drop any leftover markdown emphasis without touching URLs.
+  text = stripItalicMarkers(convertBoldMarkers(text)).trim();
 
   return text;
 }
@@ -599,52 +684,54 @@ function generateFallbackProposal(input: ProposalInput): ProposalResult {
   const lines: string[] = [];
   const jobSizeSignal = detectJobSizeSignal(input);
 
-  // Move 1 - Proof-link opener. Only uses what the freelancer actually
-  // provided; never claims experience or links that can't be verified.
+  // Move 1 - Opener. Only uses what the freelancer actually provided;
+  // never claims experience that can't be verified.
   const tools = input.skills?.slice(0, 3).filter(Boolean).join(", ");
+  lines.push(
+    tools
+      ? `**No longer pitch here** just letting you know my **closest experience** is **${tools}**.`
+      : "**No longer pitch here** just letting you know how I'd approach your project."
+  );
   const firstPortfolioLine = input.portfolioItems
     ?.split("\n")
     .map((l) => l.trim())
     .find(Boolean);
-
   if (firstPortfolioLine) {
-    lines.push(`You can check my related work first: ${firstPortfolioLine.slice(0, 200)}`);
-  } else if (tools) {
-    lines.push(`My closest experience to this job is ${tools}.`);
-  } else {
-    lines.push("Here's how I'd approach your project.");
+    lines.push(`Related work: ${firstPortfolioLine.slice(0, 200)}`);
   }
   lines.push("");
 
-  // Move 3 - Confirm
+  // Move 2 - Reframe
   lines.push(
-    input.jobTitle
-      ? `I'll deliver exactly what your "${input.jobTitle}" post describes, and keep you updated as I go.`
-      : "I'll deliver exactly what your post describes, and keep you updated as I go."
+    "I understand the challenge: the task itself isn't the hard part, getting it **done right for your setup** and keeping you in the loop is."
   );
   lines.push("");
 
   if (jobSizeSignal) {
-    // Small/urgent job: skip the question, acknowledge budget/timeline,
+    // Small/urgent job: skip questions, acknowledge budget/timeline,
     // go straight to a lean plan + direct-action close.
     if (input.budget) {
       lines.push(`This fits within ${input.budget}, and I can get started right away.`);
       lines.push("");
     }
     lines.push(
-      "Here's how I'd start: review what you've shared, make the fix, then verify it works before handing it over."
+      "Here's how I'd start: **review** what you've shared, make the **fix**, then **verify** it works before handing it over."
     );
     lines.push("");
     lines.push("Send me access and I'll get this done today.");
   } else {
-    // Move 4 - Day-one steps
-    lines.push(
-      "Here's how I'd start: review everything you have and flag anything unclear before touching a deliverable, then work in small steps so you can review each change."
-    );
+    // Move 3 - Quick questions
+    lines.push("To ensure we're on the same track, I have a **few quick questions** about the role:");
+    lines.push("-> **Regarding scope:** is there a specific part of this project that should be the priority, or a constraint I should know about?");
+    lines.push("-> **Regarding access:** is there documentation or an existing workflow I can review before starting?");
     lines.push("");
 
-    // Move 5 - One specific question
-    lines.push("Which part of the project would you like me to start with?");
+    // Move 4 - Day-one suggestions
+    lines.push(
+      "I have **3 quick suggestions** on contributing effectively from day one: starting with a **full review** of everything you've shared so nothing is missed, working in **small reviewable steps** so you can approve each change, and sending a **clear summary** of every change and decision made."
+    );
+    lines.push("");
+    lines.push(MANDATORY_CTA);
   }
 
   lines.push("");
@@ -652,7 +739,7 @@ function generateFallbackProposal(input: ProposalInput): ProposalResult {
   lines.push("");
   lines.push(input.userName || "Your Name");
 
-  const text = lines.join("\n");
+  const text = convertBoldMarkers(lines.join("\n"));
   return {
     generated_text: text,
     score: scoreProposal(text),
