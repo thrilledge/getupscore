@@ -26,9 +26,9 @@ const themeOptions: {
   ];
 
 const navigationItems = [
-  { label: "Live Jobs", href: "#live-jobs" },
-  { label: "Features", href: "#features" },
-  { label: "Integrations", href: "#integrations" },
+  { label: "Live Jobs", href: "/#live-jobs" },
+  { label: "Features", href: "/#features" },
+  { label: "Integrations", href: "/#integrations" },
   {
     label: "Tools",
     href: "#",
@@ -55,8 +55,8 @@ const navigationItems = [
       },
     ],
   },
-  { label: "Pricing", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Pricing", href: "/#pricing" },
+  { label: "FAQ", href: "/#faq" },
 ];
 
 export function SiteHeader() {
