@@ -16,7 +16,6 @@ import {
   Lightbulb,
   ArrowLeft,
   Sparkles,
-  Loader2,
   Clock,
   DollarSign,
   Layers,
@@ -32,7 +31,6 @@ import {
   Building2,
   Timer,
   FileText,
-  Globe,
 } from "lucide-react";
 import { FavoriteButton } from "@/components/favorite-button";
 import { JobChat } from "@/components/job-chat";
@@ -231,7 +229,6 @@ export default function JobDetailPage() {
   const id = params.id as string;
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -252,21 +249,7 @@ export default function JobDetailPage() {
     }
   }
 
-  async function handleAnalyze() {
-    setAnalyzing(true);
-    try {
-      const res = await fetch(`/api/jobs/${id}/analyze`, { method: "POST" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
-      await fetchJob();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setAnalyzing(false);
-    }
-  }
+
 
   const analysis = job?.job_analyses?.[0];
 
@@ -698,24 +681,6 @@ export default function JobDetailPage() {
                 </div>
                 <h2 className="text-lg font-semibold font-heading">AI Analysis</h2>
               </div>
-              <Button
-                onClick={handleAnalyze}
-                disabled={analyzing}
-                size="sm"
-                variant={analysis ? "outline" : "default"}
-              >
-                {analyzing ? (
-                  <>
-                    <Loader2 className="size-4 mr-2 animate-spin" /> Analyzing...
-                  </>
-                ) : analysis ? (
-                  "Re-analyze"
-                ) : (
-                  <>
-                    <Sparkles className="size-4 mr-2" /> Analyze
-                  </>
-                )}
-              </Button>
             </div>
 
             {analysis ? (
