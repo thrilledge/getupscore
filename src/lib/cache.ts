@@ -155,10 +155,17 @@ export async function cached<T>(
 // ─── TTL presets ───────────────────────────────────────────
 
 export const TTL = {
-  /** Jobs listing — refreshed often; >30s so the 30s auto-refresh hits cache */
-  JOBS_LIST: 45_000,
+  /**
+   * Jobs listing — aligned with the 5-min sync + 3-min auto-refresh so every
+   * page load / refresh within a sync window is served from Redis, and only a
+   * genuine new-sync boundary triggers a DB recompute. 3.5 min covers the
+   * 3-min refresh without expiring mid-window.
+   */
+  JOBS_LIST: 210_000,
   /** Favorite job ids list (shared by every FavoriteButton on the page) */
   FAVORITES: 30_000,
+  /** Filter facets (categories/subcategories/countries) — change only with sync */
+  FACETS: 5 * 60_000,
   /** Dashboard stats */
   STATS: 30_000,
   /** Suggestions — typed infrequently */

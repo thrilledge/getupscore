@@ -345,9 +345,13 @@ export default function JobsPage() {
     return params.toString();
   }
 
-  const fetchJobs = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchJobs = useCallback(async (opts?: { background?: boolean }) => {
+    // Background refreshes (auto-refresh) must never toggle the skeleton or
+    // wipe the current list — old data stays visible until new data lands.
+    if (!opts?.background) {
+      setLoading(true);
+      setError(null);
+    }
 
     try {
       const queryString =
@@ -387,13 +391,18 @@ export default function JobsPage() {
         data.pagination?.total || 0
       );
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to load jobs"
-      );
+      // Background failures are silent — keep showing the last-good list.
+      if (!opts?.background) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load jobs"
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!opts?.background) {
+        setLoading(false);
+      }
     }
   }, [
     page,
@@ -426,6 +435,8 @@ export default function JobsPage() {
     countryFilter,
   ]);
 
+  // Jobs sync every 5 minutes — a 3-minute silent refresh keeps the feed
+  // fresh without the old skeleton flash on every 30s cycle.
   useEffect(() => {
     if (initialFiltersLoaded) {
       fetchJobs();
@@ -434,8 +445,8 @@ export default function JobsPage() {
 
   useEffect(() => {
     const id = setInterval(
-      () => fetchJobs(),
-      30000
+      () => fetchJobs({ background: true }),
+      180000
     );
 
     return () => clearInterval(id);
@@ -695,7 +706,7 @@ export default function JobsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={fetchJobs}
+                onClick={() => fetchJobs()}
                 disabled={loading}
                 className="h-9 shrink-0 rounded-xl border-[#00C98B]/35 bg-[#00C98B]/10 px-2.5 text-[#00C98B] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B] hover:bg-[#00C98B] hover:text-[#0A0A0A] min-[420px]:px-3"
               >
@@ -1167,7 +1178,7 @@ export default function JobsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={fetchJobs}
+                onClick={() => fetchJobs()}
                 className="h-9 w-full rounded-xl border-[#0A0A0A]/10 bg-white px-4 text-xs font-semibold text-[#0A0A0A] transition-all hover:border-[#00C98B]/40 hover:bg-[#00C98B]/5 hover:text-[#00A975] min-[420px]:w-auto"
               >
                 <RefreshCw className="size-3.5" />

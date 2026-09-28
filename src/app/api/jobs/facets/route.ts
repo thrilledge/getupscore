@@ -18,7 +18,7 @@ export async function GET() {
   }
 
   try {
-    const facets = await cached("jobs:facets", TTL.JOBS_LIST, async () => {
+    const facets = await cached("jobs:facets", TTL.FACETS, async () => {
       const { data, error } = await supabase.rpc("get_job_filter_facets" as any);
       if (error) throw error;
       return data as any;
