@@ -155,8 +155,10 @@ export async function cached<T>(
 // ─── TTL presets ───────────────────────────────────────────
 
 export const TTL = {
-  /** Jobs listing — refreshed often */
-  JOBS_LIST: 15_000,
+  /** Jobs listing — refreshed often; >30s so the 30s auto-refresh hits cache */
+  JOBS_LIST: 45_000,
+  /** Favorite job ids list (shared by every FavoriteButton on the page) */
+  FAVORITES: 30_000,
   /** Dashboard stats */
   STATS: 30_000,
   /** Suggestions — typed infrequently */

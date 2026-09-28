@@ -11,6 +11,45 @@ interface FavoriteButtonProps {
   size?: "sm" | "md" | "lg";
 }
 
+/**
+ * Every card/row mounts its own FavoriteButton — without sharing, a 20-job
+ * page fires 20+ `/api/favorites` calls (each a GoTrue round-trip + DB query)
+ * on every load and every 30s auto-refresh. Dedupe across all instances on the
+ * page with a short-lived module-level cache + single in-flight promise.
+ */
+let favCache: { at: number; ids: Set<string> } | null = null;
+let favsInFlight: Promise<Set<string>> | null = null;
+const FAV_CACHE_MS = 30_000;
+
+function loadFavorites(): Promise<Set<string>> {
+  if (favCache && Date.now() - favCache.at < FAV_CACHE_MS) {
+    return Promise.resolve(favCache.ids);
+  }
+  if (favsInFlight) return favsInFlight;
+
+  favsInFlight = fetch("/api/favorites")
+    .then((r) => r.json())
+    .then((data) => {
+      const ids = new Set(
+        ((data.favorites || []) as { job_id: string }[]).map((f) => f.job_id)
+      );
+      favCache = { at: Date.now(), ids };
+      return ids;
+    })
+    .catch(() => favCache?.ids ?? new Set<string>())
+    .finally(() => {
+      favsInFlight = null;
+    });
+  return favsInFlight;
+}
+
+function updateLocalCache(jobId: string, saved: boolean) {
+  if (!favCache) return;
+  if (saved) favCache.ids.add(jobId);
+  else favCache.ids.delete(jobId);
+  favCache.at = Date.now();
+}
+
 export function FavoriteButton({ jobId, className = "", size = "sm" }: FavoriteButtonProps) {
   const [saved, setSaved] = useState(false);
   const pendingRef = useRef(false);
@@ -20,12 +59,10 @@ export function FavoriteButton({ jobId, className = "", size = "sm" }: FavoriteB
   useEffect(() => {
     let cancelled = false;
 
-    fetch("/api/favorites")
-      .then((r) => r.json())
-      .then((data) => {
+    loadFavorites()
+      .then((ids) => {
         if (cancelled) return;
-        const favs = (data.favorites || []) as { job_id: string }[];
-        setSaved(favs.some((f) => f.job_id === jobId));
+        setSaved(ids.has(jobId));
       })
       .catch(() => {});
     return () => {
@@ -58,6 +95,7 @@ export function FavoriteButton({ jobId, className = "", size = "sm" }: FavoriteB
       }
       const data = await res.json();
       setSaved(data.saved);
+      updateLocalCache(jobId, data.saved);
       if (data.saved !== next) {
         toast.info(data.saved ? "Job saved" : "Job removed from saved");
       } else {

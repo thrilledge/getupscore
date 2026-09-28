@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { cached, cacheInvalidate, TTL } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -11,17 +12,25 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const { data, error } = await supabase
-    .from("saved_jobs")
-    .select("job_id, created_at")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  try {
+    // Every FavoriteButton on a page mounts and hits this endpoint — cache the
+    // full list so 20+ cards cost one auth round-trip + one Redis read.
+    const favorites = await cached(`favorites:list:${user.id}`, TTL.FAVORITES, async () => {
+      const { data, error } = await supabase
+        .from("saved_jobs")
+        .select("job_id, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) throw error;
+      return data;
+    });
+
+    return NextResponse.json({ favorites: favorites ?? [] });
+  } catch (err: any) {
+    console.error("[Favorites API] Query error:", err.message);
+    return NextResponse.json({ error: "Failed to fetch favorites" }, { status: 500 });
   }
-
-  return NextResponse.json({ favorites: data });
 }
 
 export async function POST(request: Request) {
@@ -53,6 +62,7 @@ export async function POST(request: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    await cacheInvalidate(`favorites:list:${user.id}`);
     return NextResponse.json({ saved: false });
   }
 
@@ -64,5 +74,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  await cacheInvalidate(`favorites:list:${user.id}`);
   return NextResponse.json({ saved: true });
 }
