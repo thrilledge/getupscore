@@ -780,7 +780,9 @@ export default function JobDetailPage() {
               <SidebarRow label="Budget" value={<span className="text-accent-green">{formatBudget(job)}</span>} />
               <SidebarRow label="Job type" value={job.job_type?.includes("FIXED") ? "Fixed Price" : job.job_type?.includes("HOURLY") ? "Hourly" : job.job_type || "—"} />
               <SidebarRow label="Experience level" value={formatExperience(job.contractor_tier) || "—"} />
-              <SidebarRow label="Hours per week" value={job.hours_per_week || "—"} />
+              {job.hours_per_week && (
+                <SidebarRow label="Hours per week" value={job.hours_per_week} />
+              )}
               {job.weekly_retainer != null && (
                 <SidebarRow label="Retainer" value={`$${job.weekly_retainer}/wk`} />
               )}

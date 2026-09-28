@@ -491,7 +491,7 @@ export default function JobsPage() {
     ) {
       parts.push(`$${job.weekly_retainer}/wk`);
     }
-    if (parts.length === 0) return "Workload not specified";
+    if (parts.length === 0) return "";
     return parts.join(" · ");
   }
 
@@ -1360,16 +1360,17 @@ export default function JobsPage() {
                             </p>
                           </div>
 
-                          <div className="min-w-0 pl-1">
-                            <p className="text-[9px] font-semibold uppercase tracking-wider text-[#0A0A0A]/35">
-                              Workload
-                            </p>
+                          {formatWorkload(job) && (
+                            <div className="min-w-0 pl-1">
+                              <p className="text-[9px] font-semibold uppercase tracking-wider text-[#0A0A0A]/35">
+                                Workload
+                              </p>
 
-                            <p className="mt-1 truncate text-xs font-medium text-[#0A0A0A]/60">
-                              {job.hours_per_week ||
-                                "Not specified"}
-                            </p>
-                          </div>
+                              <p className="mt-1 truncate text-xs font-medium text-[#0A0A0A]/60">
+                                {formatWorkload(job)}
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         {job.skills &&
@@ -1546,12 +1547,14 @@ export default function JobsPage() {
                                   </span>
                                 </div>
 
-                                <div className="flex items-center gap-1.5">
-                                  <Clock className="size-3 shrink-0 text-[#0A0A0A]/35" />
-                                  <span className="text-xs text-[#0A0A0A]/45">
-                                    {formatWorkload(job)}
-                                  </span>
-                                </div>
+                                {formatWorkload(job) && (
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="size-3 shrink-0 text-[#0A0A0A]/35" />
+                                    <span className="text-xs text-[#0A0A0A]/45">
+                                      {formatWorkload(job)}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             </td>
 
