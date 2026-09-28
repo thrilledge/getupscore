@@ -3,6 +3,7 @@ import {
   createSupabaseAdminClient,
   createSupabaseServerClient,
 } from "@/lib/supabase/server";
+import { cached, TTL } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
 
   // null => global view (all jobs); [] => no user filters matched
   let filterIds: string[] | null = null;
+  let currentUserId: string | null = null;
 
   if (scope !== "all") {
     const serverClient = await createSupabaseServerClient();
@@ -72,6 +74,8 @@ export async function GET(request: Request) {
         { status: 401 }
       );
     }
+
+    currentUserId = user.id;
 
     if (scope === "filters") {
       // All of the user's active filters (OR semantics)
@@ -101,19 +105,31 @@ export async function GET(request: Request) {
     }
   }
 
-  const { data, error } = await supabaseAdmin.rpc(
-    "get_market_trends_filtered",
-    {
-      p_days: days,
-      p_filter_ids: filterIds && filterIds.length > 0 ? filterIds : [],
-    }
-  );
+  // Trends only change when the feed syncs (every 5 min) — cache the heavy
+  // aggregation so 7d/30d switching is instant instead of a fresh RPC.
+  const cacheKey = `mt:${days}:${scope}${currentUserId ? `:${currentUserId}` : ""}:${scope === "custom" ? (filterIds ?? []).join(",") : ""}`;
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  let d: JsonObject | null;
+  try {
+    d = await cached<JsonObject | null>(cacheKey, TTL.TRENDS, async () => {
+      const { data, error } = await supabaseAdmin.rpc(
+        "get_market_trends_filtered",
+        {
+          p_days: days,
+          p_filter_ids: filterIds && filterIds.length > 0 ? filterIds : [],
+        }
+      );
+
+      if (error) throw error;
+      return normalizePayload(data as JsonObject | null | undefined) ?? null;
+    });
+  } catch (err: any) {
+    console.error("[Market Trends] Query error:", err?.message);
+    return NextResponse.json(
+      { error: err?.message || "Failed to load market trends" },
+      { status: 500 }
+    );
   }
-
-  const d = normalizePayload(data as JsonObject | null | undefined);
 
   return NextResponse.json({
     ...(d ?? {}),

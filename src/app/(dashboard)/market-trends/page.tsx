@@ -131,6 +131,10 @@ export default function MarketTrendsPage() {
 
   const abortRef =
     useRef<AbortController | null>(null);
+  // Guards against a slower older request (e.g. the 30d one) resolving AFTER
+  // a newer one and stamping over its data — the classic "shows 30d while 7d
+  // is selected" bug.
+  const requestRef = useRef(0);
 
   const load = useCallback(
     async (
@@ -139,6 +143,8 @@ export default function MarketTrendsPage() {
       filterIds: string[],
       opts?: { signal?: AbortSignal; showLoading?: boolean }
     ) => {
+      const reqId = ++requestRef.current;
+
       if (opts?.showLoading !== false) {
         setLoading(true);
         setError(null);
@@ -176,8 +182,11 @@ export default function MarketTrendsPage() {
           throw new Error(json.error);
         }
 
+        if (reqId !== requestRef.current) return;
         setData(json as MarketTrends);
       } catch (error) {
+        if (reqId !== requestRef.current) return;
+
         if ((error as Error).name === "AbortError") {
           return;
         }
@@ -187,8 +196,10 @@ export default function MarketTrendsPage() {
           "Failed to load market trends"
         );
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (reqId === requestRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     []
@@ -204,7 +215,9 @@ export default function MarketTrendsPage() {
     const timer = setTimeout(() => {
       load(days, scopeValue.scope, scopeValue.filterIds, {
         signal: controller.signal,
-        showLoading: false,
+        // True so switching 7d/30d or scope shows the skeleton immediately
+        // instead of leaving stale charts from the previous range on screen.
+        showLoading: true,
       });
     }, 0);
 

@@ -166,6 +166,8 @@ export const TTL = {
   FAVORITES: 30_000,
   /** Filter facets (categories/subcategories/countries) — change only with sync */
   FACETS: 5 * 60_000,
+  /** Market trends aggregations (7/30-day) — change only with the 5-min sync */
+  TRENDS: 5 * 60_000,
   /** Dashboard stats */
   STATS: 30_000,
   /** Suggestions — typed infrequently */
