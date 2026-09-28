@@ -749,8 +749,37 @@ function removeSignInPopup() {
   if (el) el.remove();
 }
 
+function injectApplyGlowStyle() {
+  if (document.getElementById("upscore-apply-glow-style")) return;
+  const style = document.createElement("style");
+  style.id = "upscore-apply-glow-style";
+  style.textContent = `@keyframes upscoreGlow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(0, 201, 139, 0.15);
+  }
+
+  50% {
+    box-shadow:
+      0 0 15px rgba(0, 201, 139, 0.55),
+      0 0 35px rgba(0, 201, 139, 0.3);
+  }
+}
+
+#upscore-apply-btn-0 {
+  animation: upscoreGlow 1.5s ease-in-out infinite;
+}
+
+#upscore-apply-btn-0 img {
+  width: 24px !important;
+  height: 24px !important;
+}`;
+  (document.head || document.documentElement).appendChild(style);
+}
+
 function injectApplyButton() {
   if (!detectApplyPage()) return;
+
+  injectApplyGlowStyle();
 
   const textareas = findApplyTextareas();
   if (textareas.length === 0) {
