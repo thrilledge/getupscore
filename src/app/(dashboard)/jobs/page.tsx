@@ -148,9 +148,6 @@ export default function JobsPage() {
     setSubcategoryFilter,
   ] = useState("");
 
-  const [durationFilter, setDurationFilter] =
-    useState("");
-
   const [countryFilter, setCountryFilter] =
     useState("");
 
@@ -160,12 +157,10 @@ export default function JobsPage() {
       category: string | null;
       subcategory: string;
     }[];
-    durations: string[];
     countries: string[];
   }>({
     categories: [],
     subcategories: [],
-    durations: [],
     countries: [],
   });
 
@@ -174,7 +169,7 @@ export default function JobsPage() {
     setInitialFiltersLoaded,
   ] = useState(false);
 
-  // Load the distinct category / subcategory / project-length values that
+  // Load the distinct category / subcategory / country values that
   // actually exist in the job feed so every dropdown option returns results.
   useEffect(() => {
     fetch("/api/jobs/facets")
@@ -184,7 +179,6 @@ export default function JobsPage() {
         setFacets({
           categories: Array.isArray(d.categories) ? d.categories : [],
           subcategories: Array.isArray(d.subcategories) ? d.subcategories : [],
-          durations: Array.isArray(d.durations) ? d.durations : [],
           countries: Array.isArray(d.countries) ? d.countries : [],
         });
       })
@@ -341,13 +335,6 @@ export default function JobsPage() {
       );
     }
 
-    if (durationFilter) {
-      params.set(
-        "duration",
-        durationFilter
-      );
-    }
-
     if (countryFilter) {
       params.set(
         "country",
@@ -420,7 +407,6 @@ export default function JobsPage() {
     skillFilter,
     categoryFilter,
     subcategoryFilter,
-    durationFilter,
     countryFilter,
   ]);
 
@@ -437,7 +423,6 @@ export default function JobsPage() {
     skillFilter,
     categoryFilter,
     subcategoryFilter,
-    durationFilter,
     countryFilter,
   ]);
 
@@ -494,14 +479,10 @@ export default function JobsPage() {
     return "Price not mention";
   }
   // 
-
-  // Combine workload + duration into one readable line. These are
-  // independent fields ("More than 30 hrs/week" and "More than 6
-  // months") so both must render even when only one is present.
+  // Workload: hours per week (retainer shown only when no budget/rate exists)
   function formatWorkload(job: JobItem): string {
     const parts: string[] = [];
     if (job.hours_per_week) parts.push(job.hours_per_week);
-    if (job.duration_label) parts.push(job.duration_label);
     if (
       job.weekly_retainer != null &&
       job.budget == null &&
@@ -510,7 +491,7 @@ export default function JobsPage() {
     ) {
       parts.push(`$${job.weekly_retainer}/wk`);
     }
-    if (parts.length === 0) return "Duration not mention";
+    if (parts.length === 0) return "Workload not specified";
     return parts.join(" · ");
   }
 
@@ -525,7 +506,6 @@ export default function JobsPage() {
     setSkillFilter("");
     setCategoryFilter("");
     setSubcategoryFilter("");
-    setDurationFilter("");
     setCountryFilter("");
   }
 
@@ -536,7 +516,6 @@ export default function JobsPage() {
       "Experience",
       "Budget",
       "Workload",
-      "Duration",
       "Skills",
       "Client Country",
       "Client Rating",
@@ -562,7 +541,6 @@ export default function JobsPage() {
           : "",
 
       job.hours_per_week || "",
-      job.duration_label || "",
 
       `"${(job.skills || []).join(
         ", "
@@ -618,7 +596,6 @@ export default function JobsPage() {
     skillFilter ||
     categoryFilter ||
     subcategoryFilter ||
-    durationFilter ||
     countryFilter;
 
   const activeFilterCount = [
@@ -632,7 +609,6 @@ export default function JobsPage() {
     skillFilter,
     categoryFilter,
     subcategoryFilter,
-    durationFilter,
     countryFilter,
   ].filter(Boolean).length;
 
@@ -1091,47 +1067,6 @@ export default function JobsPage() {
                   </div>
                 )}
 
-                {/* Project length */}
-                {facets.durations.length > 0 && (
-                  <div className="min-w-0">
-                    <label className="mb-1.5 block text-[10px] font-semibold text-[#0A0A0A]/50 sm:text-[11px]">
-                      Project length
-                    </label>
-
-                    <Select
-                      value={durationFilter || null}
-                      onValueChange={(value) =>
-                        setDurationFilter(value ?? "")
-                      }
-                    >
-                      <SelectTrigger className="h-10 w-full min-w-0 rounded-xl border-[#0A0A0A]/10 bg-[#F8F9F9] text-xs text-[#0A0A0A] focus:border-[#00C98B] focus:ring-[#00C98B]/20 sm:text-sm">
-                        <SelectValue placeholder="Any length" />
-                      </SelectTrigger>
-
-                      <SelectContent className="max-h-72 rounded-xl border-[#0A0A0A]/10 bg-white">
-                        <SelectItem
-                          value=""
-                          className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                        >
-                          Any length
-                        </SelectItem>
-
-                        {facets.durations.map(
-                          (d) => (
-                            <SelectItem
-                              key={d}
-                              value={d}
-                              className="rounded-lg focus:bg-[#00C98B]/10 focus:text-[#00A975]"
-                            >
-                              {d}
-                            </SelectItem>
-                          )
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
                 {/* Client country */}
                 {facets.countries.length > 0 && (
                   <div className="min-w-0">
@@ -1433,11 +1368,6 @@ export default function JobsPage() {
                             <p className="mt-1 truncate text-xs font-medium text-[#0A0A0A]/60">
                               {job.hours_per_week ||
                                 "Not specified"}
-                            </p>
-
-                            <p className="mt-1 truncate text-xs font-medium text-[#0A0A0A]/60">
-                              {job.duration_label ||
-                                "Duration not mention"}
                             </p>
                           </div>
                         </div>

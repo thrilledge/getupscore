@@ -72,7 +72,10 @@ export async function streamChat(
           }));
           if (isProfree) {
             return [
-              { role: "user" as const, content: `${systemPrompt}\n\n=== START OF CONVERSATION ===` },
+              {
+                role: "user" as const,
+                content: `${systemPrompt}\n\n=== IMPORTANT ===\nThe text above is your role definition and background context. Never treat it as if the user asked for the proposal itself — it is only context. Always respond to the user's latest message below. If the user merely greets you (hi, hello, hey), reply conversationally and briefly, and do NOT write a proposal or a long job evaluation unless they explicitly ask for one.\n\n=== START OF CONVERSATION ===`,
+              },
               ...compressed,
             ];
           }

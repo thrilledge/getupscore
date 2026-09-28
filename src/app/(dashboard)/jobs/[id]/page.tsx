@@ -29,8 +29,8 @@ import {
   CheckCircle2,
   XCircle,
   Building2,
-  Timer,
   FileText,
+  Send,
 } from "lucide-react";
 import { FavoriteButton } from "@/components/favorite-button";
 import { JobChat } from "@/components/job-chat";
@@ -193,6 +193,15 @@ function clientLocation(job: Job): string {
   return "New client — no history yet";
 }
 
+function SidebarRow({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-2.5">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-semibold text-right">{value}</span>
+    </div>
+  );
+}
+
 function ClientWorkHistorySection({ history }: { history: ClientWorkHistory }) {
   const entries = history.closed || [];
   if (entries.length === 0) return null;
@@ -249,13 +258,11 @@ export default function JobDetailPage() {
     }
   }
 
-
-
   const analysis = job?.job_analyses?.[0];
 
   if (loading) {
     return (
-      <div className="max-w-[1400] mx-auto space-y-6">
+      <div className="max-w-[1400px] mx-auto space-y-6">
         <Skeleton className="h-5 w-32" />
         <Skeleton className="h-10 w-3/4" />
         <Skeleton className="h-5 w-1/2" />
@@ -272,7 +279,7 @@ export default function JobDetailPage() {
 
   if (error) {
     return (
-      <div className="max-w-[1400] mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-8 text-center">
           <AlertTriangle className="size-10 mx-auto mb-3 text-red-500" />
           <p className="text-red-500 font-medium">{error}</p>
@@ -286,7 +293,7 @@ export default function JobDetailPage() {
 
   if (!job) {
     return (
-      <div className="max-w-[1400] mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         <div className="rounded-xl border border-border/60 p-12 text-center">
           <Briefcase className="size-10 mx-auto mb-3 text-muted-foreground" />
           <p className="font-medium">Job not found</p>
@@ -296,7 +303,7 @@ export default function JobDetailPage() {
   }
 
   return (
-    <div className="max-w-[1400] mx-auto space-y-6">
+    <div className="max-w-[1400px] mx-auto space-y-6">
       {/* Back link */}
       <Link
         href="/jobs"
@@ -306,276 +313,150 @@ export default function JobDetailPage() {
         Back to Jobs
       </Link>
 
-      <div className="grid grid-cols-1 gap-6 items-start">
-        <div className="space-y-6 min-w-0">
-          {/* ── Header ── */}
-          <div className="space-y-3">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3">
-                  <FavoriteButton jobId={job.id} size="lg" />
-                  <h1 className="text-2xl font-bold font-heading leading-tight">
-                    {job.title}
-                  </h1>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 mt-3 ml-12">
-                  {job.job_type && (
-                    <Badge
-                      variant="secondary"
-                      className="text-[11px] px-2.5 py-0.5 font-medium rounded-full"
-                    >
-                      {formatJobType(job.job_type)}
-                    </Badge>
-                  )}
-                  {job.contractor_tier && (
-                    <Badge
-                      variant="outline"
-                      className="text-[11px] px-2.5 py-0.5 font-normal rounded-full border-border/50"
-                    >
-                      {formatExperience(job.contractor_tier)}
-                    </Badge>
-                  )}
-                  {job.category && (
-                    <Badge
-                      variant="outline"
-                      className="text-[11px] px-2.5 py-0.5 font-normal rounded-full border-border/50"
-                    >
-                      {job.category}
-                    </Badge>
-                  )}
-                  {job.payment_verified && (
-                    <Badge className="text-[11px] px-2.5 py-0.5 rounded-full bg-green-500/15 text-green-700 hover:bg-green-500/20 border-0">
-                      <Shield className="size-3 mr-1" /> Payment Verified
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              {job.url && (
-                <a
-                  href={job.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm text-accent-blue hover:underline shrink-0"
-                >
-                  <ExternalLink className="size-4" />
-                  Upwork
-                </a>
-              )}
+      {/* ── Header: title + meta ── */}
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3">
+              <FavoriteButton jobId={job.id} size="lg" />
+              <h1 className="text-2xl sm:text-3xl font-bold font-heading leading-tight">
+                {job.title}
+              </h1>
             </div>
-          </div>
-
-          {/* ── Quick Stats ── */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {/* Budget */}
-            <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-              <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-accent-green via-accent-green/80 to-accent-green/60" />
-              <div className="flex items-center gap-2 mb-2">
-                <div className="rounded-lg bg-accent-green/10 p-1.5">
-                  <DollarSign className="size-4 text-accent-green" />
-                </div>
-                <span className="text-xs font-medium text-muted-foreground">Budget</span>
-              </div>
-              <p className="text-lg font-bold tabular-nums">
-                {formatBudget(job)}
-              </p>
-              {job.weekly_retainer != null && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  ${job.weekly_retainer}/wk retainer
-                </p>
-              )}
-            </div>
-
-            {/* Posted */}
-            <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-              <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-accent-blue via-accent-blue/80 to-accent-blue/60" />
-              <div className="flex items-center gap-2 mb-2">
-                <div className="rounded-lg bg-accent-blue/10 p-1.5">
-                  <Clock className="size-4 text-accent-blue" />
-                </div>
-                <span className="text-xs font-medium text-muted-foreground">Posted</span>
-              </div>
-              <p className="text-lg font-bold">{daysAgo(job.posted_at) || "—"}</p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 ml-12 text-xs text-muted-foreground">
               {job.posted_at && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {new Date(job.posted_at).toLocaleDateString()}
-                </p>
-              )}
-            </div>
-
-            {/* Duration */}
-            <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md transition-shadow">
-              <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-accent-purple via-accent-purple/80 to-accent-purple/60" />
-              <div className="flex items-center gap-2 mb-2">
-                <div className="rounded-lg bg-accent-purple/10 p-1.5">
-                  <Timer className="size-4 text-accent-purple" />
-                </div>
-                <span className="text-xs font-medium text-muted-foreground">Duration</span>
-              </div>
-              <p className="text-lg font-bold">{job.duration_label || "Duration not mention"}</p>
-              {job.duration_weeks != null && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {job.duration_weeks} weeks
-                </p>
-              )}
-              {job.hours_per_week && (
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {job.hours_per_week}
-                </p>
-              )}
-            </div>
-
-          </div>
-
-          {/* ── Client Section ── */}
-          <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
-            <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-accent-blue via-accent-purple to-accent-blue/60" />
-            <div className="p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Client Details
+                <span className="inline-flex items-center gap-1.5">
+                  <Clock className="size-3.5" />
+                  Posted {daysAgo(job.posted_at)}
                 </span>
-              </div>
-
-              <div className="grid grid-cols-1 gap-6">
-                {/* Left: Client Profile */}
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div className="rounded-full bg-accent-blue/10 p-2.5 mt-0.5">
-                      <User className="size-5 text-accent-blue" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="size-3.5 text-muted-foreground" />
-                        <span className="text-sm font-medium">
-                          {clientLocation(job)}
-                        </span>
-                      </div>
-                      {job.client_score != null && job.client_score > 0 && (
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <div className="flex">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                              <Star
-                                key={s}
-                                className={`size-3.5 ${s <= Math.round(job.client_score!) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-sm font-semibold">{job.client_score!.toFixed(1)}</span>
-                          <span className="text-xs text-muted-foreground">client score</span>
-                        </div>
-                      )}
-                      {job.client_member_since && (
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <Calendar className="size-3 text-muted-foreground" />
-                          <span className="text-xs text-muted-foreground">
-                            Member since {new Date(job.client_member_since).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {job.client_payment_verified && (
-                      <Badge className="text-[11px] px-2.5 py-0.5 rounded-full bg-green-500/15 text-green-700 border-0">
-                        <Shield className="size-3 mr-1" /> Payment Verified
-                      </Badge>
-                    )}
-                    {job.client_industry && (
-                      <Badge variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full border-border/50">
-                        <Building2 className="size-3 mr-1" /> {job.client_industry}
-                      </Badge>
-                    )}
-                    {job.client_company_size != null && (
-                      <Badge variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full border-border/50">
-                        <Users className="size-3 mr-1" /> {job.client_company_size} employees
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                {/* Right: Client Stats Grid */}
-                <div className="grid grid-cols-3 gap-3">
-                  {job.client_total_spend != null && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Total Spent</p>
-                      <p className="text-base font-bold tabular-nums">${job.client_total_spend.toLocaleString()}</p>
-                    </div>
-                  )}
-                  {job.client_hire_rate != null && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Hire Rate</p>
-                      <p className="text-base font-bold tabular-nums">{job.client_hire_rate}%</p>
-                    </div>
-                  )}
-                  {job.client_total_jobs_with_hires != null && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Jobs Posted</p>
-                      <p className="text-base font-bold tabular-nums">{job.client_total_jobs_with_hires}</p>
-                    </div>
-                  )}
-                  {job.connects_required != null && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Connects</p>
-                      <p className="text-base font-bold tabular-nums">{job.connects_required}</p>
-                    </div>
-                  )}
-                  {job.client_active_assignments != null && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Active</p>
-                      <p className="text-base font-bold tabular-nums">{job.client_active_assignments}</p>
-                    </div>
-                  )}
-                  {job.client_hours_count != null && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Hours Logged</p>
-                      <p className="text-base font-bold tabular-nums">{job.client_hours_count.toLocaleString()}</p>
-                    </div>
-                  )}
-                  {job.client_feedback_count != null && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Reviews</p>
-                      <p className="text-base font-bold tabular-nums">{job.client_feedback_count}</p>
-                    </div>
-                  )}
-                  {job.client_feedback_score != null && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Feedback</p>
-                      <p className="text-base font-bold tabular-nums">{job.client_feedback_score.toFixed(2)}</p>
-                    </div>
-                  )}
-                  {(job.client_contracts_active != null || job.client_contracts_total != null) && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Open / Total Contracts</p>
-                      <p className="text-base font-bold tabular-nums">
-                        {job.client_contracts_active ?? "—"} / {job.client_contracts_total ?? "—"}
-                      </p>
-                    </div>
-                  )}
-                  {job.persons_to_hire != null && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Hiring</p>
-                      <p className="text-base font-bold tabular-nums">
-                        {job.persons_to_hire} {job.persons_to_hire === 1 ? "person" : "people"}
-                      </p>
-                    </div>
-                  )}
-                  {job.engagement_type && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Engagement</p>
-                      <p className="text-sm font-bold">{job.engagement_type.replace(/_/g, " ")}</p>
-                    </div>
-                  )}
-                  {job.client_timezone && (
-                    <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Timezone</p>
-                      <p className="text-sm font-bold">{job.client_timezone}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+              )}
+              <span className="inline-flex items-center gap-1.5 capitalize">
+                <Briefcase className="size-3.5" />
+                {formatJobType(job.job_type) || "Job"}
+              </span>
+              {job.connects_required != null && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Zap className="size-3.5" />
+                  {job.connects_required} connects
+                </span>
+              )}
+              {job.proposals_count != null && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Users className="size-3.5" />
+                  {job.proposals_count} proposals
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 mt-3 ml-12">
+              {job.job_type && (
+                <Badge
+                  variant="secondary"
+                  className="text-[11px] px-2.5 py-0.5 font-medium rounded-full"
+                >
+                  {job.job_type.includes("FIXED") ? "Fixed Price" : "Hourly"}
+                </Badge>
+              )}
+              {job.contractor_tier && (
+                <Badge
+                  variant="outline"
+                  className="text-[11px] px-2.5 py-0.5 font-normal rounded-full border-border/50"
+                >
+                  {formatExperience(job.contractor_tier)}
+                </Badge>
+              )}
+              {job.category && (
+                <Badge
+                  variant="outline"
+                  className="text-[11px] px-2.5 py-0.5 font-normal rounded-full border-border/50"
+                >
+                  {job.category}
+                </Badge>
+              )}
+              {job.payment_verified && (
+                <Badge className="text-[11px] px-2.5 py-0.5 rounded-full bg-green-500/15 text-green-700 hover:bg-green-500/20 border-0">
+                  <Shield className="size-3 mr-1" /> Payment Verified
+                </Badge>
+              )}
             </div>
           </div>
+          {job.url && (
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-accent-green px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <ExternalLink className="size-4" />
+              Apply on Upwork
+            </a>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        {/* ═══ LEFT MAIN COLUMN ═══ */}
+        <div className="min-w-0 space-y-6">
+          {/* ── Job Description ── */}
+          {job.description && (
+            <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
+              <div className="px-6 pt-5 pb-4 border-b border-border/40">
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-accent-blue/10 p-1.5">
+                    <FileText className="size-4 text-accent-blue" />
+                  </div>
+                  <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    Job Description
+                  </h2>
+                </div>
+              </div>
+              <div className="p-6 text-[15px] leading-7">
+                <JobDescription text={job.description} />
+              </div>
+            </div>
+          )}
+
+          {/* ── Activity on this job ── */}
+          {(job.proposals_count != null ||
+            job.total_invited != null ||
+            job.total_hired != null ||
+            job.connects_required != null) && (
+            <div className="rounded-xl border border-border/60 bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="rounded-lg bg-accent-green/10 p-1.5">
+                  <TrendingUp className="size-4 text-accent-green" />
+                </div>
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  Activity on this job
+                </h2>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {job.proposals_count != null && (
+                  <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Proposals</p>
+                    <p className="text-lg font-bold tabular-nums">{job.proposals_count}</p>
+                  </div>
+                )}
+                {job.total_invited != null && (
+                  <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Invites</p>
+                    <p className="text-lg font-bold tabular-nums">{job.total_invited}</p>
+                  </div>
+                )}
+                {job.total_hired != null && (
+                  <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Hired</p>
+                    <p className="text-lg font-bold tabular-nums">{job.total_hired}</p>
+                  </div>
+                )}
+                {job.connects_required != null && (
+                  <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Connects</p>
+                    <p className="text-lg font-bold tabular-nums">{job.connects_required}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── Skills ── */}
           {job.skills && job.skills.length > 0 && (
@@ -584,16 +465,16 @@ export default function JobDetailPage() {
                 <div className="rounded-lg bg-accent-purple/10 p-1.5">
                   <Layers className="size-4 text-accent-purple" />
                 </div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Skills
-                </span>
+                </h2>
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {job.skills.map((s) => (
                   <Badge
                     key={s}
                     variant="outline"
-                    className="text-[10px] px-2 py-0.5 font-normal rounded-full border-border/50 bg-muted/10"
+                    className="text-[11px] px-2.5 py-0.5 font-normal rounded-full border-border/50 bg-muted/10"
                   >
                     {s}
                   </Badge>
@@ -609,9 +490,9 @@ export default function JobDetailPage() {
                 <div className="rounded-lg bg-accent-blue/10 p-1.5">
                   <Target className="size-4 text-accent-blue" />
                 </div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Preferred Qualifications
-                </span>
+                </h2>
               </div>
               <div className="space-y-2 text-sm">
                 {(job.preferred_qualifications.english_proficiency != null && job.preferred_qualifications.english_proficiency !== "" && job.preferred_qualifications.english_proficiency !== "Any") && (
@@ -644,30 +525,6 @@ export default function JobDetailPage() {
                     <span className="font-medium text-right">{job.preferred_qualifications.rising_talent ? "Yes" : "No"}</span>
                   </p>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* ── Client Work History ── */}
-          {job.client_recent_history && (
-            <ClientWorkHistorySection history={job.client_recent_history} />
-          )}
-
-          {/* ── Description ── */}
-          {job.description && (
-            <div className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-border/40">
-                <div className="flex items-center gap-2">
-                  <div className="rounded-lg bg-accent-blue/10 p-1.5">
-                    <FileText className="size-4 text-accent-blue" />
-                  </div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Description
-                  </span>
-                </div>
-              </div>
-              <div className="p-5">
-                <JobDescription text={job.description} />
               </div>
             </div>
           )}
@@ -891,11 +748,6 @@ export default function JobDetailPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Footer */}
-                {/* <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  // <span>Analyzed via {analysis.model_used || "keyword-fallback"}</span>
-                </div> */}
               </div>
             ) : (
               <div className="rounded-xl border border-border/60 bg-card p-12 text-center shadow-sm">
@@ -904,7 +756,7 @@ export default function JobDetailPage() {
                 </div>
                 <h3 className="font-semibold text-lg font-heading mb-1">No AI analysis yet</h3>
                 <p className="text-muted-foreground text-sm max-w-md mx-auto">
-                  Click the button above to analyze this job. You&apos;ll get match
+                  Use the Job Assistant to analyze this job. You&apos;ll get match
                   scores, opportunity assessment, proposal tips, and more.
                 </p>
               </div>
@@ -912,15 +764,156 @@ export default function JobDetailPage() {
           </div>
         </div>
 
-        <ChatLauncher label="Job Assistant" contextKey={job.id} defaultSessionId={job.id}>
-          <JobChat
-            key={job.id}
-            jobId={job.id}
-            jobTitle={job.title}
-            className="h-full rounded-none border-0 shadow-none"
-          />
-        </ChatLauncher>
+        {/* ═══ RIGHT SIDEBAR (sticky) ═══ */}
+        <aside className="min-w-0 space-y-6 lg:sticky lg:top-6">
+          {/* ── About this job ── */}
+          <div className="rounded-xl border border-border/60 bg-card shadow-sm divide-y divide-border/60">
+            <div className="flex items-center gap-2 px-5 py-4">
+              <div className="rounded-lg bg-accent-blue/10 p-1.5">
+                <Briefcase className="size-4 text-accent-blue" />
+              </div>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                About this job
+              </h2>
+            </div>
+            <div className="px-5 py-1">
+              <SidebarRow label="Budget" value={<span className="text-accent-green">{formatBudget(job)}</span>} />
+              <SidebarRow label="Job type" value={job.job_type?.includes("FIXED") ? "Fixed Price" : job.job_type?.includes("HOURLY") ? "Hourly" : job.job_type || "—"} />
+              <SidebarRow label="Experience level" value={formatExperience(job.contractor_tier) || "—"} />
+              <SidebarRow label="Hours per week" value={job.hours_per_week || "—"} />
+              {job.weekly_retainer != null && (
+                <SidebarRow label="Retainer" value={`$${job.weekly_retainer}/wk`} />
+              )}
+              {job.persons_to_hire != null && (
+                <SidebarRow label="Hiring" value={`${job.persons_to_hire} ${job.persons_to_hire === 1 ? "person" : "people"}`} />
+              )}
+              {job.engagement_type && (
+                <SidebarRow label="Engagement" value={job.engagement_type.replace(/_/g, " ")} />
+              )}
+              <SidebarRow label="Location" value={clientLocation(job)} />
+            </div>
+          </div>
+
+          {/* ── About the client ── */}
+          <div className="rounded-xl border border-border/60 bg-card shadow-sm divide-y divide-border/60">
+            <div className="flex items-center gap-2 px-5 py-4">
+              <div className="rounded-lg bg-accent-purple/10 p-1.5">
+                <User className="size-4 text-accent-purple" />
+              </div>
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                About the client
+              </h2>
+            </div>
+
+            <div className="px-5 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="size-3.5 text-muted-foreground shrink-0" />
+                    <p className="text-sm font-medium">
+                      {clientLocation(job)}
+                    </p>
+                  </div>
+                  {job.client_score != null && job.client_score > 0 && (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <div className="flex">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`size-3.5 ${s <= Math.round(job.client_score!) ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/30"}`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm font-semibold">{job.client_score!.toFixed(1)}</span>
+                      <span className="text-xs text-muted-foreground">score</span>
+                    </div>
+                  )}
+                  {job.client_member_since && (
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <Calendar className="size-3 text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">
+                        Member since {new Date(job.client_member_since).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {job.client_payment_verified && (
+                  <Badge className="shrink-0 text-[11px] px-2.5 py-0.5 rounded-full bg-green-500/15 text-green-700 border-0">
+                    <Shield className="size-3 mr-1" /> Verified
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-2 mt-4">
+                {job.client_industry && (
+                  <Badge variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full border-border/50">
+                    <Building2 className="size-3 mr-1" /> {job.client_industry}
+                  </Badge>
+                )}
+                {job.client_company_size != null && (
+                  <Badge variant="outline" className="text-[11px] px-2.5 py-0.5 rounded-full border-border/50">
+                    <Users className="size-3 mr-1" /> {job.client_company_size} employees
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="px-5 py-1">
+              {job.client_total_spend != null && (
+                <SidebarRow label="Total spent" value={`$${job.client_total_spend.toLocaleString()}`} />
+              )}
+              {job.client_hire_rate != null && (
+                <SidebarRow label="Hire rate" value={`${job.client_hire_rate}%`} />
+              )}
+              {job.client_total_jobs_with_hires != null && (
+                <SidebarRow label="Jobs posted" value={job.client_total_jobs_with_hires} />
+              )}
+              {job.client_total_hires != null && (
+                <SidebarRow label="Total hires" value={job.client_total_hires} />
+              )}
+              {job.client_active_assignments != null && (
+                <SidebarRow label="Active assignments" value={job.client_active_assignments} />
+              )}
+              {job.client_hours_count != null && (
+                <SidebarRow label="Hours logged" value={job.client_hours_count.toLocaleString()} />
+              )}
+              {(job.client_contracts_active != null || job.client_contracts_total != null) && (
+                <SidebarRow label="Open / total contracts" value={`${job.client_contracts_active ?? "—"} / ${job.client_contracts_total ?? "—"}`} />
+              )}
+              {job.client_timezone && (
+                <SidebarRow label="Timezone" value={job.client_timezone} />
+              )}
+            </div>
+          </div>
+
+          {/* ── Client Work History ── */}
+          {job.client_recent_history && (
+            <ClientWorkHistorySection history={job.client_recent_history} />
+          )}
+
+          {/* ── CTA ── */}
+          {job.url && (
+            <a
+              href={job.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent-green px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <Send className="size-4" />
+              Apply on Upwork
+            </a>
+          )}
+        </aside>
       </div>
+
+      <ChatLauncher label="Job Assistant" contextKey={job.id} defaultSessionId={job.id}>
+        <JobChat
+          key={job.id}
+          jobId={job.id}
+          jobTitle={job.title}
+          className="h-full rounded-none border-0 shadow-none"
+        />
+      </ChatLauncher>
     </div>
   );
 }

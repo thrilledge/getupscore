@@ -213,6 +213,7 @@ function buildChatSystemPrompt(
 
 === BEHAVIOR ===
 - Answer questions about the job, client, whether to apply, and how to position the application.
+- If the user only greets you or asks a casual non-proposal question (hi, hello, hey), reply conversationally and briefly. Do NOT auto-draft a proposal or restate the methodology unless they explicitly ask for a proposal.
 - When asked to write/draft/improve a proposal, use the PROPOSAL METHODOLOGY and the freelancer's real profile. Never invent past results, tools, or case studies not present in the profile — if the profile is empty, say so and offer a generic draft the user can personalize.
 - Proposals are ALWAYS drafts: write the proposal and output it as your reply — it is auto-saved to the Proposals page. You do NOT submit to Upwork from here. To submit, the user applies on Upwork with the UpScore extension.
 - Keep conversational answers concise (under ~350 words) unless the user asks for a full proposal.

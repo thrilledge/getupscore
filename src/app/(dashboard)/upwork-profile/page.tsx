@@ -289,7 +289,7 @@ export default function UpworkProfilePage() {
               <CardContent className="space-y-6 px-5 py-5 sm:px-6">
                 {/* Bio */}
                 <div className="rounded-2xl border border-[#0A0A0A]/7 bg-[#F8F9F9] p-4">
-                  <p className="text-sm leading-6 text-[#0A0A0A]/60">
+                  <p className="text-sm leading-6 text-[#0A0A0A]/60 whitespace-pre-line">
                     {(profile.bio as string) ||
                       "No bio synced."}
                   </p>

@@ -103,7 +103,7 @@ export function MarketScopeSelect({ value, onChange, filters, onFilterCreated }:
     <div className="flex items-center gap-2">
       <Select value={value.scope} onValueChange={handleScopeChange}>
         <SelectTrigger
-          className="h-9 w-auto min-w-[180px] max-w-[220px] shrink-0 rounded-xl border-white/10 bg-white/[0.045] text-xs font-semibold text-white/60 backdrop-blur-sm hover:border-[#00C98B]/40 hover:text-white/80 data-[state=open]:border-[#00C98B]/40 data-[state=open]:text-white/80"
+          className="h-9 w-auto min-w-[180px] max-w-[220px] shrink-0 rounded-xl border-[#0A0A0A]/15 bg-white/70 text-xs font-semibold text-[#0A0A0A]/70 backdrop-blur-sm transition-all hover:border-[#00C98B]/40 hover:text-[#0A0A0A] data-[state=open]:border-[#00C98B]/40 data-[state=open]:text-[#0A0A0A] dark:border-white/10 dark:bg-white/[0.045] dark:text-white/60 dark:hover:border-[#00C98B]/40 dark:hover:text-white/80 dark:data-[state=open]:border-[#00C98B]/40 dark:data-[state=open]:text-white/80"
           aria-label="Select data scope"
         >
           <SelectValue placeholder="All market data" />
@@ -150,7 +150,7 @@ export function MarketScopeSelect({ value, onChange, filters, onFilterCreated }:
         trigger={
           <button
             type="button"
-            className="ml-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/55 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B]"
+            className="ml-auto inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border-[#0A0A0A]/15 bg-white/70 px-3 text-xs font-semibold text-[#0A0A0A]/60 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00C98B]/40 hover:bg-[#00C98B]/10 hover:text-[#00C98B] dark:border-white/10 dark:bg-white/[0.045] dark:text-white/55 dark:hover:border-[#00C98B]/40 dark:hover:bg-[#00C98B]/10 dark:hover:text-[#00C98B]"
           >
             <Plus className="size-3.5 transition-transform duration-300 group-hover:rotate-90" />
             <span className="hidden sm:inline">Create filter</span>
