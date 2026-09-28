@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { nanoid } from "nanoid";
+import { checkRateLimit, apiRateLimit } from "@/lib/rate-limit";
 
 /**
  * POST /api/extension/auth/register
@@ -24,6 +25,12 @@ export async function POST(request: Request) {
         { error: "You must be signed in to register a device" },
         { status: 401 }
       );
+    }
+
+    // Rate-limit token minting per user (30/min is generous — this only stops DB/LLM token storms).
+    const { success } = await checkRateLimit(apiRateLimit, `register:${user.id}`);
+    if (!success) {
+      return NextResponse.json({ error: "Too many device registrations. Try again in a minute." }, { status: 429 });
     }
 
     const body = await request.json();

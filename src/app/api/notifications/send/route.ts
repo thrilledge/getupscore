@@ -10,6 +10,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient, createSupabaseServerClient } from "@/lib/supabase/server";
 import { notifyUser, type JobAlertContext } from "@/lib/notifications";
+import { apiRateLimit, checkRateLimit } from "@/lib/rate-limit";
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -21,6 +22,11 @@ function timingSafeEqual(a: string, b: string): boolean {
     result |= bufA[i] ^ bufB[i];
   }
   return result === 0;
+}
+
+async function checkNotificationRateLimit(userId: string): Promise<boolean> {
+  const { success } = await checkRateLimit(apiRateLimit, `notify:${userId}`);
+  return success;
 }
 
 export async function POST(request: Request) {
@@ -70,6 +76,14 @@ export async function POST(request: Request) {
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Rate-limit by user (60/min) — this endpoint delivers external sends
+    // (email/WhatsApp in the future) per notification, an unbounded flood
+    // here burns send credits.
+    const limitPassed = await checkNotificationRateLimit(userId);
+    if (!limitPassed) {
+      return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
     }
 
     if (!channelId) {

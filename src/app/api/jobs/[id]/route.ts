@@ -17,7 +17,10 @@ export async function GET(
 
   const { id } = await params;
 
-  const job = await cached(`job:${id}`, TTL.JOB_DETAIL, async () => {
+  // NOTE: the cache key must include the user — the payload is filtered to
+  // the CURRENT user's job_analyses below, so a shared key would serve one
+  // user's private AI analysis to every other user who opens the same job.
+  const job = await cached(`job:${id}:${user.id}`, TTL.JOB_DETAIL, async () => {
     const { data, error } = await supabase
       .from("jobs")
       .select(`

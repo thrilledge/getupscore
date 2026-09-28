@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { apiRateLimit, checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,14 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: Request) {
   try {
+    // Public endpoint — must be rate-limited or a flood of bogus clicks can be
+    // fired at a competing referral code to run up its click count (or spam DB rows).
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const { success } = await checkRateLimit(apiRateLimit, `affiliate:${ip}`);
+    if (!success) {
+      return NextResponse.json({ ok: false, error: "Too many requests" }, { status: 429 });
+    }
+
     const body = await request.json();
     const { code, fingerprint, landingPage } = body;
 
@@ -20,7 +29,6 @@ export async function POST(request: Request) {
     const admin = createSupabaseAdminClient() as any;
 
     // Get visitor IP from headers
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] ?? null;
     const userAgent = request.headers.get("user-agent") ?? null;
     const referrer = request.headers.get("referer") ?? null;
 

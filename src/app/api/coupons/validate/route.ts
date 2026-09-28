@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { apiRateLimit, checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
+
+function getClientIp(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0]?.trim() || "unknown";
+  return req.headers.get("x-real-ip") || "unknown";
+}
 
 /**
  * POST /api/coupons/validate
@@ -10,6 +17,11 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: Request) {
   try {
+    const rate = await checkRateLimit(apiRateLimit, `coupon:${getClientIp(request)}`);
+    if (!rate.success) {
+      return NextResponse.json({ valid: false, error: "Too many attempts. Try again in a minute." }, { status: 429 });
+    }
+
     const body = await request.json();
     const { code, plan } = body;
 
@@ -29,11 +41,15 @@ export async function POST(request: Request) {
 
     const admin = createSupabaseAdminClient() as any;
 
+    // Escape ILIKE wildcards so user input can never pattern-match multiple
+    // coupons ("%", "SUMMER%") and leak full codes of coupons that exist.
+    const escaped = String(code).trim().replace(/[%_\\]/g, (ch) => `\\${ch}`);
+
     // Find coupon
     const { data: coupon } = await admin
       .from("coupons")
       .select("*")
-      .ilike("code", code.trim())
+      .ilike("code", escaped)
       .eq("active", true)
       .single();
 

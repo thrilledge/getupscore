@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { streamChat, type ChatMessage } from "@/lib/chat-stream";
+import { checkRateLimit, analysisRateLimit } from "@/lib/rate-limit";
 import { formatMarketContext } from "@/lib/market-context";
 import type { MarketTrends } from "@/lib/market-trends";
 
@@ -15,6 +16,11 @@ export async function POST(request: Request) {
 
   if (authError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { success } = await checkRateLimit(analysisRateLimit, `chat:${user.id}`);
+  if (!success) {
+    return NextResponse.json({ error: "Too many requests. Try again in a minute." }, { status: 429 });
   }
 
   const body = await request.json().catch(() => null);
