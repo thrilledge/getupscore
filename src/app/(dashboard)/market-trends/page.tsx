@@ -360,7 +360,7 @@ export default function MarketTrendsPage() {
           className="space-y-0"
         >
           <div className="rounded-[18px] border border-[#0A0A0A]/10 bg-white p-1.5 shadow-[0_6px_22px_rgba(0,0,0,0.035)]">
-            <TabsList className="h-auto w-full max-w-full justify-start gap-1 overflow-x-auto rounded-xl bg-transparent p-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <TabsList className="h-auto! w-full max-w-full justify-start gap-1 overflow-x-auto rounded-xl bg-transparent p-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {TABS.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
