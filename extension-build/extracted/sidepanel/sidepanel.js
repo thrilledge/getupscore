@@ -346,19 +346,12 @@ function syncProfile() {
   chrome.runtime.sendMessage({ type: "OPEN_MY_PROFILE" }, (res) => {
     const notice = $("profileNotice");
     if (notice) notice.style.display = "none";
-    if (!res?.ok) {
-      if (res?.notLoggedIn) {
-        statusText.textContent = "Not logged in to Upwork";
-        statusDot.className = "dot error";
-        if (notice) {
-          notice.style.display = "";
-          const link = notice.querySelector("a");
-          if (link && res.loginUrl) link.href = res.loginUrl;
-        }
-      } else {
-        statusText.textContent = "Open Upwork and sign in first";
-        statusDot.className = "dot error";
-      }
+    if (res?.ok) {
+      statusText.textContent = "To sync your profile, go to your Upwork profile";
+      statusDot.className = "dot ok";
+    } else {
+      statusText.textContent = "Open Upwork and sign in first";
+      statusDot.className = "dot error";
     }
   });
 }

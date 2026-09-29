@@ -932,10 +932,10 @@ function onAuthAvailable() {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   switch (msg.type) {
     case "GET_MY_PROFILE_URL": {
-      const OWN_LINK_SELECTORS = [
-        ".nav-user-info-link",
-        "a[data-testid='my-profile-link']",
-      ];
+      // No profile-UUID scraping: we only report the logged-in state. The
+      // user is taken to /freelancers/me/ and the profile is read from the
+      // page they land on (see profileDetail), never from the DOM nav links.
+      const LOGIN_PAGE_RE = /\/\/(www\.)?upwork\.com\/(ab\/account-security\/login|nx\/join|nx\/sign-in|login|join)\/?(\?|#|$)/i;
       const LOGGED_IN_SELECTORS = [
         ".nav-user-info-link",
         "a[data-testid='my-profile-link']",
@@ -943,13 +943,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         ".nav-user-menu",
         "[data-qa='user-menu']",
       ];
-      // Only a page that is itself Upwork's login/join screen is proof the user
-      // is logged OUT. Stray links matching /login/ or /nx/join/ appear on
-      // logged-in pages too (footers, the upsell "become a client" modal), so
-      // treating them as logged-out is what produced the false "Not logged in
-      // to Upwork" blocking everyone. Upwork serves logged-in content on the
-      // freelancer routes, so the logged-out signal is the URL, not the DOM.
-      const LOGIN_PAGE_RE = /\/\/(www\.)?upwork\.com\/(ab\/account-security\/login|nx\/join|nx\/sign-in|login|join)\/?(\?|#|$)/i;
       const LOGGED_OUT_SELECTORS = [
         "[data-qa='log-in']",
         "[data-testid='log-in']",
@@ -957,38 +950,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         "[data-testid='join']",
       ];
 
-      // The logged-in user's OWN profile link lives in the header user-menu.
-      let url = null;
-      for (const sel of OWN_LINK_SELECTORS) {
-        const el = document.querySelector(sel);
-        const href = el?.href;
-        if (href && /\/freelancers\/(~|me\/)/.test(href) && !/\/proposals\//.test(href)) {
-          url = href;
-          break;
-        }
-      }
-      // On the user's own profile page the canonical URL is their profile.
-      if (!url && detectProfilePage()) {
-        const canonical = document.querySelector("link[rel='canonical']");
-        if (canonical?.href && /\/freelancers\/~/.test(canonical.href)) url = canonical.href;
-      }
-
-      // Best login signal: we found the user's own profile link — that only
-      // exists behind an authenticated session.
-      let loggedIn = url ? true : null;
+      let loggedIn = null;
       try {
-        if (loggedIn === null) {
-          if (LOGIN_PAGE_RE.test(window.location.href)) {
-            loggedIn = false;
-          } else if (LOGGED_IN_SELECTORS.some((s) => document.querySelector(s))) {
-            loggedIn = true;
-          } else if (LOGGED_OUT_SELECTORS.some((s) => document.querySelector(s))) {
-            loggedIn = false;
-          }
+        if (LOGIN_PAGE_RE.test(window.location.href)) {
+          loggedIn = false;
+        } else if (LOGGED_IN_SELECTORS.some((s) => document.querySelector(s))) {
+          loggedIn = true;
+        } else if (LOGGED_OUT_SELECTORS.some((s) => document.querySelector(s))) {
+          loggedIn = false;
         }
       } catch {}
 
-      sendResponse({ ok: !!url, url, loggedIn });
+      sendResponse({ ok: false, url: null, loggedIn });
       break;
     }
     case "EXTRACT_PAGE":

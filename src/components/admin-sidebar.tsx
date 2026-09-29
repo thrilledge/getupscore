@@ -36,6 +36,7 @@ import {
   FlaskConical,
   Tag,
   Star,
+  KeyRound,
 } from "lucide-react";
 import {
   Avatar,
@@ -63,6 +64,7 @@ const adminNavItems = [
   { title: "Coupons", href: "/admin/coupons", icon: "Tag" },
   { title: "Affiliates", href: "/admin/affiliates", icon: "Users" },
   { title: "System", href: "/admin/system", icon: "Activity" },
+  { title: "UpWork MCP", href: "/admin/upwork-token", icon: "KeyRound" },
 ] as const;
 
 const iconMap: Record<string, React.ElementType> = {
@@ -80,6 +82,7 @@ const iconMap: Record<string, React.ElementType> = {
   Tag,
   Star,
   Shield,
+  KeyRound,
 };
 
 export function AdminSidebar() {

@@ -364,73 +364,19 @@ async function applyImportedSession(payload) {
 
 const UPWORK_LOGIN_URL = "https://www.upwork.com/nx/find-work/";
 
-async function getStoredUpworkProfileUrl() {
-  try {
-    const token = await resolveAuthToken();
-    if (!token) return null;
-    const response = await fetch(`${state.apiUrl.replace(/\/+$/, "")}/api/extension/profile`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) return null;
-    const json = await response.json();
-    const url = json?.profile?.upwork_url;
-    if (url && /\/freelancers\/~[0-9a-f]/i.test(url)) return url;
-  } catch { /* ignore */ }
-  return null;
-}
-
-async function askUpworkTabsForProfile() {
-  const tabs = await chrome.tabs.query({ url: "https://www.upwork.com/*" });
-  let detectedUrl = null;
-  let seenLoggedIn = false;
-  let seenLoggedOut = false;
-  for (const tab of tabs) {
-    try {
-      const reply = await new Promise((resolve) => {
-        chrome.tabs.sendMessage(tab.id, { type: "GET_MY_PROFILE_URL" }, (res) => {
-          if (chrome.runtime.lastError) return resolve(null);
-          resolve(res || null);
-        });
-      });
-      if (!reply) continue;
-      if (reply.loggedIn === true) seenLoggedIn = true;
-      if (reply.loggedIn === false) seenLoggedOut = true;
-      if (
-        reply.url &&
-        /\/freelancers\/(~|me\/?)/.test(reply.url) &&
-        !/\/proposals\//.test(reply.url) &&
-        !detectedUrl
-      ) {
-        detectedUrl = reply.url;
-      }
-    } catch { /* try next tab */ }
-  }
-  return { tabs, detectedUrl, seenLoggedIn, seenLoggedOut };
-}
-
 async function openMyProfile() {
   const PROFILE_ME = "https://www.upwork.com/freelancers/me/";
   try {
-    const { tabs, detectedUrl, seenLoggedIn, seenLoggedOut } = await askUpworkTabsForProfile();
-
-    // Prefer a logged-in tab's own profile link, else the profile stored in the
-    // dashboard (this is the user's real ~profile URL, not /me).
-    const stored = await getStoredUpworkProfileUrl();
-    const target = detectedUrl || stored || PROFILE_ME;
-
-    // Only hard-block when a tab is genuinely On Upwork's login/join page AND
-    // we have no profile URL to fall back on. A stray tab showing a login
-    // prompt must not block a session that is otherwise logged in.
-    if (seenLoggedOut && !seenLoggedIn && !detectedUrl && !stored) {
-      return { ok: false, notLoggedIn: true, loginUrl: UPWORK_LOGIN_URL };
-    }
-
+    // No profile-UUID scraping: just take the user to their own Upwork
+    // profile. The content script reads the profile off the page they land on
+    // and syncs it automatically.
+    const tabs = await chrome.tabs.query({ url: "https://www.upwork.com/*" });
     if (tabs.length > 0) {
-      await chrome.tabs.update(tabs[0].id, { active: true, url: target });
-      return { ok: true, url: target, tabId: tabs[0].id };
+      await chrome.tabs.update(tabs[0].id, { active: true, url: PROFILE_ME });
+      return { ok: true, url: PROFILE_ME, tabId: tabs[0].id };
     }
-    const tab = await chrome.tabs.create({ url: target });
-    return { ok: true, url: target, tabId: tab?.id ?? null };
+    const tab = await chrome.tabs.create({ url: PROFILE_ME });
+    return { ok: true, url: PROFILE_ME, tabId: tab?.id ?? null };
   } catch (err) {
     console.warn("[Get UpScore] openMyProfile:", err.message);
   }

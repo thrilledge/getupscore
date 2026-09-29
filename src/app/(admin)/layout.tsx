@@ -27,6 +27,7 @@ const pageTitles: Record<string, string> = {
   "/admin/ab-tests": "A/B Tests",
   "/admin/coupons": "Coupons",
   "/admin/affiliates": "Affiliates",
+  "/admin/upwork-token": "UpWork MCP",
 };
 
 export default function AdminLayout({

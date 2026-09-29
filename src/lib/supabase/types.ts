@@ -922,6 +922,33 @@ export type Database = {
         }
         Relationships: []
       }
+      upwork_mcp_config: {
+        Row: {
+          id: number
+          jobs_per_sync: number
+          last_sync_at: string | null
+          last_sync_jobs: number | null
+          sync_interval_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          jobs_per_sync?: number
+          last_sync_at?: string | null
+          last_sync_jobs?: number | null
+          sync_interval_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          jobs_per_sync?: number
+          last_sync_at?: string | null
+          last_sync_jobs?: number | null
+          sync_interval_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       work_diary_entries: {
         Row: {
           activity_level: number | null
