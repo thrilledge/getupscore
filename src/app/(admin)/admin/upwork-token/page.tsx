@@ -13,29 +13,50 @@ import {
   Check,
   Copy,
   ExternalLink,
-  KeyRound,
   Loader2,
+  Plus,
   RefreshCw,
   Settings2,
   Timer,
+  Trash2,
+  Users,
   Zap,
 } from "lucide-react";
 
-interface TokenDetail {
-  issued_at: string | null;
-  expires_in: number | null;
-  expires_at: string | null;
-  expires_seconds_left: number;
-  expires_days_left: number;
-  status: "ok" | "expiring" | "expired" | "no_token";
+type SlotStatus = "ok" | "expiring" | "expired" | "needs_reconnect" | "missing";
+
+interface Slot {
+  slot: number;
+  label: string;
+  org_uid: string | null;
+  role_label: string | null;
+  added_at: string | null;
+  last_used_at: string | null;
+  last_refreshed_at: string | null;
+  last_error: string | null;
   has_refresh: boolean;
-  client_id: string | null;
+  status: SlotStatus;
+  expires_at: string | null;
+  seconds_left: number;
+  days_left: number;
 }
 
-interface Account {
-  name: string;
-  org_uid: string;
-  role_label: string;
+interface SlotAccount {
+  name: string | null;
+  org_uid: string | null;
+  role_label: string | null;
+  checked_at: string | null;
+  error: string | null;
+}
+
+interface Pool {
+  total: number;
+  healthy: number;
+  expiring: number;
+  needs_action: number;
+  active_slot: number | null;
+  slots: Slot[];
+  accounts: Record<string, SlotAccount>;
 }
 
 interface IngestConfig {
@@ -49,19 +70,20 @@ interface IngestConfig {
 interface StatusResponse {
   ok: boolean;
   error?: string;
-  token: boolean;
-  detail: TokenDetail | null;
-  account: Account | null;
-  mcp: { reachable: boolean | null; lookup: string; error: string | null; checked_at: string | null };
+  pool: Pool;
   config: IngestConfig;
+  mcp: { reachable: boolean | null; error: string | null; checked_at: string | null };
 }
 
 const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
   ok: { label: "Healthy", cls: "bg-green-500/15 text-green-700 border-green-500/20" },
   expiring: { label: "Expiring soon", cls: "bg-amber-500/15 text-amber-700 border-amber-500/20" },
   expired: { label: "Expired", cls: "bg-red-500/15 text-red-700 border-red-500/20" },
-  no_token: { label: "No token", cls: "bg-zinc-500/15 text-zinc-600 border-zinc-500/20" },
+  needs_reconnect: { label: "Needs reconnect", cls: "bg-red-500/15 text-red-700 border-red-500/20" },
+  missing: { label: "No token", cls: "bg-zinc-500/15 text-zinc-600 border-zinc-500/20" },
 };
+
+const USABLE: SlotStatus[] = ["ok", "expiring"];
 
 function countdown(seconds: number) {
   if (seconds <= 0) return "expired";
@@ -91,10 +113,11 @@ export default function AdminUpworkTokenPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [linkSlot, setLinkSlot] = useState<number | null>(null);
   const [link, setLink] = useState<string | null>(null);
   const [linkState, setLinkState] = useState<string | null>(null);
   const [code, setCode] = useState("");
-  const [busy, setBusy] = useState<"link" | "connect" | "save" | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -134,10 +157,18 @@ export default function AdminUpworkTokenPage() {
     return json;
   }
 
-  async function generateLink() {
-    setBusy("link");
+  function resetLink() {
+    setLinkSlot(null);
+    setLink(null);
+    setLinkState(null);
+    setCode("");
+  }
+
+  async function generateLink(slot?: number) {
+    setBusy(slot ? `link:${slot}` : "link");
     try {
-      const json = await post({ action: "generate-link" });
+      const json = await post({ action: "generate-link", ...(slot ? { slot } : {}) });
+      setLinkSlot(json.slot);
       setLink(json.authUrl);
       setLinkState(json.state);
     } catch (e) {
@@ -148,15 +179,39 @@ export default function AdminUpworkTokenPage() {
   }
 
   async function connect() {
-    setBusy("connect");
+    if (linkSlot === null) return;
+    setBusy(`connect:${linkSlot}`);
     try {
-      await post({ action: "connect", code, state: linkState });
-      setLink(null);
-      setLinkState(null);
-      setCode("");
+      await post({ action: "connect", slot: linkSlot, code, state: linkState });
+      resetLink();
       await load();
     } catch (e) {
       setActionError(e instanceof Error ? e.message : "Failed to connect");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function refreshSlot(slot: number) {
+    setBusy(`refresh:${slot}`);
+    try {
+      await post({ action: "refresh", slot });
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to refresh");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function removeSlot(slot: number) {
+    setBusy(`delete:${slot}`);
+    try {
+      await post({ action: "delete-slot", slot });
+      if (linkSlot === slot) resetLink();
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : "Failed to remove account");
     } finally {
       setBusy(null);
     }
@@ -183,7 +238,7 @@ export default function AdminUpworkTokenPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         {[0, 1].map((i) => (
           <Card key={i} className="bg-white">
-            <CardContent className="p-5 space-y-3">
+            <CardContent className="space-y-3 p-5">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-8 w-24" />
               <Skeleton className="h-4 w-48" />
@@ -194,11 +249,11 @@ export default function AdminUpworkTokenPage() {
     );
   }
 
-  const detail = data?.detail ?? null;
-  const status = detail?.status ?? "no_token";
-  const style = STATUS_STYLE[status] ?? STATUS_STYLE.no_token;
-  const needsReconnect = status === "expired" || status === "no_token";
+  const pool = data?.pool;
+  const slots = pool?.slots ?? [];
   const cfg = data?.config;
+  const usable = slots.filter((s) => USABLE.includes(s.status));
+  const allDown = slots.length > 0 && usable.length === 0;
 
   return (
     <div className="space-y-5">
@@ -214,169 +269,246 @@ export default function AdminUpworkTokenPage() {
         </Card>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* ---------- Token health ---------- */}
-        <Card className="bg-white">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">UpWork MCP Token</CardTitle>
+      {allDown && (
+        <Card className="border-red-500/30 bg-red-500/5">
+          <CardContent className="flex items-start gap-3 p-4">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-red-600" />
+            <div>
+              <p className="text-sm font-medium text-red-700 dark:text-red-400">
+                No usable Upwork account — job syncing is stopped
+              </p>
+              <p className="mt-0.5 text-xs text-red-600/80 dark:text-red-400/80">
+                Every account in the pool needs reconnecting. Reconnect one below to resume syncing.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ---------- Pool overview ---------- */}
+      <Card className="bg-white">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-medium">Upwork Accounts</CardTitle>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => generateLink()}
+                disabled={busy !== null}
+                className="bg-[#00C98B] text-[#0A0A0A] hover:bg-[#00C98B]/90"
+                size="sm"
+              >
+                {busy === "link" ? (
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                ) : (
+                  <Plus className="mr-1.5 size-3.5" />
+                )}
+                Add account
+              </Button>
               <Button variant="ghost" size="sm" onClick={load} disabled={busy !== null}>
                 <RefreshCw className="mr-1.5 size-3.5" />
                 Refresh
               </Button>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-              <div className="flex items-center gap-3">
-                <Activity className="size-4 text-[#00C98B]" />
-                <div>
-                  <p className="text-sm font-medium">Status</p>
-                  <p className="text-xs text-muted-foreground">
-                    {detail ? countdown(detail.expires_seconds_left) : "no token on the VPS"}
-                  </p>
-                </div>
-              </div>
-              <Badge variant="outline" className={style.cls}>{style.label}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-lg border px-3 py-2">
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Users className="size-3" /> Accounts
+              </p>
+              <p className="mt-1 text-lg font-bold tabular-nums">{pool?.total ?? 0}</p>
             </div>
-
-            {data?.account && (
-              <div className="flex items-center justify-between rounded-lg border px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <KeyRound className="size-4 text-blue-500" />
-                  <div>
-                    <p className="text-sm font-medium">Connected account</p>
-                    <p className="text-xs text-muted-foreground">
-                      {data.account.name} · {data.account.role_label}
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="font-mono text-[10px]">
-                  {data.account.org_uid}
-                </Badge>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="rounded-lg border px-3 py-2">
-                <p className="text-muted-foreground">Issued</p>
-                <p className="mt-0.5 font-medium">
-                  {detail?.issued_at ? new Date(detail.issued_at).toLocaleString() : "—"}
-                </p>
-              </div>
-              <div className="rounded-lg border px-3 py-2">
-                <p className="text-muted-foreground">Expires</p>
-                <p className="mt-0.5 font-medium">
-                  {detail?.expires_at ? new Date(detail.expires_at).toLocaleString() : "—"}
-                </p>
-              </div>
+            <div className="rounded-lg border px-3 py-2">
+              <p className="text-xs text-muted-foreground">Healthy</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-green-600">{pool?.healthy ?? 0}</p>
             </div>
+            <div className="rounded-lg border px-3 py-2">
+              <p className="text-xs text-muted-foreground">Expiring soon</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-amber-600">{pool?.expiring ?? 0}</p>
+            </div>
+            <div className="rounded-lg border px-3 py-2">
+              <p className="text-xs text-muted-foreground">Needs action</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-red-600">{pool?.needs_action ?? 0}</p>
+            </div>
+          </div>
 
-            {data?.mcp?.reachable === null && detail?.status === "ok" && (
-              <p className="text-xs text-muted-foreground">
-                Verifying connection with UpWork…
+          <p className="text-xs text-muted-foreground">
+            Tokens auto-renew 24h before expiry. If one still dies, the sync quarantines that account
+            and moves to the next one automatically — so a single expired token never stops ingestion.
+            {pool?.active_slot ? ` Currently syncing with slot ${pool.active_slot}.` : ""}
+          </p>
+
+          {actionError && (
+            <p className="text-xs text-red-600 dark:text-red-400">{actionError}</p>
+          )}
+
+          <div className="space-y-3">
+            {slots.length === 0 && (
+              <p className="rounded-lg border border-dashed px-4 py-6 text-center text-xs text-muted-foreground">
+                No accounts connected yet. Use &ldquo;Add account&rdquo; to connect your first Upwork
+                account.
               </p>
             )}
-          </CardContent>
-        </Card>
 
-        {/* ---------- Reconnect ---------- */}
-        <Card className="bg-white">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Reconnect UpWork</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {!link ? (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  The VPS token lasts 24 hours. When it expires, generate a connection link,
-                  approve it in your UpWork account, then paste the code back here.
-                </p>
-                <Button
-                  onClick={generateLink}
-                  disabled={busy !== null}
-                  className="w-full bg-[#00C98B] text-[#0A0A0A] hover:bg-[#00C98B]/90"
-                >
-                  {busy === "link" ? (
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                  ) : (
-                    <ExternalLink className="mr-2 size-4" />
-                  )}
-                  {needsReconnect ? "Generate connection link" : "Generate new link"}
-                </Button>
-              </>
-            ) : (
-              <div className="space-y-3">
-                <div className="rounded-lg border border-[#00C98B]/30 bg-[#00C98B]/5 p-3">
-                  <p className="text-xs font-medium text-muted-foreground">1. Open this link</p>
-                  <div className="mt-1.5 flex items-center gap-2">
-                    <code className="min-w-0 flex-1 truncate rounded bg-black/5 px-2 py-1.5 text-[11px] dark:bg-white/10">
-                      {link}
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        navigator.clipboard.writeText(link);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 1500);
-                      }}
-                    >
-                      {copied ? <Check className="size-4 text-[#00C98B]" /> : <Copy className="size-4" />}
-                    </Button>
+            {slots.map((s) => {
+              const acct = pool?.accounts?.[String(s.slot)];
+              const style = STATUS_STYLE[s.status] ?? STATUS_STYLE.missing;
+              const isActive = pool?.active_slot === s.slot;
+              const isOpen = linkSlot === s.slot;
+              const label = acct?.name || s.label;
+              const org = acct?.org_uid || s.org_uid;
+
+              return (
+                <div key={s.slot} className="rounded-lg border">
+                  <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Activity className="size-4 shrink-0 text-[#00C98B]" />
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-2 text-sm font-medium">
+                          <span className="truncate">{label}</span>
+                          {isActive && (
+                            <Badge variant="secondary" className="text-[10px]">in use</Badge>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Slot {s.slot}
+                          {s.role_label || acct?.role_label ? ` · ${s.role_label || acct?.role_label}` : ""}
+                          {" · "}
+                          {USABLE.includes(s.status) ? countdown(s.seconds_left) : "not usable"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {org && (
+                        <Badge variant="outline" className="font-mono text-[10px]">{org}</Badge>
+                      )}
+                      <Badge variant="outline" className={style.cls}>{style.label}</Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => refreshSlot(s.slot)}
+                        disabled={busy !== null || !s.has_refresh}
+                        title={s.has_refresh ? "Renew this token now" : "No refresh token for this account"}
+                      >
+                        {busy === `refresh:${s.slot}` ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <RefreshCw className="size-3.5" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => generateLink(s.slot)}
+                        disabled={busy !== null}
+                        title="Reconnect this account"
+                      >
+                        {busy === `link:${s.slot}` ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <ExternalLink className="size-3.5" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeSlot(s.slot)}
+                        disabled={busy !== null}
+                        title="Remove this account"
+                      >
+                        {busy === `delete:${s.slot}` ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-3.5 text-red-500" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                  <a
-                    href={link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#00C98B] hover:underline"
-                  >
-                    Open in browser <ExternalLink className="size-3" />
-                  </a>
+
+                  <div className="grid grid-cols-2 gap-2 border-t px-4 py-2 text-[11px] text-muted-foreground sm:grid-cols-4">
+                    <span>Added {timeAgo(s.added_at)}</span>
+                    <span>Last used {timeAgo(s.last_used_at)}</span>
+                    <span>Last renewed {timeAgo(s.last_refreshed_at)}</span>
+                    <span className="truncate">
+                      {s.expires_at ? `Expires ${new Date(s.expires_at).toLocaleString()}` : "No expiry"}
+                    </span>
+                  </div>
+
+                  {s.last_error && !USABLE.includes(s.status) && (
+                    <p className="border-t px-4 py-2 text-[11px] text-red-600 dark:text-red-400">
+                      {s.last_error}
+                    </p>
+                  )}
+
+                  {isOpen && link && (
+                    <div className="space-y-3 border-t bg-muted/30 px-4 py-3">
+                      <div className="rounded-lg border border-[#00C98B]/30 bg-[#00C98B]/5 p-3">
+                        <p className="text-xs font-medium text-muted-foreground">
+                          1. Sign in as this Upwork account and open the link
+                        </p>
+                        <div className="mt-1.5 flex items-center gap-2">
+                          <code className="min-w-0 flex-1 truncate rounded bg-black/5 px-2 py-1.5 text-[11px] dark:bg-white/10">
+                            {link}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              navigator.clipboard.writeText(link);
+                              setCopied(true);
+                              setTimeout(() => setCopied(false), 1500);
+                            }}
+                          >
+                            {copied ? <Check className="size-4 text-[#00C98B]" /> : <Copy className="size-4" />}
+                          </Button>
+                        </div>
+                        <a
+                          href={link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#00C98B] hover:underline"
+                        >
+                          Open in browser <ExternalLink className="size-3" />
+                        </a>
+                      </div>
+
+                      <div className="rounded-lg border bg-white p-3 dark:bg-transparent">
+                        <Label htmlFor={`code-${s.slot}`} className="text-xs font-medium text-muted-foreground">
+                          2. Paste the callback URL (or just its code)
+                        </Label>
+                        <Input
+                          id={`code-${s.slot}`}
+                          value={code}
+                          onChange={(e) => setCode(e.target.value)}
+                          placeholder="http://localhost:8123/callback?code=…&state=…"
+                          className="mt-1.5 font-mono text-xs"
+                        />
+                        <div className="mt-2 flex items-center gap-2">
+                          <Button
+                            onClick={connect}
+                            disabled={busy !== null || !code.trim()}
+                            className="bg-[#00C98B] text-[#0A0A0A] hover:bg-[#00C98B]/90"
+                          >
+                            {busy === `connect:${s.slot}` ? (
+                              <Loader2 className="mr-2 size-4 animate-spin" />
+                            ) : (
+                              <Check className="mr-2 size-4" />
+                            )}
+                            Connect &amp; save
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={resetLink}>Cancel</Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-
-                <div className="rounded-lg border p-3">
-                  <Label htmlFor="code" className="text-xs font-medium text-muted-foreground">
-                    2. Paste the code from the callback URL
-                  </Label>
-                  <Input
-                    id="code"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    placeholder="code=… or the full callback URL"
-                    className="mt-1.5 font-mono text-xs"
-                  />
-                  <Button
-                    onClick={connect}
-                    disabled={busy !== null || !code.trim()}
-                    className="mt-2 w-full bg-[#00C98B] text-[#0A0A0A] hover:bg-[#00C98B]/90"
-                  >
-                    {busy === "connect" ? (
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                    ) : (
-                      <Check className="mr-2 size-4" />
-                    )}
-                    Connect &amp; save token
-                  </Button>
-                </div>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { setLink(null); setLinkState(null); setCode(""); }}
-                  className="w-full"
-                >
-                  Cancel
-                </Button>
-              </div>
-            )}
-
-            {actionError && (
-              <p className="text-xs text-red-600 dark:text-red-400">{actionError}</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ---------- Ingestion settings ---------- */}
       <Card className="bg-white">

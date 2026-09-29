@@ -1,0 +1,14 @@
+[Unit]
+Description=Upwork MCP token server (admin connection link + token health)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/upwork-mcp.env
+ExecStart=/usr/bin/node /root/mcp-client/token_server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

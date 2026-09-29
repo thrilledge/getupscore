@@ -13,6 +13,7 @@
 "use strict";
 const http = require("http");
 const crypto = require("crypto");
+const pool = require("./token_pool");
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
@@ -27,6 +28,7 @@ const STATE_DIR = path.join(__dirname, ".mcp");
 const TOKEN_FILE = path.join(STATE_DIR, "token.json");
 const CLIENT_FILE = path.join(STATE_DIR, "client.json");
 const PROTOCOL = "2025-03-26";
+const JOBS_LIMIT = parseInt(process.env.JOBS_PER_SYNC || "10", 10) || 10;
 
 // ---------------- helpers ----------------
 function b64url(buf) {
@@ -81,6 +83,11 @@ async function authorize() {
   const verifier = b64url(crypto.randomBytes(32));
   const challenge = b64url(crypto.createHash("sha256").update(verifier).digest());
   const state = b64url(crypto.randomBytes(16));
+  // persist PKCE secrets so the code can be exchanged even if the local
+  // callback listener is gone (e.g. user completes consent on another device)
+  fs.writeFileSync(path.join(STATE_DIR, "pending_oauth.json"), JSON.stringify({
+    client_id: client.client_id, code_verifier: verifier, state,
+  }, null, 2));
 
   const params = new URLSearchParams({
     client_id: client.client_id,
@@ -108,6 +115,7 @@ async function authorize() {
   token.client_id = client.client_id;
   token.protocol = PROTOCOL;
   fs.writeFileSync(TOKEN_FILE, JSON.stringify(token, null, 2));
+  try { fs.unlinkSync(path.join(STATE_DIR, "pending_oauth.json")); } catch {}
   console.log("Saved token to", TOKEN_FILE);
 }
 
@@ -120,8 +128,9 @@ function waitForCallback(expectedState) {
       }
       if (url.searchParams.get("state") !== expectedState) {
         res.writeHead(400, { "content-type": "text/plain" });
-        res.end("state mismatch");
-        reject(new Error("state mismatch")); return;
+        res.end("state mismatch (ignored)");
+        console.log("[authorize] ignoring stray callback state", url.searchParams.get("state"));
+        return;
       }
       const code = url.searchParams.get("code");
       const err = url.searchParams.get("error");
@@ -153,17 +162,16 @@ async function exchangeToken(form) {
 
 // ---------------- refresh ----------------
 async function refresh() {
-  const tok = readJson(TOKEN_FILE);
-  if (!tok) throw new Error("no token.json. run authorize first");
-  const body = await exchangeToken({
-    grant_type: "refresh_token",
-    refresh_token: tok.refresh_token,
-    client_id: tok.client_id,
-  });
-  body.client_id = tok.client_id;
-  body.protocol = PROTOCOL;
-  fs.writeFileSync(TOKEN_FILE, JSON.stringify(body, null, 2));
-  console.log("Token refreshed. New access token valid for", body.expires_in, "s");
+  const slots = pool.listSlots();
+  if (!slots.length) throw new Error("no tokens in pool");
+  for (const s of slots) {
+    try {
+      const f = await pool.refreshSlot(s.slot);
+      console.log(`slot ${s.slot} refreshed. New access token valid for ${f.expires_in}s`);
+    } catch (e) {
+      console.log(`slot ${s.slot} refresh failed: ${e.message}`);
+    }
+  }
 }
 
 // ---------------- MCP JSON-RPC (streamable HTTP, session-aware) ----------------
@@ -203,9 +211,25 @@ async function mcpSend(method, params, tok) {
   return parseMcpResponse(text);
 }
 
+// ---- multi-account token pool ----
+let activeToken = null;
+let activeSlot = null;
+
+async function acquireToken() {
+  const slot = pool.selectSlot();
+  if (!slot) throw new Error("no healthy Upwork token in the pool - reconnect an account from the admin panel");
+  activeSlot = slot.slot;
+  activeToken = pool.getSlot(slot.slot) || slot;
+  pool.markUsed(slot.slot);
+  mcpSessionId = null;
+  console.log("using pool slot", activeSlot, "|", activeToken.label || "?", "| org", activeToken.org_uid || "unknown");
+  return activeToken;
+}
+
 async function ensureInitialized() {
-  const tok = readJson(TOKEN_FILE);
-  if (!tok || !tok.access_token) throw new Error("no token. run authorize first");
+  if (!activeToken) await acquireToken();
+  const tok = activeToken;
+  if (!tok || !tok.access_token) throw new Error("no healthy token in pool");
   // initialize (no session id yet)
   const initR = await mcpSend("initialize", {
     protocolVersion: PROTOCOL,
@@ -230,31 +254,50 @@ async function ensureInitialized() {
   return tok;
 }
 
-let inRefresh = false;
+// The org must always belong to the token being used: after a rotation the
+// previous account's org_uid is rejected by Upwork, so bind it per request.
+function withOrg(params, tok) {
+  if (!params || typeof params !== "object") return params;
+  const orgNow = tok.org_uid || pool.orgForSlot(tok.slot) || pool.defaultOrg();
+  if (!orgNow) return params;
+  if (params.arguments && typeof params.arguments === "object" && params.arguments.org_uid !== undefined) {
+    return { ...params, arguments: { ...params.arguments, org_uid: String(orgNow) } };
+  }
+  if (params.org_uid !== undefined) return { ...params, org_uid: String(orgNow) };
+  return params;
+}
 
 async function mcpRequest(method, params) {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    let tok;
+  const total = Math.max(1, pool.listSlots().length);
+  let lastErr = null;
+  for (let i = 0; i < total; i++) {
     try {
-      tok = await ensureInitialized();
-      return await mcpSend(method, params, tok);
+      const tok = await ensureInitialized();
+      return await mcpSend(method, withOrg(params, tok), tok);
     } catch (e) {
       const msg = String(e.message || e);
-      if (attempt === 0 && (msg.includes("401") || msg.includes("unauthorized"))) {
-        // rotate the OAuth token once, then retry with a fresh session
-        if (inRefresh) throw e;
-        inRefresh = true;
-        try {
-          mcpSessionId = null;
-          await refresh();
-          console.log("token auto-refreshed, retrying");
-        } finally { inRefresh = false; }
-        continue;
+      const authFail = msg.includes("401") || msg.includes("unauthorized") || msg.includes("invalid_grant");
+      if (!authFail) throw e;
+      lastErr = e;
+      const bad = activeSlot;
+      mcpSessionId = null;
+      console.log(`slot ${bad} auth failed - trying auto-refresh`);
+      try {
+        const fresh = await pool.refreshSlot(bad);
+        activeToken = fresh;
+        activeSlot = fresh.slot;
+        console.log(`slot ${bad} auto-refreshed, retrying`);
+        return await mcpSend(method, withOrg(params, fresh), fresh);
+      } catch (refErr) {
+        pool.markDead(bad, refErr.message);
+        console.log(`slot ${bad} refresh failed (${refErr.message}) - quarantined, rotating to next account`);
+        activeToken = null;
+        activeSlot = null;
+        mcpSessionId = null;
       }
-      throw e;
     }
   }
-  throw new Error("mcpRequest exhausted retries");
+  throw new Error(`all Upwork tokens unusable: ${lastErr ? lastErr.message : "no healthy slot in pool"}`);
 }
 
 async function toolsList() {
@@ -275,18 +318,81 @@ async function toolCall(name, args) {
 }
 
 async function searchJobs(orgUid) {
-  const r = await toolCall("upwork__find_jobs", { action: "search", org_uid: orgUid, params: { limit: 10 } });
+  const r = await toolCall("upwork__find_jobs", { action: "search", org_uid: orgUid, params: { limit: JOBS_LIMIT, include_full_details: true } });
   console.log(JSON.stringify(r, null, 2));
 }
 
-// search -> per-job get -> write mcp_get_jobs.json -> run save_get_jobs_to_db.py --update
-async function sync(orgUid, outFile, saveScript) {
-  const search = await toolCall("upwork__find_jobs", { action: "search", org_uid: orgUid, params: { limit: 10 } });
+function stripUntrusted(s) {
+  return String(s || "").replace(/<untrusted_participant_content>/g, "").replace(/<\/untrusted_participant_content>/g, "");
+}
+function parseMoneyStr(s) {
+  if (s == null) return null;
+  const m = String(s).replace(/[\$,]/g, "").match(/\d+(?:\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+// Build a save-script-compatible job object from a search payload when `get`
+// is denied at the account level (PERMISSION) so ingestion never stalls.
+function searchFallback(j) {
+  const c = j.client || {};
+  const jt = (j.job_type || "").toLowerCase();
+  let hourlyMin = null, hourlyMax = null, budget = null;
+  const b = j.budget;
+  if (jt.includes("hourly") && b && typeof b === "string") {
+    const parts = b.match(/([\d,.]+)\s*[\u2013-]\s*([\d,.]+)/);
+    if (parts) { hourlyMin = parseMoneyStr(parts[1]); hourlyMax = parseMoneyStr(parts[2]); }
+  } else if (jt.includes("hourly") && b && typeof b === "number") {
+    hourlyMax = parseMoneyStr(String(b));
+  } else {
+    budget = parseMoneyStr(b);
+  }
+  const verified = String(c.verification_status || "").toUpperCase() === "VERIFIED";
+  const published = j.published_date || j.created_date || null;
+  return {
+    id: j.id || j.job_id || j.upwork_job_id,
+    title: j.title,
+    description: stripUntrusted(j.description || j.description_snippet),
+    url: j.url,
+    job_type: j.job_type,
+    experience_level: j.experience_level,
+    duration: j.duration,
+    skills: j.skills,
+    hourly_min: hourlyMin,
+    hourly_max: hourlyMax,
+    budget,
+    client_country: c.country,
+    client_location_country: c.country,
+    client_rating: parseMoneyStr(c.rating),
+    client_total_spend: parseMoneyStr(c.total_spent),
+    client_spend: parseMoneyStr(c.total_spent),
+    payment_verified: verified,
+    client_payment_verified: verified,
+    proposals_count: j.proposal_count != null ? j.proposal_count : (j.proposals_count != null ? j.proposals_count : null),
+    client_score: parseMoneyStr(c.rating),
+    client_total_jobs_with_hires: c.total_posted_jobs != null ? parseInt(c.total_posted_jobs, 10) : null,
+    client_feedback_count: c.total_reviews != null ? parseInt(c.total_reviews, 10) : null,
+    persons_to_hire: j.freelancers_to_hire != null ? parseInt(j.freelancers_to_hire, 10) : null,
+    engagement_type: j.engagement || null,
+    posted_at: published,
+    _search_fallback: true,
+  };
+}
+// search -> per-job get (with search fallback) -> write mcp_get_jobs.json -> save
+async function sync(outFile, saveScript, legacyOrg) {
+  // pick the slot first, then read that account's org, so the two always agree
+  if (!activeToken) await acquireToken();
+  const orgUid = activeToken.org_uid || pool.orgForSlot(activeSlot) || pool.defaultOrg() || legacyOrg || "";
+  if (!orgUid) {
+    throw new Error(`pool slot ${activeSlot} has no org_uid - reconnect that account in the admin panel`);
+  }
+  const search = await toolCall("upwork__find_jobs", { action: "search", org_uid: orgUid, params: { limit: JOBS_LIMIT, include_full_details: true } });
   const jobs = Array.isArray(search) ? search : search.jobs || search.results || [];
   console.log("search returned", jobs.length, "jobs");
-  const ids = jobs
-    .map((j) => j.id || j.job_id || j.upwork_job_id)
-    .filter(Boolean);
+  const byId = {};
+  for (const j of jobs) {
+    const jid = j.id || j.job_id || j.upwork_job_id;
+    if (jid) byId[jid] = j;
+  }
+  const ids = Object.keys(byId);
   const dateMap = {};
   for (const j of jobs) {
     const jid = j.id || j.job_id || j.upwork_job_id;
@@ -296,17 +402,30 @@ async function sync(orgUid, outFile, saveScript) {
   }
   console.log("job ids:", ids, "| dates found:", Object.keys(dateMap).length);
   const gets = [];
+  let fallbackCount = 0;
   for (const id of ids) {
     try {
       const g = await toolCall("upwork__find_jobs", { action: "get", org_uid: orgUid, params: { id, job_id: id } });
       if (dateMap[id] && !g.published_date) g.published_date = dateMap[id];
       gets.push(g);
       console.log("get ok:", id);
-    } catch (e) { console.log("get failed:", id, e.message); }
+    } catch (e) {
+      // get denied (PERMISSION) -> use rich search payload so ingestion flows.
+      const sj = byId[id];
+      if (sj) {
+        const fb = searchFallback(sj);
+        if (dateMap[id] && !fb.published_date) fb.published_date = dateMap[id];
+        gets.push(fb);
+        fallbackCount++;
+        console.log("get failed (fallback):", id, e.message.slice(0, 80));
+      } else {
+        console.log("get failed:", id, e.message);
+      }
+    }
   }
   if (!gets.length) { console.log("no job details fetched"); return; }
   fs.writeFileSync(outFile, JSON.stringify(gets, null, 2));
-  console.log("wrote", outFile, "(", gets.length, "jobs )");
+  console.log("wrote", outFile, "(", gets.length, "jobs,", fallbackCount, "fallback )");
   if (saveScript && fs.existsSync(saveScript)) {
     const { spawnSync } = require("child_process");
     const pyBin = process.platform === "win32" ? "python" : "python3";
@@ -358,8 +477,14 @@ async function listAccounts() {
     case "tools-list": await toolsList(); break;
     case "tool-schema": await toolSchema(process.argv[3]); break;
     case "list-accounts": await listAccounts(); break;
-    case "search": await searchJobs(process.argv[3] || ORG_UID); break;
-    case "sync": await sync(process.argv[3] || ORG_UID, process.argv[4] || "mcp_get_jobs.json", process.argv[5]); break;
+    case "search": await searchJobs(process.argv[3] || pool.defaultOrg()); break;
+    case "sync": {
+      let a = process.argv[3], b = process.argv[4], c = process.argv[5];
+      let legacyOrg = null;
+      if (a && /^\d+$/.test(a)) { legacyOrg = a; a = b; b = c; c = null; }
+      await sync(a || "mcp_get_jobs.json", b === undefined ? "save_get_jobs_to_db.py" : b, legacyOrg);
+      break;
+    }
     case "get-job": await getJob(process.argv[3], process.argv.includes("--json"), process.argv[4]); break;
     default:
       console.log("Usage: node mcp_client.js <register|authorize|refresh|tools-list|list-accounts|get-job <id> [org_uid] [--json]>");
