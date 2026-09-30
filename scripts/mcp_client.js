@@ -27,6 +27,18 @@ const REDIRECT = "http://localhost:8123/callback";
 const STATE_DIR = path.join(__dirname, ".mcp");
 const TOKEN_FILE = path.join(STATE_DIR, "token.json");
 const CLIENT_FILE = path.join(STATE_DIR, "client.json");
+
+// Renew a token when it is within this many seconds of expiring. Matches the
+// "expiring within 2h" admin alert so the alert is a real last-resort signal
+// rather than a routine notice.
+const PRE_REFRESH_SECONDS = 2 * 60 * 60;
+
+function shouldPreRefresh(tok) {
+  if (!tok || !tok.refresh_token) return false;
+  const h = pool.health(tok);
+  const left = h && typeof h.seconds_left === "number" ? h.seconds_left : 0;
+  return left > 0 && left <= PRE_REFRESH_SECONDS;
+}
 const PROTOCOL = "2025-03-26";
 const JOBS_LIMIT = parseInt(process.env.JOBS_PER_SYNC || "10", 10) || 10;
 
@@ -215,16 +227,37 @@ async function mcpSend(method, params, tok) {
 let activeToken = null;
 let activeSlot = null;
 
-async function acquireToken() {
-  const slot = pool.selectSlot();
-  if (!slot) throw new Error("no healthy Upwork token in the pool - reconnect an account from the admin panel");
-  activeSlot = slot.slot;
-  activeToken = pool.getSlot(slot.slot) || slot;
-  pool.markUsed(slot.slot);
-  mcpSessionId = null;
-  console.log("using pool slot", activeSlot, "|", activeToken.label || "?", "| org", activeToken.org_uid || "unknown");
-  return activeToken;
-}
+  async function acquireToken() {
+    const slot = pool.selectSlot();
+    if (!slot) throw new Error("no healthy Upwork token in the pool - reconnect an account from the admin panel");
+    activeSlot = slot.slot;
+    activeToken = pool.getSlot(slot.slot) || slot;
+    pool.markUsed(slot.slot);
+    mcpSessionId = null;
+    console.log("using pool slot", activeSlot, "|", activeToken.label || "?", "| org", activeToken.org_uid || "unknown");
+
+    // Renew ahead of expiry instead of waiting for a 401. Without this the
+    // first sync after the token dies is the one that fails, and recovery
+    // depends on Upwork answering with an auth error rather than something
+    // else. A near-expiry token also means the admin alert email is only
+    // needed when this renewal actually fails, not every cycle.
+    if (shouldPreRefresh(activeToken)) {
+      try {
+        const fresh = await pool.refreshSlot(activeSlot);
+        if (fresh) {
+          activeToken = fresh;
+          const left = pool.health(fresh).seconds_left;
+          console.log("auto-refreshed slot", activeSlot, "| seconds_left", left);
+        }
+      } catch (e) {
+        // Not fatal: try the sync with the current token, and the admin
+        // alert email will tell the human this account needs a reconnect.
+        console.log("pre-emptive refresh failed for slot", activeSlot + ":", (e && e.message) || e);
+      }
+    }
+    return activeToken;
+  }
+
 
 async function ensureInitialized() {
   if (!activeToken) await acquireToken();
