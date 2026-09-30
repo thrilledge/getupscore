@@ -15,6 +15,18 @@ cd /root/mcp-client
 
 echo "=== run_sync $(date -Is) ==="
 
+# ---- token health alerts ----
+# Runs before the throttle check on purpose: the systemd timer ticks every
+# minute, so a token that breaks is reported within a minute instead of waiting
+# for the next ingestion window. notify_health.py de-duplicates, so a
+# long-running problem produces one alert plus periodic reminders.
+if [ -f /root/mcp-client/.notify.env ]; then
+  set -a
+  . /root/mcp-client/.notify.env
+  set +a
+fi
+python3 /root/mcp-client/notify_health.py 2>&1 | sed 's/^/  /' || true
+
 # ---- read config ----
 CFG=$(python3 /root/mcp-client/mcp_config.py --get 2>/dev/null || echo '{}')
 JOBS_PER_SYNC=$(echo "$CFG" | python3 -c 'import sys,json;print(json.load(sys.stdin).get("jobs_per_sync",10) or 10)')
