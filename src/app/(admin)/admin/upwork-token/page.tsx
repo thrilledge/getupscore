@@ -14,7 +14,6 @@ import {
   Copy,
   ExternalLink,
   Loader2,
-  Plus,
   RefreshCw,
   Settings2,
   Timer,
@@ -279,32 +278,34 @@ export default function AdminUpworkTokenPage() {
                 No usable Upwork account — job syncing is stopped
               </p>
               <p className="mt-0.5 text-xs text-red-600/80 dark:text-red-400/80">
-                Every account in the pool needs reconnecting. Reconnect one below to resume syncing.
+                Upwork rejected the saved token. Reconnect below to resume syncing.
               </p>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* ---------- Pool overview ---------- */}
+      {/* ---------- Connected account ---------- */}
       <Card className="bg-white">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium">Upwork Accounts</CardTitle>
+            <CardTitle className="text-sm font-medium">Upwork connection</CardTitle>
             <div className="flex items-center gap-2">
-              <Button
-                onClick={() => generateLink()}
-                disabled={busy !== null}
-                className="bg-[#00C98B] text-[#0A0A0A] hover:bg-[#00C98B]/90"
-                size="sm"
-              >
-                {busy === "link" ? (
-                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                ) : (
-                  <Plus className="mr-1.5 size-3.5" />
-                )}
-                Add account
-              </Button>
+              {slots.length === 0 && (
+                <Button
+                  onClick={() => generateLink(1)}
+                  disabled={busy !== null}
+                  className="bg-[#00C98B] text-[#0A0A0A] hover:bg-[#00C98B]/90"
+                  size="sm"
+                >
+                  {busy === "link" ? (
+                    <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                  ) : (
+                    <ExternalLink className="mr-1.5 size-3.5" />
+                  )}
+                  Connect account
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={load} disabled={busy !== null}>
                 <RefreshCw className="mr-1.5 size-3.5" />
                 Refresh
@@ -335,8 +336,9 @@ export default function AdminUpworkTokenPage() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Tokens auto-renew 24h before expiry. If one still dies, the sync quarantines that account
-            and moves to the next one automatically — so a single expired token never stops ingestion.
+            The access token renews itself from the stored refresh token, so this normally stays
+            connected without you doing anything. Renew it early with the button below, or reconnect
+            only if Upwork ever revokes it.
             {pool?.active_slot ? ` Currently syncing with slot ${pool.active_slot}.` : ""}
           </p>
 
@@ -347,8 +349,8 @@ export default function AdminUpworkTokenPage() {
           <div className="space-y-3">
             {slots.length === 0 && (
               <p className="rounded-lg border border-dashed px-4 py-6 text-center text-xs text-muted-foreground">
-                No accounts connected yet. Use &ldquo;Add account&rdquo; to connect your first Upwork
-                account.
+                No account connected yet. Use &ldquo;Connect account&rdquo; to link your Upwork
+                account — this is a one-time step.
               </p>
             )}
 
@@ -411,19 +413,21 @@ export default function AdminUpworkTokenPage() {
                           <ExternalLink className="size-3.5" />
                         )}
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeSlot(s.slot)}
-                        disabled={busy !== null}
-                        title="Remove this account"
-                      >
-                        {busy === `delete:${s.slot}` ? (
-                          <Loader2 className="size-3.5 animate-spin" />
-                        ) : (
-                          <Trash2 className="size-3.5 text-red-500" />
-                        )}
-                      </Button>
+                      {slots.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeSlot(s.slot)}
+                          disabled={busy !== null}
+                          title="Remove this account"
+                        >
+                          {busy === `delete:${s.slot}` ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="size-3.5 text-red-500" />
+                          )}
+                        </Button>
+                      )}
                     </div>
                   </div>
 
@@ -588,6 +592,21 @@ export default function AdminUpworkTokenPage() {
               Applies to the next sync cycle — no VPS restart needed.
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-dashed bg-transparent">
+        <CardContent className="p-4">
+          <p className="text-sm font-medium">Adding a second Upwork account</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Upwork ties every API client to a single account, so the same authorization link cannot
+            be used to connect a different Upwork account — Upwork rejects it with
+            &ldquo;User is not eligible to authorize.&rdquo; A second account would need its own
+            approved Upwork API key (client ID + secret) requested from that account, and Upwork only
+            grants keys to accounts that pass its eligibility review. Upwork&rsquo;s API is also
+            licensed for personal or internal use only, so extra accounts must not be used to work
+            around request or activity limits — doing so can get the owning account suspended.
+          </p>
         </CardContent>
       </Card>
     </div>
