@@ -254,6 +254,7 @@ export default function AdminUpworkTokenPage() {
   const cfg = data?.config;
   const usable = slots.filter((s) => USABLE.includes(s.status));
   const allDown = slots.length > 0 && usable.length === 0;
+  const linkTarget = slots.find((s) => s.slot === linkSlot) ?? null;
 
   return (
     <div className="space-y-5">
@@ -355,7 +356,6 @@ export default function AdminUpworkTokenPage() {
               const acct = pool?.accounts?.[String(s.slot)];
               const style = STATUS_STYLE[s.status] ?? STATUS_STYLE.missing;
               const isActive = pool?.active_slot === s.slot;
-              const isOpen = linkSlot === s.slot;
               const label = acct?.name || s.label;
               const org = acct?.org_uid || s.org_uid;
 
@@ -441,74 +441,91 @@ export default function AdminUpworkTokenPage() {
                       {s.last_error}
                     </p>
                   )}
-
-                  {isOpen && link && (
-                    <div className="space-y-3 border-t bg-muted/30 px-4 py-3">
-                      <div className="rounded-lg border border-[#00C98B]/30 bg-[#00C98B]/5 p-3">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          1. Sign in as this Upwork account and open the link
-                        </p>
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <code className="min-w-0 flex-1 truncate rounded bg-black/5 px-2 py-1.5 text-[11px] dark:bg-white/10">
-                            {link}
-                          </code>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              navigator.clipboard.writeText(link);
-                              setCopied(true);
-                              setTimeout(() => setCopied(false), 1500);
-                            }}
-                          >
-                            {copied ? <Check className="size-4 text-[#00C98B]" /> : <Copy className="size-4" />}
-                          </Button>
-                        </div>
-                        <a
-                          href={link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#00C98B] hover:underline"
-                        >
-                          Open in browser <ExternalLink className="size-3" />
-                        </a>
-                      </div>
-
-                      <div className="rounded-lg border bg-white p-3 dark:bg-transparent">
-                        <Label htmlFor={`code-${s.slot}`} className="text-xs font-medium text-muted-foreground">
-                          2. Paste the callback URL (or just its code)
-                        </Label>
-                        <Input
-                          id={`code-${s.slot}`}
-                          value={code}
-                          onChange={(e) => setCode(e.target.value)}
-                          placeholder="http://localhost:8123/callback?code=…&state=…"
-                          className="mt-1.5 font-mono text-xs"
-                        />
-                        <div className="mt-2 flex items-center gap-2">
-                          <Button
-                            onClick={connect}
-                            disabled={busy !== null || !code.trim()}
-                            className="bg-[#00C98B] text-[#0A0A0A] hover:bg-[#00C98B]/90"
-                          >
-                            {busy === `connect:${s.slot}` ? (
-                              <Loader2 className="mr-2 size-4 animate-spin" />
-                            ) : (
-                              <Check className="mr-2 size-4" />
-                            )}
-                            Connect &amp; save
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={resetLink}>Cancel</Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               );
             })}
           </div>
         </CardContent>
       </Card>
+
+      {/* ---------- Connect flow (own card so a brand-new slot shows up too) ---------- */}
+      {link && linkSlot !== null && (
+        <Card className="border-[#00C98B]/30 bg-[#00C98B]/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">
+              {linkTarget
+                ? `Reconnect “${linkTarget.label}”`
+                : `Connect new account (slot ${linkSlot})`}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="rounded-lg border border-[#00C98B]/30 bg-white/70 p-3 dark:bg-transparent">
+              <p className="text-xs font-medium text-muted-foreground">
+                1. Open this link and sign in with the Upwork account you want to add
+              </p>
+              <div className="mt-1.5 flex items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded bg-black/5 px-2 py-1.5 text-[11px] dark:bg-white/10">
+                  {link}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    navigator.clipboard.writeText(link);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1500);
+                  }}
+                >
+                  {copied ? <Check className="size-4 text-[#00C98B]" /> : <Copy className="size-4" />}
+                </Button>
+              </div>
+              <a
+                href={link}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-[#00C98B] hover:underline"
+              >
+                Open in browser <ExternalLink className="size-3" />
+              </a>
+            </div>
+
+            <div className="rounded-lg border bg-white p-3 dark:bg-transparent">
+              <Label htmlFor="code" className="text-xs font-medium text-muted-foreground">
+                2. Paste the callback URL from your address bar
+              </Label>
+              <Input
+                id="code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="http://localhost:8123/callback?code=…&state=…"
+                className="mt-1.5 font-mono text-xs"
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                The page will not load — that is expected. Copy the whole URL and paste it here.
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <Button
+                  onClick={connect}
+                  disabled={busy !== null || !code.trim()}
+                  className="bg-[#00C98B] text-[#0A0A0A] hover:bg-[#00C98B]/90"
+                >
+                  {busy === `connect:${linkSlot}` ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  ) : (
+                    <Check className="mr-2 size-4" />
+                  )}
+                  Connect &amp; save
+                </Button>
+                <Button variant="ghost" size="sm" onClick={resetLink}>Cancel</Button>
+              </div>
+            </div>
+
+            {actionError && (
+              <p className="text-xs text-red-600 dark:text-red-400">{actionError}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ---------- Ingestion settings ---------- */}
       <Card className="bg-white">
